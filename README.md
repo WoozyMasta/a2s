@@ -224,11 +224,11 @@ Min=28.7014ms Max=29.6299ms Avg=29.23208ms
 
 ```txt
 NAME:
-   a3sb-cli-windows-amd64.exe - CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ
+   a3sb-cli - CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ
 
 USAGE:
-   a3sb-cli-windows-amd64.exe [global options] command host port
-   Example: a3sb-cli-windows-amd64.exe -j  info 127.0.0.1 27016
+   a3sb-cli [global options] command host port
+   Example: a3sb-cli -j info 127.0.0.1 27016
 
 COMMANDS:
    info     Retrieve server information A3SB_INFO
