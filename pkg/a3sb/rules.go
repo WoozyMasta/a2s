@@ -11,36 +11,26 @@ import (
 
 // Structure for storing data from the A3SBP response
 type Rules struct {
-	// Internal
-
-	id    uint64  // Steam AppID
-	stats [4]byte // a3sb pages count raw/pager/blank/overflow
-
-	// A3SBP fields
-
-	Version     byte        `json:"version"`               // Protocol version
-	Flags       *Flags      `json:"flags,omitempty"`       // Flags, I don't know what's actually encoded there
-	DLC         []DLCInfo   `json:"dlcs,omitempty"`        // List of information about DLC
-	CreatorDLC  []DLCInfo   `json:"creator_dlc,omitempty"` // List of information about Creator DLC (Arma 3 only)
-	Difficulty  *Difficulty `json:"difficulty,omitempty"`  // Difficulty (Arma 3 only)
-	Mods        []Mod       `json:"mods,omitempty"`        // List of information about modifications
-	Signatures  []string    `json:"signatures,omitempty"`  // List of signatures
-	Description string      `json:"description,omitempty"` // Server description
-
-	// Extra not standard rules if exists
-	ExtraRules map[string]string `json:"extra_rules,omitempty"`
-
-	// DayZ specific rules
-
-	AllowedBuild    uint16     `json:"allowed_build,omitempty"`    // Allowed client build for connect
-	ClientPort      uint16     `json:"client_port,omitempty"`      // Client port
-	Dedicated       bool       `json:"dedicated,omitempty"`        // Dedicated
-	Island          string     `json:"island,omitempty"`           // Name of world
-	Language        ServerLang `json:"language,omitempty"`         // DayZ Server Language
-	Platform        string     `json:"platform,omitempty"`         // Server OS
-	RequiredBuild   uint16     `json:"required_build,omitempty"`   // Required client build for connect
-	RequiredVersion uint16     `json:"required_version,omitempty"` // Required client version for connect
-	TimeLeft        uint16     `json:"time_left,omitempty"`        // Time for respawn
+	Flags           *Flags            `json:"flags,omitempty"`            // Flags, I don't know what's actually encoded there
+	Difficulty      *Difficulty       `json:"difficulty,omitempty"`       // Difficulty (Arma 3 only)
+	ExtraRules      map[string]string `json:"extra_rules,omitempty"`      // Extra not standard rules if exists
+	Description     string            `json:"description,omitempty"`      // Server description
+	Island          string            `json:"island,omitempty"`           // Name of world [DayZ]
+	Platform        string            `json:"platform,omitempty"`         // Server OS [DayZ]
+	DLC             []DLCInfo         `json:"dlcs,omitempty"`             // List of information about DLC
+	CreatorDLC      []DLCInfo         `json:"creator_dlc,omitempty"`      // List of information about Creator DLC (Arma 3 only)
+	Mods            []Mod             `json:"mods,omitempty"`             // List of information about modifications
+	Signatures      []string          `json:"signatures,omitempty"`       // List of signatures
+	id              uint64            ``                                  // Steam AppID
+	Language        ServerLang        `json:"language,omitempty"`         // DayZ Server Language [DayZ]
+	AllowedBuild    uint16            `json:"allowed_build,omitempty"`    // Allowed client build for connect [DayZ]
+	ClientPort      uint16            `json:"client_port,omitempty"`      // Client port [DayZ]
+	RequiredBuild   uint16            `json:"required_build,omitempty"`   // Required client build for connect [DayZ]
+	RequiredVersion uint16            `json:"required_version,omitempty"` // Required client version for connect [DayZ]
+	TimeLeft        uint16            `json:"time_left,omitempty"`        // Time for respawn [DayZ]
+	stats           [4]byte           ``                                  // a3sb pages count raw/pager/blank/overflow
+	Version         byte              `json:"version"`                    // Protocol version
+	Dedicated       bool              `json:"dedicated,omitempty"`        // Dedicated [DayZ]
 }
 
 // A2S_RULES for Arma (wrapper)

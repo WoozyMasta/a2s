@@ -9,8 +9,8 @@ import (
 
 // Структура для хранения информации о модах
 type Mod struct {
-	ID   uint64 `json:"id,omitempty"`   // Mod ID in SteamWorkshop
 	Name string `json:"name,omitempty"` // Mod name from response
+	ID   uint64 `json:"id,omitempty"`   // Mod ID in SteamWorkshop
 	Hash uint32 `json:"hash,omitempty"` // Mod short hash
 }
 

@@ -10,10 +10,10 @@ import (
 
 // https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_2
 type Player struct {
-	Index    byte          `json:"index,omitempty"`
 	Name     string        `json:"name,omitempty"`
-	Score    uint32        `json:"score,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
+	Score    uint32        `json:"score,omitempty"`
+	Index    byte          `json:"index,omitempty"`
 }
 
 // Get A2S_PLAYER

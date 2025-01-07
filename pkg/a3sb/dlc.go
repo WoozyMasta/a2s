@@ -13,8 +13,8 @@ type DLC uint16
 
 // Store information about DLC
 type DLCInfo struct {
-	ID   uint64 `json:"id,omitempty"`   // DCL Steam AppID
 	Name string `json:"name,omitempty"` // DLC name from predefined maps
+	ID   uint64 `json:"id,omitempty"`   // DCL Steam AppID
 	Hash uint32 `json:"hash,omitempty"` // DLC short hash
 }
 

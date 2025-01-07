@@ -15,12 +15,12 @@ type TheShip struct {
 }
 
 type TheShipPlayer struct {
-	Index    byte          `json:"index,omitempty"`
 	Name     string        `json:"name,omitempty"`
-	Score    uint32        `json:"score,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
+	Score    uint32        `json:"score,omitempty"`
 	Deaths   uint32        `json:"deaths,omitempty"`
 	Money    uint32        `json:"money,omitempty"`
+	Index    byte          `json:"index,omitempty"`
 }
 
 // Read extra info for TheShip game for A2S_INFO

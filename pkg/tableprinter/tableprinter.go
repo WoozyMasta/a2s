@@ -8,10 +8,10 @@ import (
 
 // print tables with column alignment
 type TablePrinter struct {
+	delimiter string
 	headers   []string
 	rows      [][]string
 	colWidths []int
-	delimiter string
 }
 
 // create new table printer
