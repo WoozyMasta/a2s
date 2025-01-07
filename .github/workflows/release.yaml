@@ -14,9 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      BIN_NAME: a2s-cli
       UPX_VERSION: 4.2.4
-      WORK_DIR: cli
 
     steps:
       - name: Checkout repository
