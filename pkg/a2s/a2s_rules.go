@@ -64,24 +64,15 @@ func (c *Client) GetParsedRules() (map[string]any, error) {
 
 	for k, v := range data {
 		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
-			// Try parse integer
-			rules[k] = num
-
+			rules[k] = num // Try parse integer
 		} else if num, err := strconv.ParseFloat(strings.TrimSuffix(v, "f"), 64); err == nil {
-			// Try parse float
-			rules[k] = num
-
+			rules[k] = num // Try parse float
 		} else if boolean, err := strconv.ParseBool(v); err == nil {
-			// try parse boolean
-			rules[k] = boolean
-
+			rules[k] = boolean // try parse boolean
 		} else if decoded, err := base64.StdEncoding.DecodeString(v); err == nil && utf8.Valid(decoded) {
-			// try parse base64
-			rules[k] = string(decoded)
-
+			rules[k] = string(decoded) // try parse base64
 		} else {
-			// Save as is
-			rules[k] = v
+			rules[k] = v // Save as is
 		}
 	}
 

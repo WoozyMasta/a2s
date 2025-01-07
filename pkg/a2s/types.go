@@ -13,8 +13,8 @@ type EDF byte
 // Type represents the bytes for engine type: Source or GoldSource in A2S_INFO response
 type InfoFormat byte
 
-func (s InfoFormat) String() string {
-	switch Flag(s) {
+func (i InfoFormat) String() string {
+	switch Flag(i) {
 	case infoResponseSource:
 		return "Source"
 	case infoResponseGoldSource:
@@ -24,8 +24,9 @@ func (s InfoFormat) String() string {
 	return "unknown"
 }
 
-func (e InfoFormat) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.String())
+// Helper for convert internal type to string in JSON
+func (i InfoFormat) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
 }
 
 // Type represents the bytes for server type: Dedicated, Local or Proxy (SteamTV/HLTV) in A2S_INFO response
@@ -44,6 +45,7 @@ func (s ServerType) String() string {
 	return "Unknown"
 }
 
+// Helper for convert internal type to string in JSON
 func (s ServerType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
 }
@@ -66,6 +68,7 @@ func (e Environment) String() string {
 	return "Unknown"
 }
 
+// Helper for convert internal type to string in JSON
 func (e Environment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.String())
 }
@@ -92,6 +95,7 @@ func (m TheShipMode) String() string {
 	return "Unknown"
 }
 
+// Helper for convert internal type to string in JSON
 func (m TheShipMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.String())
 }

@@ -10,7 +10,7 @@ import (
 
 func printInfo(info *a2s.Info, address string, json bool) {
 	if json {
-		printJson(info)
+		printJSON(info)
 	} else {
 		table := makeInfo(info)
 		table.Print()
@@ -83,12 +83,12 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 		}
 
 		if len(info.Keywords) > 0 {
-			max := len(info.Name)
-			if 60 > max {
-				max = 60
+			limit := len(info.Name)
+			if 60 > limit {
+				limit = 60
 			}
 
-			for i, k := range tableprinter.JoinWithLimit(info.Keywords, ", ", max) {
+			for i, k := range tableprinter.JoinWithLimit(info.Keywords, ", ", limit) {
 				if i == 0 {
 					if err := table.AddRow([]string{"Keywords:", k}); err != nil {
 						log.Fatalf("Create info table (keywords key): %s", err)

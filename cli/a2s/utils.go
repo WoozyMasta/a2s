@@ -10,6 +10,7 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
+// Wrapper for a2s.New create client and set timeot and buffer-size
 func createClient(host string, port int, c *cli.Context) (*a2s.Client, error) {
 	client, err := a2s.New(host, port)
 	if err != nil {
@@ -21,13 +22,17 @@ func createClient(host string, port int, c *cli.Context) (*a2s.Client, error) {
 	}
 
 	if bufferSize := c.Int("buffer-size"); bufferSize > 0 {
+		if bufferSize < 0 || bufferSize > 65535 {
+			return nil, fmt.Errorf("failed to set buffer size: %d", bufferSize)
+		}
 		client.SetBufferSize(uint16(bufferSize))
 	}
 
 	return client, nil
 }
 
-func printJson(data any) {
+// Wrap MarshalIndent and print result
+func printJSON(data any) {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		log.Fatalf("Failed to marshal JSON: %v", err)

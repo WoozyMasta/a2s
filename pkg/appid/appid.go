@@ -5,7 +5,7 @@ package appid
 // https://steamdb.info/
 
 const (
-	Unknown uint64 = 0
+	Unknown uint64 = 0 // Any unexpected app
 
 	// GoldSource
 

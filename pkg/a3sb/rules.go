@@ -93,7 +93,6 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 		// fill the Arma 3 Server Browser Protocol (A3SBP) byte array with data, handling escape sequences
 		if len(key) == 2 && key[0] <= key[1] {
 			a3sb = append(a3sb, bread.EscapeSequences(value[:])...)
-
 		} else { // Read A2S_RULES as is after A3SBP bytes
 			rawRules[string(key)] = string(value)
 		}
@@ -175,10 +174,12 @@ func (r *Rules) readA3SB(data []byte) error {
 	return nil
 }
 
+// Return appID
 func (r *Rules) GetAppID() uint64 {
 	return r.id
 }
 
+// Return bytes stats of chunk reader progress
 func (r *Rules) GetReaderStats() [4]byte {
 	return r.stats
 }

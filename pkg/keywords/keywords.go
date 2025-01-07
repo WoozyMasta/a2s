@@ -1,3 +1,4 @@
+// Package keywords provide additional parsers for tags (sv_tag) from the A2S_INFO response
 package keywords
 
 import (
@@ -6,6 +7,8 @@ import (
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
+// Universal function for outputting result depending on application ID,
+// if parser exists it will return updated structure, otherwise it will return error
 func Parse(id uint64, keywords any) (any, error) {
 	kw, ok := keywords.([]string)
 	if !ok {

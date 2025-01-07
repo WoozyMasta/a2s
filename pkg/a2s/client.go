@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Client for handle connection and options
 type Client struct {
 	Conn       *net.UDPConn
 	Address    *net.UDPAddr

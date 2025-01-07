@@ -1,4 +1,4 @@
-// BRead bytes buffer reader helper functions
+// Package bread is a set of helper functions for reading bytes into different types from a buffer.
 package bread
 
 import (

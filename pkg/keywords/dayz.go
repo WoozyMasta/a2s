@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// DayZ keywords
 type DayZ struct {
 	Shard          string        `json:"shard,omitempty"`
 	Time           time.Duration `json:"time,omitempty"`
@@ -23,6 +24,7 @@ type DayZ struct {
 	DLC            bool          `json:"dlc,omitempty"`
 }
 
+// Parser for DayZ keywords
 func ParseDayZ(keywords []string) *DayZ {
 	data := &DayZ{}
 	data.Parse(keywords)

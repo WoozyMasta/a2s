@@ -9,7 +9,7 @@ import (
 
 func printRules(rules map[string]string, address string, json bool) {
 	if json {
-		printJson(rules)
+		printJSON(rules)
 	} else {
 		table := makeRules(rules)
 		table.Print()
@@ -31,7 +31,7 @@ func makeRules(rules map[string]string) *tableprinter.TablePrinter {
 
 func printParsedRules(rules map[string]any, address string, json bool) {
 	if json {
-		printJson(rules)
+		printJSON(rules)
 	} else {
 		table := makeParsedRules(rules)
 		table.PrintSorted(0)

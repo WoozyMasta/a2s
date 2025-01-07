@@ -56,5 +56,5 @@
   ],
   "cSpell.ignorePaths": [
     "go.mod", "go.sum", ".github/actions/**/*.yaml", ".github/workflows/**/*.yaml", ".vscode/*"
-  ]
+  ],
 }

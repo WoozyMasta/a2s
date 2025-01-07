@@ -8,12 +8,14 @@ import (
 	"github.com/woozymasta/a2s/pkg/bread"
 )
 
+// TheShip A2S_INFO additional data
 type TheShip struct {
 	Mode      TheShipMode `json:"mode"`
 	Witnesses byte        `json:"witnesses"`
 	Duration  byte        `json:"duration"`
 }
 
+// TheShip A2S_PLAYER additional data
 type TheShipPlayer struct {
 	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`

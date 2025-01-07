@@ -88,7 +88,7 @@ func handlePing(client *a2s.Client, c *cli.Context) error {
 
 			// Write ping to the ring buffer
 			pingDuration := info.Ping
-			buffer.Add(pingDuration)
+			buffer.add(pingDuration)
 
 			fmt.Printf("A2S_INFO response server=%s:%d folder=\"%s\" name=\"%s\" time=%s\n", host, port, info.Folder, info.Name, pingDuration)
 			time.Sleep(period * time.Second)

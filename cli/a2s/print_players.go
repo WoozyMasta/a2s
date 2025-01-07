@@ -10,7 +10,7 @@ import (
 
 func printPlayers(players *[]a2s.Player, address string, json bool) {
 	if json {
-		printJson(players)
+		printJSON(players)
 	} else {
 		table := makePlayers(players)
 		table.Print()

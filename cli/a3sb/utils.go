@@ -22,13 +22,16 @@ func createClient(host string, port int, c *cli.Context) (*a2s.Client, error) {
 	}
 
 	if bufferSize := c.Int("buffer-size"); bufferSize > 0 {
+		if bufferSize < 0 || bufferSize > 65535 {
+			return nil, fmt.Errorf("failed to set buffer size: %d", bufferSize)
+		}
 		client.SetBufferSize(uint16(bufferSize))
 	}
 
 	return client, nil
 }
 
-func printJson(data any) {
+func printJSON(data any) {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		log.Fatalf("Failed to marshal JSON: %v", err)
@@ -37,7 +40,7 @@ func printJson(data any) {
 	fmt.Println(string(jsonData))
 }
 
-func printJsonWithDayZ(info *a2s.Info) {
+func printJSONWithDayZ(info *a2s.Info) {
 	jsonData, err := json.Marshal(info)
 	if err != nil {
 		log.Fatalf("Failed to marshal Info: %v", err)
@@ -55,12 +58,12 @@ func printJsonWithDayZ(info *a2s.Info) {
 	jsonMap["keywords"] = dayZData
 
 	// Marshal back to JSON for output
-	updatedJsonData, err := json.MarshalIndent(jsonMap, "", "  ")
+	updatedJSONData, err := json.MarshalIndent(jsonMap, "", "  ")
 	if err != nil {
 		log.Fatalf("Failed to marshal updated JSON: %v", err)
 	}
 
-	fmt.Println(string(updatedJsonData))
+	fmt.Println(string(updatedJSONData))
 }
 
 // initialize logging

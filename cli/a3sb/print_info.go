@@ -11,7 +11,7 @@ import (
 
 func printInfo(info *a2s.Info, address string, json bool) {
 	if json {
-		printJsonWithDayZ(info)
+		printJSONWithDayZ(info)
 	} else {
 		table := makeInfo(info)
 		table.Print()

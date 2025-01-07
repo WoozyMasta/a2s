@@ -15,7 +15,7 @@ const (
 
 func printRules(rules *a3sb.Rules, address string, json bool) {
 	if json {
-		printJson(rules)
+		printJSON(rules)
 		return
 	}
 

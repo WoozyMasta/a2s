@@ -1,14 +1,14 @@
 /*
-Read Steam Server Queries:
-  - [github.com/woozymasta/a2s.GetInfo]
+Package a2s read Steam A2S server query responses:
+  - [github.com/woozymasta/a2s/pks/a2s.GetInfo]
     A2S_INFO Basic information about the server;
-  - [github.com/woozymasta/a2s.GetPlayers]
+  - [github.com/woozymasta/a2s/pks/a2s.GetPlayers]
     A2S_PLAYER Details about each player on the server;
-  - [github.com/woozymasta/a2s.GetRules]
+  - [github.com/woozymasta/a2s/pks/a2s.GetRules]
     A2S_RULES The rules the server is using;
-  - [github.com/woozymasta/a2s.GetChallenge]
+  - [github.com/woozymasta/a2s/pks/a2s.GetChallenge]
     A2S_SERVERQUERY_GETCHALLENGE Returns a challenge number for use in the player and rules query;
-  - [github.com/woozymasta/a2s.GetPing]
+  - [github.com/woozymasta/a2s/pks/a2s.GetPing]
     A2A_PING Ping the server.
 
 More details in the official Steam documentation for the protocol [Server queries]

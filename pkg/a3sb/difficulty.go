@@ -41,10 +41,10 @@ func (r *Rules) readDifficulty(buf *bytes.Buffer) error {
 	}
 
 	r.Difficulty = &Difficulty{
-		Level:         byte(value & 0b00000111),        // Mask for the first 3 bits
-		AILevel:       byte((value >> 3) & 0b00000111), // Shift 3 bits right, then mask for next 3 bits
-		AdvanceFlight: value&(1<<6) == 0,               // Checking bit 6
-		ThirdPerson:   value&(1<<7) != 0,               // Checking bit 7
+		Level:         value & 0b00000111,        // Mask for the first 3 bits
+		AILevel:       (value >> 3) & 0b00000111, // Shift 3 bits right, then mask for next 3 bits
+		AdvanceFlight: value&(1<<6) == 0,         // Checking bit 6
+		ThirdPerson:   value&(1<<7) != 0,         // Checking bit 7
 	}
 
 	crosshair, err := bread.Byte(buf)

@@ -2,23 +2,25 @@ package a3sb
 
 import "encoding/json"
 
+// Represent game-server language
 type ServerLang uint32
 
 const (
-	LangEnglish    ServerLang = 65545
-	LangCzech      ServerLang = 65541
-	LangGerman     ServerLang = 65543
-	LangRussian    ServerLang = 65561
-	LangPolish     ServerLang = 65557
-	LangHungarian  ServerLang = 65550
-	LangItalian    ServerLang = 65552
-	LangSpanish    ServerLang = 65546
-	LangFrench     ServerLang = 65548
-	LangChinese    ServerLang = 65540
-	LangJapanese   ServerLang = 65553
-	LangPortuguese ServerLang = 65558
+	LangEnglish    ServerLang = 65545 // English
+	LangCzech      ServerLang = 65541 // Czech
+	LangGerman     ServerLang = 65543 // German
+	LangRussian    ServerLang = 65561 // Russian
+	LangPolish     ServerLang = 65557 // Polish
+	LangHungarian  ServerLang = 65550 // Hungarian
+	LangItalian    ServerLang = 65552 // Italian
+	LangSpanish    ServerLang = 65546 // Spanish
+	LangFrench     ServerLang = 65548 // French
+	LangChinese    ServerLang = 65540 // Chinese
+	LangJapanese   ServerLang = 65553 // Japanese
+	LangPortuguese ServerLang = 65558 // Portuguese
 )
 
+// Helper for convert internal type to string in JSON
 func (l ServerLang) MarshalJSON() ([]byte, error) {
 	return json.Marshal(l.String())
 }

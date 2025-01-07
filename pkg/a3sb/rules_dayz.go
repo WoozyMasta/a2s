@@ -65,7 +65,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			}
 
 		default:
-			extra[k] = string(v)
+			extra[k] = v
 		}
 	}
 
@@ -78,7 +78,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 
 // Parse string as uint16
 func strToUint16(str string) (uint16, error) {
-	number, err := strconv.ParseUint(str, 10, 32)
+	number, err := strconv.ParseUint(str, 10, 16)
 	if err != nil {
 		return 0, err
 	}

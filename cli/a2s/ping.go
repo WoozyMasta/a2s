@@ -6,21 +6,24 @@ import (
 
 const pingBuffSize = 65535
 
-type PingStats struct {
+// Stats of ping
+type pingStats struct {
 	Min time.Duration
 	Max time.Duration
 	Avg time.Duration
 }
 
-type PingRingBuff struct {
+// Ring buffer for ping stats
+type pingRingBuff struct {
 	data  []time.Duration
 	head  int
 	tail  int
 	count int
 }
 
-func newPingRingBuff() *PingRingBuff {
-	return &PingRingBuff{
+// Create new ping buffer
+func newPingRingBuff() *pingRingBuff {
+	return &pingRingBuff{
 		data:  make([]time.Duration, pingBuffSize),
 		head:  0,
 		tail:  0,
@@ -28,34 +31,36 @@ func newPingRingBuff() *PingRingBuff {
 	}
 }
 
-func (r *PingRingBuff) Add(value time.Duration) {
-	r.data[r.tail] = value
-	r.tail = (r.tail + 1) % len(r.data)
+// Add record to ping buff
+func (p *pingRingBuff) add(value time.Duration) {
+	p.data[p.tail] = value
+	p.tail = (p.tail + 1) % len(p.data)
 
-	if r.count < len(r.data) {
-		r.count++
+	if p.count < len(p.data) {
+		p.count++
 	} else {
-		r.head = (r.head + 1) % len(r.data)
+		p.head = (p.head + 1) % len(p.data)
 	}
 }
 
-func (r *PingRingBuff) GetAll() []time.Duration {
+// Get all record from ping buff
+func (p *pingRingBuff) getAll() []time.Duration {
 	var result []time.Duration
 
-	if r.count == len(r.data) {
-		result = append(result, r.data[r.head:]...)
+	if p.count == len(p.data) {
+		result = append(result, p.data[p.head:]...)
 	}
-	result = append(result, r.data[:r.tail]...)
+	result = append(result, p.data[:p.tail]...)
 
 	return result
 }
 
 // Ping statistics calculation function
-func calculateStats(buffer *PingRingBuff) PingStats {
-	pings := buffer.GetAll()
+func calculateStats(buffer *pingRingBuff) pingStats {
+	pings := buffer.getAll()
 
 	if len(pings) == 0 {
-		return PingStats{Min: 0, Max: 0, Avg: 0}
+		return pingStats{Min: 0, Max: 0, Avg: 0}
 	}
 
 	minPing, maxPing := pings[0], pings[0]
@@ -73,7 +78,7 @@ func calculateStats(buffer *PingRingBuff) PingStats {
 
 	avgPing := totalPing / time.Duration(len(pings))
 
-	return PingStats{
+	return pingStats{
 		Min: minPing,
 		Max: maxPing,
 		Avg: avgPing,
