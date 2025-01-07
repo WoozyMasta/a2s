@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "golang.go",
+    "aaron-bond.better-comments",
+    "streetsidesoftware.code-spell-checker",
+    "yzhang.markdown-all-in-one",
+    "davidanson.vscode-markdownlint",
+    "woozy-masta.shell-script-ide"
+  ]
+}

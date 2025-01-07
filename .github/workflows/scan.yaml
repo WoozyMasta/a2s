@@ -1,0 +1,28 @@
+name: Scan release
+
+on:
+  release:
+    types: [published, created, released, edited]
+
+permissions:
+  contents: write
+
+jobs:
+  virustotal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: VirusTotal Artifacts Scan
+        uses: WoozyMasta/virustotal-action@v1.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          rate_limit: 4
+          update_release: true
+          file_globs: |
+            a2s-cli-darwin-*
+            a2s-cli-linux-*
+            a2s-cli-windows-*.exe
+            a3sb-cli-darwin-*
+            a3sb-cli-linux-*
+            a3sb-cli-windows-*.exe
+          excluded_extensions: ".json"

@@ -1,0 +1,14 @@
+remote_theme: pages-themes/midnight@v0.2.0
+plugins:
+- jekyll-remote-theme
+show_downloads: true
+logo: /logo.png
+title: ./a2s-cli
+description: A2S Query CLI and go package
+markdown: GFM
+github:
+  zip_url: https://github.com/WoozyMasta/a2s-cli/zipball/master
+  tar_url: https://github.com/WoozyMasta/a2s-cli/tarball/master
+  linux: https://github.com/WoozyMasta/a2s-cli/releases/latest/download/a2s-cli-linux-amd64
+  darwin: https://github.com/WoozyMasta/a2s-cli/releases/latest/download/a2s-cli-darwin-arm64
+  windows: https://github.com/WoozyMasta/a2s-cli/releases/latest/download/a2s-cli-windows-amd64.exe

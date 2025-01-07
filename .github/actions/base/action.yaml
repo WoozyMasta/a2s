@@ -1,0 +1,34 @@
+name: Base Workflow
+description: Reusable base workflow
+
+inputs:
+  go-version:
+    description: "Go version to use"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+
+    - name: Run MarkdownLint
+      uses: DavidAnson/markdownlint-cli2-action@v18
+      with:
+        globs: "**/*.md"
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.60
+
+    # for windows can use betteralign ./...
+    - name: Check Golang structures
+      uses: essentialkaos/aligo-action@v2
+      with:
+        files: ./...

@@ -1,0 +1,12 @@
+*.drawio.bkp
+build/
+dev.env
+*.psd
+*.exe
+*.zip
+*.tar
+*.tgz
+*.tar.*
+*.log
+*_
+/main.go
