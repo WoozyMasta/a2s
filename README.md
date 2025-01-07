@@ -517,7 +517,7 @@ Feel free to contribute or report issues if you find any compatibility
 problems with additional games!
 
 > [!NOTE]  
-> Implementation of `bzip2` compression for multipacket response is not
+> Implementation of `bzip2` compression for multi-packet response is not
 > implemented, as I did not find any servers that would respond in this
 > format. If you know of one, please write me in issue.
 

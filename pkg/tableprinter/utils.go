@@ -38,7 +38,7 @@ func convertToAny(slice []string) []any {
 	return result
 }
 
-// replcae special chars to not printable equals
+// replace special chars to not printable equals
 func escapeSpecialChars(s string) string {
 	s = strings.ReplaceAll(s, "\n", "\\n")
 	s = strings.ReplaceAll(s, "\t", "\\t")
