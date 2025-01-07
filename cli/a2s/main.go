@@ -44,7 +44,9 @@ func main() {
 			}
 
 			if c.Args().Len() < 1 {
-				cli.ShowAppHelp(c)
+				if err := cli.ShowAppHelp(c); err != nil {
+					return err
+				}
 				return fmt.Errorf("command must be provided")
 			}
 
@@ -54,7 +56,9 @@ func main() {
 					host = addr[0]
 					port, err = strconv.Atoi(addr[1])
 					if err != nil {
-						cli.ShowAppHelp(c)
+						if err := cli.ShowAppHelp(c); err != nil {
+							return err
+						}
 						return fmt.Errorf("invalid port %s", c.Args().Get(2))
 					}
 				} else {
@@ -64,7 +68,9 @@ func main() {
 				host = c.Args().Get(1)
 				port, err = strconv.Atoi(c.Args().Get(2))
 				if err != nil {
-					cli.ShowAppHelp(c)
+					if err := cli.ShowAppHelp(c); err != nil {
+						return err
+					}
 					return fmt.Errorf("invalid port %s", c.Args().Get(2))
 				}
 			}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
@@ -21,7 +22,7 @@ func printInfo(info *a2s.Info, address string, json bool) {
 func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Property", "Value"}, "=")
 
-	table.AddRows([][]string{
+	if err := table.AddRows([][]string{
 		{"Query type:", info.Format.String()},
 		{"Protocol:", fmt.Sprintf("%d", info.Protocol)},
 		{"Server name:", info.Name},
@@ -36,19 +37,25 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 		{"Need password:", fmt.Sprintf("%t", info.Visibility)},
 		{"VAC protected:", fmt.Sprintf("%t", info.VAC)},
 		{"Game version:", info.Version},
-	})
+	}); err != nil {
+		log.Fatalf("Create info table: %s", err)
+	}
 
 	if info.Port != 0 {
-		table.AddRow([]string{"Port:", fmt.Sprintf("%d", info.Port)})
+		if err := table.AddRow([]string{"Port:", fmt.Sprintf("%d", info.Port)}); err != nil {
+			log.Fatalf("Create info table (EDF Port): %s", err)
+		}
 	}
 
 	if info.SteamID != 0 {
-		table.AddRow([]string{"Server SteamID:", fmt.Sprintf("%d", info.SteamID)})
+		if err := table.AddRow([]string{"Server SteamID:", fmt.Sprintf("%d", info.SteamID)}); err != nil {
+			log.Fatalf("Create info table (EDF ServerID): %s", err)
+		}
 	}
 
 	dayz := keywords.ParseDayZ(info.Keywords)
 	if dayz.Shard != "" {
-		table.AddRows([][]string{
+		if err := table.AddRows([][]string{
 			{"Shard:", dayz.Shard},
 			{"In game time:", dayz.Time.String()},
 			{"Time day x:", fmt.Sprintf("%f", dayz.TimeDayAccel)},
@@ -63,10 +70,14 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 			{"Whitelist:", fmt.Sprintf("%t", dayz.Whitelist)},
 			{"Fle patching:", fmt.Sprintf("%t", dayz.FlePatching)},
 			{"Need DLC:", fmt.Sprintf("%t", dayz.DLC)},
-		})
+		}); err != nil {
+			log.Fatalf("Create info table (DayZ keywords): %s", err)
+		}
 	}
 
-	table.AddRow([]string{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())})
+	if err := table.AddRow([]string{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())}); err != nil {
+		log.Fatalf("Create info table (ping): %s", err)
+	}
 
 	return table
 }

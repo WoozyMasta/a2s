@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
@@ -20,7 +21,9 @@ func makeRules(rules map[string]string) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
 
 	for k, v := range rules {
-		table.AddRow([]string{k, v})
+		if err := table.AddRow([]string{k, v}); err != nil {
+			log.Fatalf("Create rules table (Raw): %s", err)
+		}
 	}
 
 	return table
@@ -40,7 +43,9 @@ func makeParsedRules(rules map[string]any) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
 
 	for k, v := range rules {
-		table.AddRow([]string{k, fmt.Sprint(v)})
+		if err := table.AddRow([]string{k, fmt.Sprint(v)}); err != nil {
+			log.Fatalf("Create rules table (Parsed): %s", err)
+		}
 	}
 
 	return table
