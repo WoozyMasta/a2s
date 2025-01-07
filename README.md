@@ -544,8 +544,8 @@ Your support is greatly appreciated!
 
 [Steam Server Queries]: https://developer.valvesoftware.com/wiki/Server_queries
 [Arma 3 Server Browser Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
-[A3SB Protocol v3 Specification 🇬🇧]: pkg/a3sb/docs/README.md "🇬🇧"
-[A3SB Protocol v3 Specification 🇷🇺]: pkg/a3sb/docs/README_ru.md0 "🇷🇺"
+[A3SB Protocol v3 Specification 🇬🇧]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md "🇬🇧"
+[A3SB Protocol v3 Specification 🇷🇺]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README_ru.md "🇷🇺"
 
 [a2s-cli-darwin-arm64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-darwin-arm64 "MacOS arm64 file"
 [a2s-cli-darwin-amd64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-cli-darwin-amd64 "MacOS amd64 file"
