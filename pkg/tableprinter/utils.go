@@ -2,7 +2,7 @@ package tableprinter
 
 import "strings"
 
-// join slice of string but with line width limit and return slice of joined strings
+// Join slice of string but with line width limit and return slice of joined strings
 func JoinWithLimit(elems []string, sep string, limit int) []string {
 	var result []string
 	currentLine := ""
@@ -28,7 +28,8 @@ func JoinWithLimit(elems []string, sep string, limit int) []string {
 	return result
 }
 
-// convert []string to []any for use in fmt.Printf
+// convertToAny converts a slice of strings to a slice of empty interfaces.
+// This is used to pass the row data to fmt.Printf with dynamic formatting.
 func convertToAny(slice []string) []any {
 	result := make([]any, len(slice))
 	for i, v := range slice {
@@ -38,7 +39,7 @@ func convertToAny(slice []string) []any {
 	return result
 }
 
-// replace special chars to not printable equals
+// escapeSpecialChars escapes special characters in a string to ensure proper table formatting.
 func escapeSpecialChars(s string) string {
 	s = strings.ReplaceAll(s, "\n", "\\n")
 	s = strings.ReplaceAll(s, "\t", "\\t")
