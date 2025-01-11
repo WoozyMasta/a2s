@@ -31,11 +31,10 @@ build() {
   fi
 }
 
-package="$(grep -Po 'module \K.*$' go.mod)/pkg/config"
-version="$package.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
-commit="$package.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
-date="$package.BuildTime=$(date -uIs)"
-url="$package.URL=https://${package%*/pkg/*}"
+version="internal/vars.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
+commit="internal/vars.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
+date="internal/vars.BuildTime=$(date -uIs)"
+url="internal/vars.URL=https://$(grep -Po 'module \K.*$' go.mod)"
 
 mkdir -p ./build
 go mod tidy

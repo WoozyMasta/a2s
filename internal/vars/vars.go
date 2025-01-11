@@ -1,4 +1,4 @@
-package config
+package vars
 
 var (
 	Version   string // Version of application (git tag)

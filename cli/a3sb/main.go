@@ -7,11 +7,12 @@ import (
 	"strconv"
 	"strings"
 
+	"internal/vars"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a3sb"
-	"github.com/woozymasta/a2s/pkg/config"
 )
 
 var logFormatter *log.TextFormatter
@@ -39,7 +40,7 @@ func main() {
 			if c.Bool("version") {
 				fmt.Printf(
 					"%s\n\nversion:  %s\ncommit:   %s\nbuilt:    %s\nrepo:     %s\n",
-					c.App.Name, config.Version, config.Commit, config.BuildTime, config.URL,
+					c.App.Name, vars.Version, vars.Commit, vars.BuildTime, vars.URL,
 				)
 				os.Exit(0)
 			}

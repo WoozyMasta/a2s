@@ -5,6 +5,7 @@ go 1.23.1
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.27.5
+	internal/vars v0.0.0
 )
 
 require (
@@ -13,3 +14,5 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 )
+
+replace internal/vars => ./internal/vars
