@@ -1,7 +1,10 @@
 package a3sb
 
 import (
+	"fmt"
 	"strconv"
+
+	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
 // Parse DayZ specific rules from A2S_RULES keywords
@@ -34,7 +37,10 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			if err != nil {
 				return err
 			}
-			r.Language = ServerLang(language)
+			if language > 4294967295 {
+				return fmt.Errorf("language id %d overflow", language)
+			}
+			r.Language = types.ServerLang(language)
 
 		case "platform":
 			switch v {
@@ -81,6 +87,9 @@ func strToUint16(str string) (uint16, error) {
 	number, err := strconv.ParseUint(str, 10, 16)
 	if err != nil {
 		return 0, err
+	}
+	if number > 65535 {
+		return 0, fmt.Errorf("parse string \"%s\" to uint16 overflow", str)
 	}
 
 	return uint16(number), nil

@@ -1,6 +1,4 @@
-package a3sb
-
-import "encoding/json"
+package types
 
 // Represent game-server language
 type ServerLang uint32
@@ -20,14 +18,11 @@ const (
 	LangPortuguese ServerLang = 65558 // Portuguese
 )
 
-// Helper for convert internal type to string in JSON
-func (l ServerLang) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.String())
-}
-
-// Return string represent of uint32 value in language keyword in A2S_RULES for DayZ
-func (l ServerLang) String() string {
-	switch l {
+// Return string represent of uint32 value in:
+//   - language keyword in A2S_RULES for DayZ
+//   - g* GameTags in A2S_INFO for Arma3
+func (sl ServerLang) String() string {
+	switch sl {
 	case LangEnglish:
 		return "English"
 	case LangCzech:

@@ -7,6 +7,7 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
 // Structure for storing data from the A3SBP response
@@ -22,7 +23,7 @@ type Rules struct {
 	Mods            []Mod             `json:"mods,omitempty"`             // List of information about modifications
 	Signatures      []string          `json:"signatures,omitempty"`       // List of signatures
 	id              uint64            ``                                  // Steam AppID
-	Language        ServerLang        `json:"language,omitempty"`         // DayZ Server Language [DayZ]
+	Language        types.ServerLang  `json:"language,omitempty"`         // DayZ Server Language [DayZ]
 	AllowedBuild    uint16            `json:"allowed_build,omitempty"`    // Allowed client build for connect [DayZ]
 	ClientPort      uint16            `json:"client_port,omitempty"`      // Client port [DayZ]
 	RequiredBuild   uint16            `json:"required_build,omitempty"`   // Required client build for connect [DayZ]
