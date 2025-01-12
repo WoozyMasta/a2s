@@ -44,7 +44,7 @@ func TestDayzKeywords(t *testing.T) {
 func TestArmaKeywords(t *testing.T) {
 	kw := []string{
 		"bt", "r218", "n150779", "s3", "i1", "mf", "lf", "vt", "dt", "tzeus", "g65541",
-		"h285fa806", "oDE", "f0", "c-25", "pw", "e15", "j0", "k0", "x1", "z1",
+		"h285fa806", "oDE", "f0", "c-25--25", "pw", "e15", "j0", "k0", "x1", "z1",
 	}
 
 	data := ParseArma3(kw)
@@ -112,5 +112,23 @@ func TestAnyKeywords(t *testing.T) {
 	_, err = Parse(1337, kwX)
 	if err == nil {
 		t.Error("Expect error, but found response")
+	}
+}
+
+func TestCoordinates(t *testing.T) {
+	if lon, lat := parseCoordinates("-1-1"); lon != -1 || lat != 1 {
+		t.Errorf("Unexpected coordinates, want [-1:1] but return [%d:%d]", lon, lat)
+	}
+
+	if lon, lat := parseCoordinates("-1--1"); lon != -1 || lat != -1 {
+		t.Errorf("Unexpected coordinates, want [-1:-1] but return [%d:%d]", lon, lat)
+	}
+
+	if lon, lat := parseCoordinates("1-1"); lon != 1 || lat != 1 {
+		t.Errorf("Unexpected coordinates, want [1:-1] but return [%d:%d]", lon, lat)
+	}
+
+	if lon, lat := parseCoordinates("1--1"); lon != 1 || lat != -1 {
+		t.Errorf("Unexpected coordinates, want [1:-1] but return [%d:%d]", lon, lat)
 	}
 }

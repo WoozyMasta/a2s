@@ -81,3 +81,20 @@ func parseFloat64(val string) float64 {
 
 	return num
 }
+
+// parseCoordinates parses a coordinate string formatted as "lon-lat",
+// where lon and lat can be negative. Examples:
+// "-21--52", "11--22", "-15-32", "7-32"
+//
+// Returns:
+//   - longitude as int32
+//   - latitude as int32
+func parseCoordinates(val string) (int32, int32) {
+	var lon, lat int32
+	n, err := fmt.Sscanf(val, "%d-%d", &lon, &lat)
+	if err != nil || n != 2 {
+		return 0, 0
+	}
+
+	return lon, lat
+}

@@ -1,7 +1,6 @@
 package keywords
 
 import (
-	"strings"
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/keywords/types"
@@ -82,15 +81,7 @@ func (d *Arma3) Parse(keywords []string) {
 			d.Language = types.ServerLang(parseUint32(val))
 
 		case "c":
-			coordinates := strings.Split(val, "--")
-			if len(coordinates) != 2 {
-				d.Longitude = 0
-				d.Latitude = 0
-				break
-			}
-
-			d.Latitude = parseInt32(coordinates[0])
-			d.Latitude = parseInt32(coordinates[1])
+			d.Longitude, d.Latitude = parseCoordinates(val)
 
 		case "p":
 			d.Platform = types.Platform(val)
