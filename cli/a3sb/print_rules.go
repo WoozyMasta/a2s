@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
@@ -47,7 +47,7 @@ func makeRules(rules *a3sb.Rules) *tableprinter.TablePrinter {
 
 	if rules.Description != "" {
 		if err := table.AddRow([]string{"Description:", rules.Description}); err != nil {
-			log.Fatalf("Create rules table (Description): %s", err)
+			log.Fatal().Msgf("Create rules table (Description): %s", err)
 		}
 	}
 
@@ -62,7 +62,7 @@ func makeRules(rules *a3sb.Rules) *tableprinter.TablePrinter {
 		{"Required version:", fmt.Sprintf("%d", rules.RequiredVersion)},
 		{"TimeLeft:", fmt.Sprintf("%d", rules.TimeLeft)},
 	}); err != nil {
-		log.Fatalf("Create rules table: %s", err)
+		log.Fatal().Msgf("Create rules table: %s", err)
 	}
 
 	return table
@@ -72,7 +72,7 @@ func makeRulesDLC(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "DLC Name", "DLC URL"}, "=")
 	for i, dlc := range rules.DLC {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), dlc.Name, fmt.Sprintf("%s%d", steamAppURL, dlc.ID)}); err != nil {
-			log.Fatalf("Create rules table (DLC): %s", err)
+			log.Fatal().Msgf("Create rules table (DLC): %s", err)
 		}
 	}
 
@@ -83,7 +83,7 @@ func makeRulesCreatorDLC(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "Creator DLC Name", "Creator DLC URL"}, "=")
 	for i, dlc := range rules.CreatorDLC {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), dlc.Name, fmt.Sprintf("%s%d", steamAppURL, dlc.ID)}); err != nil {
-			log.Fatalf("Create rules table (Creator DLC): %s", err)
+			log.Fatal().Msgf("Create rules table (Creator DLC): %s", err)
 		}
 	}
 
@@ -94,7 +94,7 @@ func makeRulesMods(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "Mod Name", "Mod URL"}, "=")
 	for i, mod := range rules.Mods {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), mod.Name, fmt.Sprintf("%s%d", steamModURL, mod.ID)}); err != nil {
-			log.Fatalf("Create rules table (Mods): %s", err)
+			log.Fatal().Msgf("Create rules table (Mods): %s", err)
 		}
 	}
 

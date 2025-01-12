@@ -9,18 +9,18 @@ import (
 
 	"internal/vars"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-var logFormatter *log.TextFormatter
 var host string
 var port int
 
 func main() {
+	initLogging()
+
 	var client *a2s.Client
-	logFormatter = prepareLogging()
 	cmd := filepath.Base(os.Args[0])
 
 	app := &cli.App{
@@ -34,7 +34,7 @@ func main() {
 		Writer:          os.Stderr,
 		Before: func(c *cli.Context) error {
 			var err error
-			setupLogging(c.String("log-level"), logFormatter)
+			setupLogging(c.String("log-level"))
 
 			if c.Bool("version") {
 				fmt.Printf(
@@ -129,7 +129,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 }
 

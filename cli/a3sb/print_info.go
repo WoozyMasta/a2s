@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
@@ -38,18 +38,18 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 		{"VAC protected:", fmt.Sprintf("%t", info.VAC)},
 		{"Game version:", info.Version},
 	}); err != nil {
-		log.Fatalf("Create info table: %s", err)
+		log.Fatal().Msgf("Create info table: %s", err)
 	}
 
 	if info.Port != 0 {
 		if err := table.AddRow([]string{"Port:", fmt.Sprintf("%d", info.Port)}); err != nil {
-			log.Fatalf("Create info table (EDF Port): %s", err)
+			log.Fatal().Msgf("Create info table (EDF Port): %s", err)
 		}
 	}
 
 	if info.SteamID != 0 {
 		if err := table.AddRow([]string{"Server SteamID:", fmt.Sprintf("%d", info.SteamID)}); err != nil {
-			log.Fatalf("Create info table (EDF ServerID): %s", err)
+			log.Fatal().Msgf("Create info table (EDF ServerID): %s", err)
 		}
 	}
 
@@ -71,12 +71,12 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 			{"Fle patching:", fmt.Sprintf("%t", dayz.FlePatching)},
 			{"Need DLC:", fmt.Sprintf("%t", dayz.DLC)},
 		}); err != nil {
-			log.Fatalf("Create info table (DayZ keywords): %s", err)
+			log.Fatal().Msgf("Create info table (DayZ keywords): %s", err)
 		}
 	}
 
 	if err := table.AddRow([]string{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())}); err != nil {
-		log.Fatalf("Create info table (ping): %s", err)
+		log.Fatal().Msgf("Create info table (ping): %s", err)
 	}
 
 	return table

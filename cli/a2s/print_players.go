@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
@@ -72,7 +72,7 @@ func makePlayers(players *[]a2s.Player) *tableprinter.TablePrinter {
 		}
 
 		if err := table.AddRow(row); err != nil {
-			log.Fatalf("Create players table: %s", err)
+			log.Fatal().Msgf("Create players table: %s", err)
 		}
 	}
 

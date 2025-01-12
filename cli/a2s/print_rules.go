@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
@@ -22,7 +22,7 @@ func makeRules(rules map[string]string) *tableprinter.TablePrinter {
 
 	for k, v := range rules {
 		if err := table.AddRow([]string{k, v}); err != nil {
-			log.Fatalf("Create rules table (Raw): %s", err)
+			log.Fatal().Msgf("Create rules table (Raw): %s", err)
 		}
 	}
 
@@ -44,7 +44,7 @@ func makeParsedRules(rules map[string]any) *tableprinter.TablePrinter {
 
 	for k, v := range rules {
 		if err := table.AddRow([]string{k, fmt.Sprint(v)}); err != nil {
-			log.Fatalf("Create rules table (Parsed): %s", err)
+			log.Fatal().Msgf("Create rules table (Parsed): %s", err)
 		}
 	}
 
