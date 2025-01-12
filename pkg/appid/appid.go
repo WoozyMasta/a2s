@@ -1,8 +1,15 @@
-package appid
+/*
+Package appid provides a collection of constants representing Steam application IDs.
 
-// https://api.steampowered.com/ISteamApps/GetAppList/v2/
-// https://api.steampowered.com/IStoreService/GetAppList/v1/
-// https://steamdb.info/
+These constants encompass a variety of games across different engines and categories,
+including those built on the GoldSource and Source 1/2 engines, as well as other popular titles.
+
+References:
+  - https://api.steampowered.com/ISteamApps/GetAppList/v2/
+  - https://api.steampowered.com/IStoreService/GetAppList/v1/
+  - https://steamdb.info/
+*/
+package appid
 
 const (
 	Unknown uint64 = 0 // Any unexpected app
