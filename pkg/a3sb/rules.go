@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 // Structure for storing data from the A3SBP response
@@ -36,12 +36,12 @@ type Rules struct {
 
 // A2S_RULES for Arma (wrapper)
 func (c *Client) GetRulesArma3() (*Rules, error) {
-	return c.GetRules(appid.Arma3)
+	return c.GetRules(appid.Arma3.Uint64())
 }
 
 // A2S_RULES for DayZ (wrapper)
 func (c *Client) GetRulesDayZ() (*Rules, error) {
-	return c.GetRules(appid.DayZ)
+	return c.GetRules(appid.DayZ.Uint64())
 }
 
 // A2S_RULES for DayZ/Arma

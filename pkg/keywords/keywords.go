@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/woozymasta/a2s/pkg/appid"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 // Universal function for outputting result depending on application ID,
 // if parser exists it will return updated structure, otherwise it will return error
 func Parse(id uint64, keywords []string) (any, error) {
 	switch id {
-	case appid.Arma3:
+	case appid.Arma3.Uint64():
 		data := &Arma3{}
 		data.Parse(keywords)
 		return data, nil
 
-	case appid.DayZ, appid.DayZExp:
+	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
 		data := &DayZ{}
 		data.Parse(keywords)
 		return data, nil

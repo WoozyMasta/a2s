@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 // Read buffer for populate Info struct for Source protocol
@@ -70,7 +70,7 @@ func (i *Info) readSourceInfo(buf *bytes.Buffer) error {
 		return fmt.Errorf("VAC status: %w", err)
 	}
 
-	if i.ID == appid.TheShip {
+	if i.ID == appid.TheShip.Uint64() {
 		if i.TheShip, err = readTheShipInfo(buf); err != nil {
 			return fmt.Errorf("TheShip data: %w", err)
 		}

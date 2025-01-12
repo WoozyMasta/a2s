@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 /*
@@ -37,15 +37,15 @@ func (r *Rules) readVersion(buf *bytes.Buffer) error {
 
 	case 3:
 		if r.id == 0 {
-			r.id = appid.Arma3
+			r.id = appid.Arma3.Uint64()
 		}
-		if r.id == appid.DayZ {
+		if r.id == appid.DayZ.Uint64() {
 			return ErrProtoV3
 		}
 
 	case 2:
 		if r.id == 0 {
-			r.id = appid.DayZ
+			r.id = appid.DayZ.Uint64()
 		}
 
 	default:

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 // 3rd and 4th bytes of the server browser protocol store the DLC bitmask flags
@@ -50,9 +50,9 @@ func (r *Rules) readDLC(buf *bytes.Buffer, dlcMask uint16) error {
 	var dlcHashes []uint32
 
 	switch r.id {
-	case appid.Arma3:
+	case appid.Arma3.Uint64():
 		r.DLC = parseDLC(dlcMask, arma3DLC)
-	case appid.DayZ, appid.DayZExp:
+	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
 		r.DLC = parseDLC(dlcMask, dayzDLC)
 	default:
 		r.DLC = parseDLC(dlcMask, map[DLC]DLCInfo{})

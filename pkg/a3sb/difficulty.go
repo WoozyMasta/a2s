@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 // Arma 3 difficulty structure, bytes for level are represented as:
@@ -28,7 +28,7 @@ type Difficulty struct {
 
 // Read difficulty from Arma 3 server browser proto
 func (r *Rules) readDifficulty(buf *bytes.Buffer) error {
-	if r.id != appid.Arma3 {
+	if r.id != appid.Arma3.Uint64() {
 		return nil
 	}
 

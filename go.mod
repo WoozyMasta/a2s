@@ -5,6 +5,7 @@ go 1.23.1
 require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli/v2 v2.27.5
+	github.com/woozymasta/steam v0.1.2
 	internal/vars v0.0.0
 )
 
