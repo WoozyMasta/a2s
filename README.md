@@ -86,30 +86,32 @@ a3sb-cli -h && a3sb-cli -v
 ![logo-a2s][]
 
 ```txt
-NAME:
-   a2s-cli - Command line utility for querying A2S server information
+Description:
+  CLI for querying Steam A2S server information.
 
-USAGE:
-   a2s-cli [global options] command host port
-   Example: a2s-cli -j info 127.0.0.1 27016
+Usage:
+  a2s-cli [OPTIONS] <command> <host> <query port>
 
-COMMANDS:
-   info     Retrieve server information A2S_INFO
-   rules    Retrieve server rules A2S_RULES
-   players  Retrieve player list A2S_PLAYERS
-   all      Retrieve all available server information
-   ping     Ping the server with A2S_INFO
+Example:
+  a2s-cli ping 127.0.0.1 27016
+  a2s-cli -j info 127.0.0.1 27016 | jq '.players'
 
-GLOBAL OPTIONS:
-   --json, -j                          output in JSON format (default: false) [$A2S_JSON]
-   --raw, -r                           disable parse A2S_RULES values to types (default: false) [$A2S_RAW]
-   --deadline-timeout value, -t value  set timeout in seconds (default: 5) [$A2S_DEADLINE_TIMEOUT]
-   --buffer-size value, -b value       set buffer size (default: 1400) [$A2S_BUFFER_SIZE]
-   --ping-count value, -c value        set the number of ping requests to send (default: 0) [$A2S_PING_COUNT]
-   --ping-period value, -p value       set the period between pings in seconds (default: 1) [$A2S_PING_PERIOD]
-   --log-level value, -l value         set log level (default: "error") [$A2S_LOG_LEVEL]
-   --version, -v                       print version
-   --help, -h                          show help
+Commands:
+  info     Retrieve server information A2S_INFO;
+  rules    Retrieve server rules A2S_RULES;
+  players  Retrieve player list A2S_PLAYERS;
+  all      Retrieve all available server information;
+  ping     Ping the server with A2S_INFO.
+
+Options:
+  -j, --json               Output in JSON format;
+  -r, --raw                Disable parse A2S_RULES values to types;
+  -t, --deadline-timeout   Set connection timeout in seconds;
+  -b, --buffer-size        Set connection buffer size;
+  -c, --ping-count         Set the number of ping requests to send;
+  -p, --ping-period        Set the period between pings in seconds;
+  -t, --version            Show version, commit, and build time;
+  -h, --help               Prints this help message.
 ```
 
 <!-- markdownlint-disable MD033 -->
@@ -159,14 +161,14 @@ A2S_INFO response for 127.0.0.1:27016
 
 ```txt
 Rule                                 Value
-======================================================================================================================
+============================================
 bot_quota                            0
 command_buffer_version               2.8
 coop                                 0
 custom_chat_colors_version           3.0.1
 ...
 tv_enable                            1
-======================================================================================================================
+=============================================
 A2S_RULES response for 127.0.0.1:27016
 
 ```
@@ -180,7 +182,7 @@ A2S_RULES response for 127.0.0.1:27016
 
 ```txt
   #  PlayTime  Score  Name
-================================================
+==================================
   1  6h36m10s  51     John Doe
   2  6h19m37s  0      Jane Smith
   3  3h44m30s  26     Alex Johnson
@@ -188,7 +190,7 @@ A2S_RULES response for 127.0.0.1:27016
  62  2m25s     3      Chris Taylor
  63  1m19s     0      Emily Davis
  64  25s       0      Pat Brown
-================================================
+===================================
 A2S_PLAYERS response for 127.0.0.1:27016
 ```
 
@@ -223,27 +225,32 @@ Min=28.7014ms Max=29.6299ms Avg=29.23208ms
 > for this purpose, it will handle this for Arma 3 and DayZ
 
 ```txt
-NAME:
-   a3sb-cli - CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ
+Description:
+  CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
 
-USAGE:
-   a3sb-cli [global options] command host port
-   Example: a3sb-cli -j info 127.0.0.1 27016
+Usage:
+  a3sb-cli [OPTIONS] <command> <host> <query port>
 
-COMMANDS:
-   info     Retrieve server information A3SB_INFO
-   rules    Retrieve server rules A3SB_RULES
-   players  Retrieve player list A3SB_PLAYERS
-   all      Retrieve all available server information
+Example:
+  a3sb-cli ping 127.0.0.1 27016
+  a3sb-cli -j info 127.0.0.1 27016 | jq '.players'
 
-GLOBAL OPTIONS:
-   --json, -j                          output in JSON format (default: false) [$A3SB_JSON]
-   --app-id value, -i value            appID DayZ (221100) or Arma 3 (107410) for more accurate results [$A3SB_APP_ID]
-   --deadline-timeout value, -t value  set timeout in seconds (default: 5) [$A3SB_DEADLINE_TIMEOUT]
-   --buffer-size value, -b value       set buffer size (default: 8192) [$A3SB_BUFFER_SIZE]
-   --log-level value, -l value         set log level (default: "error") [$A3SB_LOG_LEVEL]
-   --version, -v                       print version
-   --help, -h                          show help
+Commands:
+  info     Retrieve server information A2S_INFO;
+  rules    Retrieve server rules A2S_RULES;
+  players  Retrieve player list A2S_PLAYERS;
+  all      Retrieve all available server information;
+  ping     Ping the server with A2S_INFO.
+
+Options:
+  -j, --json               Output in JSON format;
+  -i, --app-id             AppID for more accurate results;
+  -t, --deadline-timeout   Set connection timeout in seconds;
+  -b, --buffer-size        Set connection buffer size;
+  -c, --ping-count         Set the number of ping requests to send;
+  -p, --ping-period        Set the period between pings in seconds;
+  -t, --version            Show version, commit, and build time;
+  -h, --help               Prints this help message.
 ```
 
 <!-- markdownlint-disable MD033 -->
@@ -260,7 +267,7 @@ GLOBAL OPTIONS:
 
 ```txt
 Property         Value
-=======================================================================
+===============================================
 Query type:      Source
 Protocol:        17
 Server name:     Some Arma 3 Server
@@ -278,7 +285,7 @@ Game version:    2.18.152405
 Port:            2302
 Server SteamID:  90241503198000000
 Server ping:     175 ms
-=======================================================================
+===============================================
 A2S_INFO response for 127.0.0.1:27016
 ```
 
@@ -291,7 +298,7 @@ A2S_INFO response for 127.0.0.1:27016
 
 ```txt
 Property             Value
-============================================================
+=================================================
 Query type:          Source
 Protocol:            17
 Server name:         Some DayZ Server
@@ -323,7 +330,7 @@ Whitelist:           false
 Fle patching:        false
 Need DLC:            false
 Server ping:         22 ms
-============================================================
+=================================================
 A2S_INFO response for 127.0.0.1:27016
 ```
 
@@ -369,7 +376,7 @@ A2S_RULES response for 144.76.173.27:2393
 
 ```txt
 Option             Value
-==================================
+===============================================
 Description:       Some DayZ Server Description
 Allowed build:     0
 Client port:       0
@@ -380,7 +387,7 @@ Platform:          Linux
 Required build:    0
 Required version:  126
 TimeLeft:          15
-==================================
+================================================
 
   #  DLC Name    DLC URL
 =============================================================
@@ -404,13 +411,13 @@ A2S_RULES response for 127.0.0.1:27016
 
 ```txt
   #  PlayTime            Score       Name
-=========================================================================
+=================================================
   1  8h47m34.482421875s  0           John Doe
   2  8h7m26.66796875s    0           Jane Smith
 ...
 111  30.060682297s       0           Chris Taylor
 112  12.609279633s       0           Emily Davis
-=========================================================================
+=================================================
 A2S_PLAYERS response for 127.0.0.1:27016
 ```
 
