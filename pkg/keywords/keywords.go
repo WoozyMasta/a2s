@@ -39,7 +39,7 @@ func ParseUint8(val string) uint8 {
 		return 0
 	}
 
-	return uint8(num)
+	return uint8(num) // #nosec G115
 }
 
 // parseUint16 parses a string into a uint16 with overflow checking.
@@ -49,7 +49,7 @@ func ParseUint16(val string) uint16 {
 		return 0
 	}
 
-	return uint16(num)
+	return uint16(num) // #nosec G115
 }
 
 // parseUint32 parses a string into a uint16 with overflow checking.
@@ -59,7 +59,7 @@ func parseUint32(val string) uint32 {
 		return 0
 	}
 
-	return uint32(num)
+	return uint32(num) // #nosec G115
 }
 
 // parseFloat64 parses a string into float64.

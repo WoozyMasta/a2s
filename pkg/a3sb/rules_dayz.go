@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/woozymasta/a2s/pkg/keywords/types"
@@ -37,10 +36,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			if err != nil {
 				return err
 			}
-			if language > 4294967295 {
-				return fmt.Errorf("language id %d overflow", language)
-			}
-			r.Language = types.ServerLang(language)
+			r.Language = types.ServerLang(language) // #nosec G115
 
 		case "platform":
 			switch v {
@@ -88,9 +84,6 @@ func strToUint16(str string) (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
-	if number > 65535 {
-		return 0, fmt.Errorf("parse string \"%s\" to uint16 overflow", str)
-	}
 
-	return uint16(number), nil
+	return uint16(number), nil // #nosec G115
 }
