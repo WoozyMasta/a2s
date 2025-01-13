@@ -19,6 +19,16 @@ func New(ip string, port int) (*Client, error) {
 	return NewWithAddr(&net.UDPAddr{IP: net.ParseIP(ip), Port: port})
 }
 
+// Create new client with ip:port string and open connection
+func NewWithString(addr string) (*Client, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewWithAddr(udpAddr)
+}
+
 // Create new client with addr and open connection
 func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
 	client, err := Create(addr)
