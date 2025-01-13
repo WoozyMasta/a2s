@@ -6,18 +6,12 @@ import (
 	"internal/vars"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-func createClient(host, port string, timeout int, buffer uint16) *a2s.Client {
-	portInt, err := strconv.Atoi(port)
-	if err != nil {
-		fatalf("Invalid port %s", port)
-	}
-
-	client, err := a2s.New(host, portInt)
+func createClient(host string, timeout int, buffer uint16) *a2s.Client {
+	client, err := a2s.NewWithString(host)
 	if err != nil {
 		fatalf("Failed to create client: %s", err)
 	}
@@ -44,11 +38,11 @@ func printHelp(exit bool) {
   CLI for querying Steam A2S server information.
 
 Usage:
-  %[1]s [OPTIONS] <command> <host> <query port>
+  %[1]s [OPTIONS] <command> <host(:query port)> <query port>
 
 Example:
   %[1]s ping 127.0.0.1 27016
-  %[1]s -j info 127.0.0.1 27016 | jq '.players'
+  %[1]s -j info 127.0.0.1:27016 | jq '.players'
 
 Commands:
   info     Retrieve server information A2S_INFO;

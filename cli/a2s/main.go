@@ -36,14 +36,19 @@ func main() {
 		printHelp(false)
 		fatal("Command must be provided")
 	}
-	if len(args) < 3 {
+	if len(args) < 2 {
 		fatal("Host and port must be provided as positional arguments")
 	}
 	if len(args) > 3 {
 		fatalf("Extra command passed %s", args[3:])
 	}
 
-	client := createClient(args[1], args[2], opts.Timeout, opts.Buffer)
+	host := args[1]
+	if len(args) > 2 {
+		host += ":" + args[2]
+	}
+
+	client := createClient(host, opts.Timeout, opts.Buffer)
 
 	switch args[0] {
 	case "info":

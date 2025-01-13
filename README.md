@@ -90,7 +90,7 @@ Description:
   CLI for querying Steam A2S server information.
 
 Usage:
-  a2s-cli [OPTIONS] <command> <host> <query port>
+  a2s-cli [OPTIONS] <command> <host(:query port)> <query port>
 
 Example:
   a2s-cli ping 127.0.0.1 27016
@@ -225,7 +225,7 @@ Description:
   CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
 
 Usage:
-  a3sb-cli [OPTIONS] <command> <host> <query port>
+  a3sb-cli [OPTIONS] <command> <host(:query port)> <query port>
 
 Example:
   a3sb-cli ping 127.0.0.1 27016
