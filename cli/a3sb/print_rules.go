@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
+	"github.com/woozymasta/a2s/internal/tableprinter"
+	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a3sb"
-	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
 const (
@@ -13,7 +13,15 @@ const (
 	steamModURL string = "https://steamcommunity.com/sharedfiles/filedetails/?id="
 )
 
-func printRules(rules *a3sb.Rules, address string, json bool) {
+// processing A2S_RULES request
+func printRules(clientA2S *a2s.Client, appID uint64, json bool) {
+	client := &a3sb.Client{Client: clientA2S}
+
+	rules, err := client.GetRules(appID)
+	if err != nil {
+		fatalf("failed to get server rules: %s", err)
+	}
+
 	if json {
 		printJSON(rules)
 		return
@@ -39,7 +47,7 @@ func printRules(rules *a3sb.Rules, address string, json bool) {
 		table.Print()
 	}
 
-	fmt.Printf("A2S_RULES response for %s\n", address)
+	fmt.Printf("A2S_RULES response for %s\n", client.Address)
 }
 
 func makeRules(rules *a3sb.Rules) *tableprinter.TablePrinter {
@@ -47,7 +55,7 @@ func makeRules(rules *a3sb.Rules) *tableprinter.TablePrinter {
 
 	if rules.Description != "" {
 		if err := table.AddRow([]string{"Description:", rules.Description}); err != nil {
-			log.Fatal().Msgf("Create rules table (Description): %s", err)
+			fatalf("Create rules table (Description): %s", err)
 		}
 	}
 
@@ -62,7 +70,7 @@ func makeRules(rules *a3sb.Rules) *tableprinter.TablePrinter {
 		{"Required version:", fmt.Sprintf("%d", rules.RequiredVersion)},
 		{"TimeLeft:", fmt.Sprintf("%d", rules.TimeLeft)},
 	}); err != nil {
-		log.Fatal().Msgf("Create rules table: %s", err)
+		fatalf("Create rules table: %s", err)
 	}
 
 	return table
@@ -72,7 +80,7 @@ func makeRulesDLC(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "DLC Name", "DLC URL"}, "=")
 	for i, dlc := range rules.DLC {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), dlc.Name, fmt.Sprintf("%s%d", steamAppURL, dlc.ID)}); err != nil {
-			log.Fatal().Msgf("Create rules table (DLC): %s", err)
+			fatalf("Create rules table (DLC): %s", err)
 		}
 	}
 
@@ -83,7 +91,7 @@ func makeRulesCreatorDLC(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "Creator DLC Name", "Creator DLC URL"}, "=")
 	for i, dlc := range rules.CreatorDLC {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), dlc.Name, fmt.Sprintf("%s%d", steamAppURL, dlc.ID)}); err != nil {
-			log.Fatal().Msgf("Create rules table (Creator DLC): %s", err)
+			fatalf("Create rules table (Creator DLC): %s", err)
 		}
 	}
 
@@ -94,7 +102,7 @@ func makeRulesMods(rules *a3sb.Rules) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"  #", "Mod Name", "Mod URL"}, "=")
 	for i, mod := range rules.Mods {
 		if err := table.AddRow([]string{fmt.Sprintf("%3d", i+1), mod.Name, fmt.Sprintf("%s%d", steamModURL, mod.ID)}); err != nil {
-			log.Fatal().Msgf("Create rules table (Mods): %s", err)
+			fatalf("Create rules table (Mods): %s", err)
 		}
 	}
 

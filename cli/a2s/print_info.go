@@ -3,22 +3,20 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
+	"github.com/woozymasta/a2s/internal/tableprinter"
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
-func printInfo(info *a2s.Info, address string, json bool) {
+func printInfo(client *a2s.Client, json bool) {
+	info, err := client.GetInfo()
+	if err != nil {
+		fatalf("failed to get server info: %s", err)
+	}
+
 	if json {
 		printJSON(info)
-	} else {
-		table := makeInfo(info)
-		table.Print()
-		fmt.Printf("A2S_INFO response for %s\n", address)
 	}
-}
 
-func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Property", "Value"}, "=")
 
 	if err := table.AddRows([][]string{
@@ -37,13 +35,13 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 		{"VAC protected:", fmt.Sprintf("%t", info.VAC)},
 		{"Game version:", info.Version},
 	}); err != nil {
-		log.Fatal().Msgf("Create info table: %s", err)
+		fatalf("Create info table: %s", err)
 	}
 
 	// GoldSource
 	if info.Format == 0x6D {
 		if err := table.AddRow([]string{"Server address:", info.Address}); err != nil {
-			log.Fatal().Msgf("Create info table (GoldSource address): %s", err)
+			fatalf("Create info table (GoldSource address): %s", err)
 		}
 
 		if info.Mod != nil {
@@ -55,7 +53,7 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 				{"Multiplayer only:", fmt.Sprintf("%t", info.Mod.Type)},
 				{"Custom DLL:", fmt.Sprintf("%t", info.Mod.DLL)},
 			}); err != nil {
-				log.Fatal().Msgf("Create info table (GoldSource Mod): %s", err)
+				fatalf("Create info table (GoldSource Mod): %s", err)
 			}
 		}
 	}
@@ -63,13 +61,13 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 	if info.EDF != 0 {
 		if info.Port != 0 {
 			if err := table.AddRow([]string{"Port:", fmt.Sprintf("%d", info.Port)}); err != nil {
-				log.Fatal().Msgf("Create info table (EDF Port): %s", err)
+				fatalf("Create info table (EDF Port): %s", err)
 			}
 		}
 
 		if info.SteamID != 0 {
 			if err := table.AddRow([]string{"Server SteamID:", fmt.Sprintf("%d", info.SteamID)}); err != nil {
-				log.Fatal().Msgf("Create info table (EDF ServerID): %s", err)
+				fatalf("Create info table (EDF ServerID): %s", err)
 			}
 		}
 
@@ -78,7 +76,7 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 				{"SourceTV Port:", fmt.Sprintf("%d", info.SourceTVPort)},
 				{"SourceTV Name:", info.SourceTVName},
 			}); err != nil {
-				log.Fatal().Msgf("Create info table (EDF SourceTV): %s", err)
+				fatalf("Create info table (EDF SourceTV): %s", err)
 			}
 		}
 
@@ -91,11 +89,11 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 			for i, k := range tableprinter.JoinWithLimit(info.Keywords, ", ", limit) {
 				if i == 0 {
 					if err := table.AddRow([]string{"Keywords:", k}); err != nil {
-						log.Fatal().Msgf("Create info table (keywords key): %s", err)
+						fatalf("Create info table (keywords key): %s", err)
 					}
 				} else {
 					if err := table.AddRow([]string{"", k}); err != nil {
-						log.Fatal().Msgf("Create info table (keywords value): %s", err)
+						fatalf("Create info table (keywords value): %s", err)
 					}
 				}
 			}
@@ -103,8 +101,9 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 	}
 
 	if err := table.AddRow([]string{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())}); err != nil {
-		log.Fatal().Msgf("Create info table (ping): %s", err)
+		fatalf("Create info table (ping): %s", err)
 	}
 
-	return table
+	table.Print()
+	fmt.Printf("A2S_INFO response for %s\n", client.Address)
 }

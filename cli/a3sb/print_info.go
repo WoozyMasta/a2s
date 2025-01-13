@@ -3,23 +3,22 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
+	"github.com/woozymasta/a2s/internal/tableprinter"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
-	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
-func printInfo(info *a2s.Info, address string, json bool) {
+func printInfo(client *a2s.Client, json bool) {
+	info, err := client.GetInfo()
+	if err != nil {
+		fatalf("failed to get server info: %s", err)
+	}
+
 	if json {
 		printJSONWithDayZ(info)
-	} else {
-		table := makeInfo(info)
-		table.Print()
-		fmt.Printf("A2S_INFO response for %s\n", address)
+		return
 	}
-}
 
-func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Property", "Value"}, "=")
 
 	if err := table.AddRows([][]string{
@@ -38,18 +37,18 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 		{"VAC protected:", fmt.Sprintf("%t", info.VAC)},
 		{"Game version:", info.Version},
 	}); err != nil {
-		log.Fatal().Msgf("Create info table: %s", err)
+		fatalf("Create info table: %s", err)
 	}
 
 	if info.Port != 0 {
 		if err := table.AddRow([]string{"Port:", fmt.Sprintf("%d", info.Port)}); err != nil {
-			log.Fatal().Msgf("Create info table (EDF Port): %s", err)
+			fatalf("Create info table (EDF Port): %s", err)
 		}
 	}
 
 	if info.SteamID != 0 {
 		if err := table.AddRow([]string{"Server SteamID:", fmt.Sprintf("%d", info.SteamID)}); err != nil {
-			log.Fatal().Msgf("Create info table (EDF ServerID): %s", err)
+			fatalf("Create info table (EDF ServerID): %s", err)
 		}
 	}
 
@@ -71,13 +70,14 @@ func makeInfo(info *a2s.Info) *tableprinter.TablePrinter {
 			{"Fle patching:", fmt.Sprintf("%t", dayz.FlePatching)},
 			{"Need DLC:", fmt.Sprintf("%t", dayz.DLC)},
 		}); err != nil {
-			log.Fatal().Msgf("Create info table (DayZ keywords): %s", err)
+			fatalf("Create info table (DayZ keywords): %s", err)
 		}
 	}
 
 	if err := table.AddRow([]string{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())}); err != nil {
-		log.Fatal().Msgf("Create info table (ping): %s", err)
+		fatalf("Create info table (ping): %s", err)
 	}
 
-	return table
+	table.Print()
+	fmt.Printf("A2S_INFO response for %s\n", client.Address)
 }

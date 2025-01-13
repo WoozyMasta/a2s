@@ -3,50 +3,58 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
-	"github.com/woozymasta/a2s/pkg/tableprinter"
+	"github.com/woozymasta/a2s/internal/tableprinter"
+	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-func printRules(rules map[string]string, address string, json bool) {
-	if json {
-		printJSON(rules)
+func printRules(client *a2s.Client, json, raw bool) {
+	if raw {
+		printRawRules(client, json)
 	} else {
-		table := makeRules(rules)
-		table.Print()
-		fmt.Printf("A2S_RULES response for %s\n", address)
+		printParsedRules(client, json)
 	}
 }
 
-func makeRules(rules map[string]string) *tableprinter.TablePrinter {
+func printRawRules(client *a2s.Client, json bool) {
+	rules, err := client.GetRules()
+	if err != nil {
+		fatalf("failed to get players: %s", err)
+	}
+
+	if json {
+		printJSON(rules)
+	}
+
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
 
 	for k, v := range rules {
 		if err := table.AddRow([]string{k, v}); err != nil {
-			log.Fatal().Msgf("Create rules table (Raw): %s", err)
+			fatalf("Create rules table (Raw): %s", err)
 		}
 	}
 
-	return table
+	table.Print()
+	fmt.Printf("A2S_RULES response for %s\n", client.Address)
 }
 
-func printParsedRules(rules map[string]any, address string, json bool) {
+func printParsedRules(client *a2s.Client, json bool) {
+	rules, err := client.GetParsedRules()
+	if err != nil {
+		fatalf("failed to get players: %s", err)
+	}
+
 	if json {
 		printJSON(rules)
-	} else {
-		table := makeParsedRules(rules)
-		table.PrintSorted(0)
-		fmt.Printf("A2S_RULES response for %s\n", address)
 	}
-}
 
-func makeParsedRules(rules map[string]any) *tableprinter.TablePrinter {
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
 
 	for k, v := range rules {
 		if err := table.AddRow([]string{k, fmt.Sprint(v)}); err != nil {
-			log.Fatal().Msgf("Create rules table (Parsed): %s", err)
+			fatalf("Create rules table (Parsed): %s", err)
 		}
 	}
 
-	return table
+	table.PrintSorted(0)
+	fmt.Printf("A2S_RULES response for %s\n", client.Address)
 }

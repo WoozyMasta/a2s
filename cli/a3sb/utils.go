@@ -3,40 +3,44 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"internal/vars"
 	"os"
-	"time"
+	"path/filepath"
+	"strconv"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
 )
 
-func createClient(host string, port int, c *cli.Context) (*a2s.Client, error) {
-	client, err := a2s.New(host, port)
+func createClient(host, port string, timeout, buffer int) *a2s.Client {
+	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
+		fatalf("invalid port %s", port)
 	}
 
-	if timeout := c.Int("timeout"); timeout > 0 {
+	client, err := a2s.New(host, portInt)
+	if err != nil {
+		fatalf("failed to create client: %s", err)
+	}
+
+	if timeout := timeout; timeout > 0 {
 		client.SetDeadlineTimeout(timeout)
 	}
 
-	if bufferSize := c.Int("buffer-size"); bufferSize > 0 {
+	if bufferSize := buffer; bufferSize > 0 {
 		if bufferSize < 0 || bufferSize > 65535 {
-			return nil, fmt.Errorf("failed to set buffer size: %d", bufferSize)
+			fatalf("failed to set buffer size: %d", bufferSize)
 		}
 		client.SetBufferSize(uint16(bufferSize))
 	}
 
-	return client, nil
+	return client
 }
 
 func printJSON(data any) {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		log.Fatal().Msgf("Failed to marshal JSON: %v", err)
+		fatalf("Failed to marshal JSON: %v", err)
 	}
 
 	fmt.Println(string(jsonData))
@@ -45,13 +49,13 @@ func printJSON(data any) {
 func printJSONWithDayZ(info *a2s.Info) {
 	jsonData, err := json.Marshal(info)
 	if err != nil {
-		log.Fatal().Msgf("Failed to marshal Info: %v", err)
+		fatalf("Failed to marshal Info: %v", err)
 	}
 
 	// Unmarshal into a map to add custom fields
 	var jsonMap map[string]any
 	if err := json.Unmarshal(jsonData, &jsonMap); err != nil {
-		log.Fatal().Msgf("Failed to unmarshal JSON: %v", err)
+		fatalf("Failed to unmarshal JSON: %v", err)
 	}
 
 	// Add the parsed DayZ structure to the JSON map
@@ -62,52 +66,63 @@ func printJSONWithDayZ(info *a2s.Info) {
 	// Marshal back to JSON for output
 	updatedJSONData, err := json.MarshalIndent(jsonMap, "", "  ")
 	if err != nil {
-		log.Fatal().Msgf("Failed to marshal updated JSON: %v", err)
+		fatalf("Failed to marshal updated JSON: %v", err)
 	}
 
 	fmt.Println(string(updatedJSONData))
 }
 
-// initialize logging
-func initLogging() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stderr,
-		PartsOrder: []string{zerolog.MessageFieldName},
-	})
-	log.Logger = log.Level(zerolog.ErrorLevel)
+func printHelp(exit bool) {
+	fmt.Printf(`Description:
+CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
+
+Usage:
+  %[1]s [OPTIONS] <command> <host> <query port>
+
+Example:
+  %[1]s ping 127.0.0.1 27016
+  %[1]s -j info 127.0.0.1 27016 | jq '.players'
+
+Commands:
+  info     Retrieve server information A2S_INFO;
+  rules    Retrieve server rules A2S_RULES;
+  players  Retrieve player list A2S_PLAYERS;
+  all      Retrieve all available server information;
+  ping     Ping the server with A2S_INFO.
+
+Options:
+  -j, --json               Output in JSON format;
+  -i, --app-id             AppID for more accurate results;
+  -t, --deadline-timeout   Set connection timeout in seconds;
+  -b, --buffer-size        Set connection buffer size;
+  -c, --ping-count         Set the number of ping requests to send;
+  -p, --ping-period        Set the period between pings in seconds;
+  -t, --version            Show version, commit, and build time;
+  -h, --help               Prints this help message.
+`, filepath.Base(os.Args[0]))
+
+	if exit {
+		os.Exit(0)
+	}
 }
 
-// setup log level
-func setupLogging(level string) {
-	logLevel, err := zerolog.ParseLevel(level)
-	if err != nil {
-		log.Error().Msgf("Undefined log level %s, fallback to error level", level)
-		log.Logger = log.Level(zerolog.ErrorLevel)
-	}
+func printVersion() {
+	fmt.Printf(`
+file:     %s
+version:  %s
+commit:   %s
+built:    %s
+project:  %s
+`, os.Args[0], vars.Version, vars.Commit, vars.BuildTime, vars.URL)
+	os.Exit(0)
+}
 
-	log.Logger = log.Level(logLevel)
+func fatal(a ...any) {
+	fmt.Fprintln(os.Stderr, a...)
+	os.Exit(1)
+}
 
-	if logLevel < zerolog.InfoLevel {
-		log.Logger = log.Output(zerolog.ConsoleWriter{
-			Out: os.Stderr,
-			PartsOrder: []string{
-				zerolog.TimestampFieldName,
-				zerolog.LevelFieldName,
-				zerolog.CallerFieldName,
-				zerolog.MessageFieldName,
-			},
-			TimeFormat: time.RFC3339,
-		})
-	} else if logLevel < zerolog.ErrorLevel {
-		log.Logger = log.Output(zerolog.ConsoleWriter{
-			Out: os.Stderr,
-			PartsOrder: []string{
-				zerolog.LevelFieldName,
-				zerolog.MessageFieldName,
-			},
-			TimeFormat: time.RFC3339,
-		})
-	}
-
-	log.Debug().Msgf("Logger setup with level %s", level)
+func fatalf(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, format, a...)
+	os.Exit(1)
 }

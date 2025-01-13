@@ -3,24 +3,24 @@ package main
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
+	"github.com/woozymasta/a2s/internal/tableprinter"
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/a2s/pkg/tableprinter"
 )
 
-func printPlayers(players *[]a2s.Player, address string, json bool) {
+func printPlayers(client *a2s.Client, json bool) {
+	players, err := client.GetPlayers()
+	if err != nil {
+		fatalf("failed to get players: %s", err)
+	}
+
 	if json {
 		printJSON(players)
-	} else {
-		table := makePlayers(players)
-		table.Print()
-		fmt.Printf("A2S_PLAYERS response for %s\n", address)
+		return
 	}
-}
 
-func makePlayers(players *[]a2s.Player) *tableprinter.TablePrinter {
 	if len(*players) == 0 {
-		return &tableprinter.TablePrinter{}
+		fmt.Println("The server is empty and there are no players to print ...")
+		return
 	}
 
 	counter := [2]byte{}
@@ -60,9 +60,10 @@ func makePlayers(players *[]a2s.Player) *tableprinter.TablePrinter {
 		}
 
 		if err := table.AddRow(row); err != nil {
-			log.Fatal().Msgf("Create players table: %s", err)
+			fatalf("Create players table: %s", err)
 		}
 	}
 
-	return table
+	table.Print()
+	fmt.Printf("A2S_PLAYERS response for %s\n", client.Address)
 }
