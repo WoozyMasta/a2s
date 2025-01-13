@@ -7,12 +7,12 @@ import (
 
 // CLI options
 type Options struct {
-	JSON       bool `short:"j" long:"json"`                         // Output in JSON format
-	Raw        bool `short:"r" long:"raw"`                          // Disable parse A2S_RULES values to types
 	Timeout    int  `short:"t" long:"deadline-timeout" default:"3"` // Set timeout in seconds
 	Buffer     int  `short:"b" long:"buffer-size" default:"8096"`   // Set buffer size
 	PingCount  int  `short:"c" long:"ping-count" default:"0"`       // Set the number of ping requests to send
 	PingPeriod int  `short:"p" long:"ping-period" default:"1"`      // Set the period between pings in seconds
+	JSON       bool `short:"j" long:"json"`                         // Output in JSON format
+	Raw        bool `short:"r" long:"raw"`                          // Disable parse A2S_RULES values to types
 	Help       bool `short:"h" long:"help"`                         // Show this help message
 	Version    bool `short:"v" long:"version"`                      // Show version and build info
 }

@@ -18,16 +18,16 @@ type Arma3 struct {
 	TimeLeft            time.Duration     `json:"time_left,omitempty"`            // Time left of mission
 	RequiredVersion     uint32            `json:"required_version,omitempty"`     // Required game version
 	RequiredBuildNo     uint32            `json:"required_buildno,omitempty"`     // Required game build number
-	ServerState         types.ServerState `json:"server_state,omitempty"`         // State of server
 	Language            types.ServerLang  `json:"language,omitempty"`             // Server Language
+	Longitude           int32             `json:"longitude,omitempty"`            // Coordinates: Longitude
+	Latitude            int32             `json:"latitude,omitempty"`             // Coordinates: Latitude
+	ServerState         types.ServerState `json:"server_state,omitempty"`         // State of server
 	BattlEye            bool              `json:"battleye,omitempty"`             // Protected with BattlEye
 	Difficulty          byte              `json:"difficulty,omitempty"`           // Difficulty on server
 	EqualModRequired    bool              `json:"equal_mod_required,omitempty"`   // Require all mods equal server
 	Lock                bool              `json:"lock,omitempty"`                 // Locked state
 	VerifySignatures    bool              `json:"verify_signatures,omitempty"`    // Verify signatures
 	Dedicated           bool              `json:"dedicated,omitempty"`            // Is dedicated server
-	Longitude           int32             `json:"longitude,omitempty"`            // Coordinates: Longitude
-	Latitude            int32             `json:"latitude,omitempty"`             // Coordinates: Latitude
 	Param1              byte              `json:"param_1,omitempty"`              // First params
 	Param2              byte              `json:"param_2,omitempty"`              // Second params
 	AllowedFilePatching bool              `json:"allowed_filepatching,omitempty"` // Enabled fle patching
