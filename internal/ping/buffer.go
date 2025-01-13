@@ -1,4 +1,4 @@
-package main
+package ping
 
 import (
 	"time"
@@ -7,23 +7,23 @@ import (
 const pingBuffSize = 65535
 
 // Stats of ping
-type pingStats struct {
+type Stats struct {
 	Min time.Duration
 	Max time.Duration
 	Avg time.Duration
 }
 
 // Ring buffer for ping stats
-type pingRingBuff struct {
+type Buffer struct {
 	data  []time.Duration
 	head  int
 	tail  int
 	count int
 }
 
-// Create new ping buffer
-func newPingRingBuff() *pingRingBuff {
-	return &pingRingBuff{
+// Create new ping ring buffer
+func NewBuffer() *Buffer {
+	return &Buffer{
 		data:  make([]time.Duration, pingBuffSize),
 		head:  0,
 		tail:  0,
@@ -32,7 +32,7 @@ func newPingRingBuff() *pingRingBuff {
 }
 
 // Add record to ping buff
-func (p *pingRingBuff) add(value time.Duration) {
+func (p *Buffer) Add(value time.Duration) {
 	p.data[p.tail] = value
 	p.tail = (p.tail + 1) % len(p.data)
 
@@ -44,7 +44,7 @@ func (p *pingRingBuff) add(value time.Duration) {
 }
 
 // Get all record from ping buff
-func (p *pingRingBuff) getAll() []time.Duration {
+func (p *Buffer) Get() []time.Duration {
 	var result []time.Duration
 
 	if p.count == len(p.data) {
@@ -56,11 +56,11 @@ func (p *pingRingBuff) getAll() []time.Duration {
 }
 
 // Ping statistics calculation function
-func calculateStats(buffer *pingRingBuff) pingStats {
-	pings := buffer.getAll()
+func CalculateStats(buffer *Buffer) Stats {
+	pings := buffer.Get()
 
 	if len(pings) == 0 {
-		return pingStats{Min: 0, Max: 0, Avg: 0}
+		return Stats{Min: 0, Max: 0, Avg: 0}
 	}
 
 	minPing, maxPing := pings[0], pings[0]
@@ -78,7 +78,7 @@ func calculateStats(buffer *pingRingBuff) pingStats {
 
 	avgPing := totalPing / time.Duration(len(pings))
 
-	return pingStats{
+	return Stats{
 		Min: minPing,
 		Max: maxPing,
 		Avg: avgPing,
