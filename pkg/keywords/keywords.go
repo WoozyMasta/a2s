@@ -32,16 +32,6 @@ func parseBool(val string) bool {
 	return val == "t"
 }
 
-// parseInt32 parses a string into a uint8 with overflow checking.
-func parseInt32(val string) int32 {
-	num, err := strconv.ParseInt(val, 10, 32)
-	if err != nil || num >= 2147483648 || num <= -2147483648 {
-		return 0
-	}
-
-	return int32(num)
-}
-
 // parseUint8 parses a string into a uint8 with overflow checking.
 func ParseUint8(val string) uint8 {
 	num, err := strconv.ParseUint(val, 10, 8)
