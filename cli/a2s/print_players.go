@@ -15,6 +15,7 @@ func printPlayers(client *a2s.Client, json bool) {
 
 	if json {
 		printJSON(players)
+		return
 	}
 
 	if len(*players) == 0 {

@@ -15,6 +15,7 @@ func printInfo(client *a2s.Client, json bool) {
 
 	if json {
 		printJSON(info)
+		return
 	}
 
 	table := tableprinter.NewTablePrinter([]string{"Property", "Value"}, "=")

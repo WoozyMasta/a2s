@@ -23,6 +23,7 @@ func printRawRules(client *a2s.Client, json bool) {
 
 	if json {
 		printJSON(rules)
+		return
 	}
 
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
@@ -45,6 +46,7 @@ func printParsedRules(client *a2s.Client, json bool) {
 
 	if json {
 		printJSON(rules)
+		return
 	}
 
 	table := tableprinter.NewTablePrinter([]string{"Rule", "Value"}, "=")
