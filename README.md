@@ -220,10 +220,6 @@ Min=28.7014ms Max=29.6299ms Avg=29.23208ms
 
 ![logo-a3sb][]
 
-> [!TIP]  
-> Unlike a2s-cli, a3sb-cli does not have a ping command, use `./a2s-cli`
-> for this purpose, it will handle this for Arma 3 and DayZ
-
 ```txt
 Description:
   CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
