@@ -25,6 +25,7 @@ Refactoring and Simplification
   `ServerLang` and `Platform`
 * missed documentation for packages
 * `a3sb-cli` ping support
+* `a2s` new function `NewWithAddr()` use `*net.UDPAddr` as argument
 
 ### Changed
 
@@ -32,6 +33,8 @@ Refactoring and Simplification
 * moved packages `bread`, `tableprinter` to internal
 * ping ring buffer separate as internal package
 * cli args parse now with `jessevdk/go-flags`
+* `a2s` function `CreateClient()` replaced with `Create()` and use
+  `*net.UDPAddr` as argument
 
 ### Removed
 

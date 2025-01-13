@@ -3,7 +3,6 @@ package a2s
 import (
 	"encoding/binary"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -15,9 +14,14 @@ type Client struct {
 	BufferSize uint16
 }
 
-// Create client and open connection
+// Create new client with ip and port and open connection
 func New(ip string, port int) (*Client, error) {
-	client, err := CreateClient(ip, port)
+	return NewWithAddr(&net.UDPAddr{IP: net.ParseIP(ip), Port: port})
+}
+
+// Create new client with addr and open connection
+func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
+	client, err := Create(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -30,14 +34,9 @@ func New(ip string, port int) (*Client, error) {
 }
 
 // Create client only
-func CreateClient(ip string, port int) (*Client, error) {
-	udpAddr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, strconv.Itoa(port)))
-	if err != nil {
-		return nil, err
-	}
-
+func Create(addr *net.UDPAddr) (*Client, error) {
 	return &Client{
-		Address:    udpAddr,
+		Address:    addr,
 		Timeout:    DefaultDeadlineTimeout * time.Second,
 		BufferSize: DefaultBufferSize,
 	}, nil
