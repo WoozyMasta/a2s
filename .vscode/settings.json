@@ -3,7 +3,7 @@
   "go.lintFlags": [
     "--fast"
   ],
-  "go.testEnvFile": "${workspaceFolder}/dev.env",
+  "go.testEnvFile": "${workspaceFolder}/test.env",
   "cSpell.words": [
     "подпротоколы",
     "чанках",

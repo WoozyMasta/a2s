@@ -1,6 +1,6 @@
 *.drawio.bkp
 build/
-dev.env
+test.env
 *.psd
 *.exe
 *.zip
