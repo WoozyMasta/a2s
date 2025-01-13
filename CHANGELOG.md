@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.2.1][] - 2025-01-13
+
+### Added
+
+* `a2s` add `NewWithString()` new for init connection by `ip:port` string
+* `a2s-cli` and `a3sb-cli` ability to specify both the `host` and `port` as
+  separate arguments or as one `host:port`
+
+### Changed
+
+* `a2s-cli` fixed json output
+
+[0.2.1]: https://github.com/WoozyMasta/a2s/compare/v0.2.0...v0.2.1
+
 ## [0.2.0][] - 2025-01-13
 
 Refactoring and Simplification
