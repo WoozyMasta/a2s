@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // Structure for storing information about mods

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // Information about mod info in GoldSource A2S_INFO response

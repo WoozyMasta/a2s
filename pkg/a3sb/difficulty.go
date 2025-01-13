@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/steam/utils/appid"
 )
 

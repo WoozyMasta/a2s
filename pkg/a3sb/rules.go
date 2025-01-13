@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/a2s/pkg/bread"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 	"github.com/woozymasta/steam/utils/appid"
 )

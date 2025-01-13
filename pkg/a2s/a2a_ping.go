@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // Get A2S_PING (Deprecated)

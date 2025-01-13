@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // TheShip A2S_INFO additional data

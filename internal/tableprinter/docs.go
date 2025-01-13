@@ -11,7 +11,7 @@ Example usage:
 	import (
 		"log"
 
-		"github.com/woozymasta/a2s/pkg/tableprinter"
+		"github.com/woozymasta/a2s/internal/tableprinter"
 	)
 
 	func main() {

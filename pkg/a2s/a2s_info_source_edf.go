@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/woozymasta/a2s/pkg/bread"
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // Read buffer for populate Info struct with EDF (Extra Data Flag) for Source protocol
