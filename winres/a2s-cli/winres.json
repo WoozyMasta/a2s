@@ -16,7 +16,7 @@
           "name": "A2S CLI",
           "version": ""
         },
-        "description": "Command line utility for querying A2S server information",
+        "description": "Command line utility for querying Steam A2S server information",
         "minimum-os": "win7",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -45,7 +45,7 @@
           "0409": {
             "Comments": "",
             "CompanyName": "",
-            "FileDescription": "Command line utility for querying A2S server information",
+            "FileDescription": "Command line utility for querying Steam A2S server information",
             "FileVersion": "",
             "InternalName": "A2S CLI",
             "LegalCopyright": "WoozyMasta",
