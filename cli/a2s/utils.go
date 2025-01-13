@@ -47,7 +47,7 @@ func printJSON(data any) {
 
 func printHelp(exit bool) {
 	fmt.Printf(`Description:
-CLI for querying Steam A2S server information.
+  CLI for querying Steam A2S server information.
 
 Usage:
   %[1]s [OPTIONS] <command> <host> <query port>

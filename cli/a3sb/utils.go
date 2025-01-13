@@ -74,7 +74,7 @@ func printJSONWithDayZ(info *a2s.Info) {
 
 func printHelp(exit bool) {
 	fmt.Printf(`Description:
-CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
+  CLI for querying A2S server information and working with A3SB subprotocol for Arma 3 and DayZ.
 
 Usage:
   %[1]s [OPTIONS] <command> <host> <query port>
