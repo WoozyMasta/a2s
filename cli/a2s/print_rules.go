@@ -18,7 +18,7 @@ func printRules(client *a2s.Client, json, raw bool) {
 func printRawRules(client *a2s.Client, json bool) {
 	rules, err := client.GetRules()
 	if err != nil {
-		fatalf("failed to get players: %s", err)
+		fatalf("Failed to get rules: %s", err)
 	}
 
 	if json {
@@ -40,7 +40,7 @@ func printRawRules(client *a2s.Client, json bool) {
 func printParsedRules(client *a2s.Client, json bool) {
 	rules, err := client.GetParsedRules()
 	if err != nil {
-		fatalf("failed to get players: %s", err)
+		fatalf("Failed to get rules: %s", err)
 	}
 
 	if json {

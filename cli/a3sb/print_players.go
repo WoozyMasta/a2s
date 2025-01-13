@@ -10,7 +10,7 @@ import (
 func printPlayers(client *a2s.Client, json bool) {
 	players, err := client.GetPlayers()
 	if err != nil {
-		fatalf("failed to get players: %s", err)
+		fatalf("Failed to get players: %s", err)
 	}
 
 	if json {

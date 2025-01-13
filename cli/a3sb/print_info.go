@@ -11,7 +11,7 @@ import (
 func printInfo(client *a2s.Client, json bool) {
 	info, err := client.GetInfo()
 	if err != nil {
-		fatalf("failed to get server info: %s", err)
+		fatalf("Failed to get server info: %s", err)
 	}
 
 	if json {

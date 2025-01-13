@@ -19,7 +19,7 @@ func printRules(clientA2S *a2s.Client, appID uint64, json bool) {
 
 	rules, err := client.GetRules(appID)
 	if err != nil {
-		fatalf("failed to get server rules: %s", err)
+		fatalf("Failed to get server rules: %s", err)
 	}
 
 	if json {

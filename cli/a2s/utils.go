@@ -11,27 +11,21 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-func createClient(host, port string, timeout, buffer int) *a2s.Client {
+func createClient(host, port string, timeout int, buffer uint16) *a2s.Client {
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		fatalf("invalid port %s", port)
+		fatalf("Invalid port %s", port)
 	}
 
 	client, err := a2s.New(host, portInt)
 	if err != nil {
-		fatalf("failed to create client: %s", err)
+		fatalf("Failed to create client: %s", err)
 	}
 
-	if timeout := timeout; timeout > 0 {
+	if timeout > 0 {
 		client.SetDeadlineTimeout(timeout)
 	}
-
-	if bufferSize := buffer; bufferSize > 0 {
-		if bufferSize < 0 || bufferSize > 65535 {
-			fatalf("failed to set buffer size: %d", bufferSize)
-		}
-		client.SetBufferSize(uint16(bufferSize))
-	}
+	client.SetBufferSize(buffer)
 
 	return client
 }
