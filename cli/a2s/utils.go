@@ -54,10 +54,10 @@ Commands:
 Options:
   -j, --json               Output in JSON format;
   -r, --raw                Disable parse A2S_RULES values to types;
-  -t, --deadline-timeout   Set connection timeout in seconds;
-  -b, --buffer-size        Set connection buffer size;
-  -c, --ping-count         Set the number of ping requests to send;
-  -p, --ping-period        Set the period between pings in seconds;
+  -t, --deadline-timeout=  Set connection timeout in seconds;
+  -b, --buffer-size=       Set connection buffer size;
+  -c, --ping-count=        Set the number of ping requests to send;
+  -p, --ping-period=       Set the period between pings in seconds;
   -t, --version            Show version, commit, and build time;
   -h, --help               Prints this help message.
 `, filepath.Base(os.Args[0]))
