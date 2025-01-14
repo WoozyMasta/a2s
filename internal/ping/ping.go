@@ -1,3 +1,5 @@
+// Package ping helps to run a cyclic A2S_INFO request and accumulate statistics on the response time in a cyclic buffer,
+// upon completion of the work it outputs a report on all pings in the buffer
 package ping
 
 import (
