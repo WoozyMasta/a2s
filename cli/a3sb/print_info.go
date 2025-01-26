@@ -62,7 +62,7 @@ func printInfo(client *a2s.Client, json bool) {
 			{"Content hash:", arma.LoadedContentHash},
 			{"Country:", arma.Country},
 			{"Island name:", arma.Island},
-			{"Time left:", fmt.Sprintf("%s", arma.TimeLeft)},
+			{"Time left:", arma.TimeLeft.String()},
 			{"Required version:", fmt.Sprintf("%d", arma.RequiredVersion)},
 			{"Required build:", fmt.Sprintf("%d", arma.RequiredBuildNo)},
 			{"Language:", arma.Language.String()},
