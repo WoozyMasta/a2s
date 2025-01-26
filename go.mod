@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/woozymasta/steam v0.1.2
+	github.com/woozymasta/steam v0.1.3
 	internal/vars v0.0.0
 )
 
