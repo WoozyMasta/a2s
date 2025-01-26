@@ -35,6 +35,10 @@ func ParseDayZ(keywords []string) *DayZ {
 // Parse A2S INFO gametype data for DayZ
 func (d *DayZ) Parse(keywords []string) {
 	for _, tag := range keywords {
+		if tag == "" {
+			continue
+		}
+
 		switch {
 		case tag == "battleye":
 			d.BattlEye = true

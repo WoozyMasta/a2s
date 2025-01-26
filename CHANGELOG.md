@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.2.2][] - 2025-01-26
+
+### Changed
+
+* `keywords` fix parse for empty string
+
+[0.2.2]: https://github.com/WoozyMasta/a2s/compare/v0.2.1...v0.2.2
+
 ## [0.2.1][] - 2025-01-13
 
 ### Added

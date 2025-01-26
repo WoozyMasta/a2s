@@ -44,6 +44,10 @@ func ParseArma3(keywords []string) *Arma3 {
 // Parse A2S INFO gametype data for Arma3
 func (d *Arma3) Parse(keywords []string) {
 	for _, tag := range keywords {
+		if tag == "" {
+			continue
+		}
+
 		val := string([]rune(tag)[1:])
 
 		switch string([]rune(tag)[0]) {
