@@ -9,6 +9,7 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 func createClient(host string, timeout int, buffer uint16) *a2s.Client {
@@ -34,7 +35,7 @@ func printJSON(data any) {
 	fmt.Println(string(jsonData))
 }
 
-func printJSONWithDayZ(info *a2s.Info) {
+func printKeywordsJSON(info *a2s.Info) {
 	jsonData, err := json.Marshal(info)
 	if err != nil {
 		fatalf("Failed to marshal Info: %v", err)
@@ -48,8 +49,17 @@ func printJSONWithDayZ(info *a2s.Info) {
 
 	// Add the parsed DayZ structure to the JSON map
 	delete(jsonMap, "keywords")
-	dayZData := keywords.ParseDayZ(info.Keywords)
-	jsonMap["keywords"] = dayZData
+
+	switch info.ID {
+	case appid.Arma3.Uint64():
+
+		armaData := keywords.ParseArma3(info.Keywords)
+		jsonMap["keywords"] = armaData
+
+	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+		dayZData := keywords.ParseDayZ(info.Keywords)
+		jsonMap["keywords"] = dayZData
+	}
 
 	// Marshal back to JSON for output
 	updatedJSONData, err := json.MarshalIndent(jsonMap, "", "  ")

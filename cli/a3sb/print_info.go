@@ -6,6 +6,7 @@ import (
 	"github.com/woozymasta/a2s/internal/tableprinter"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
+	"github.com/woozymasta/steam/utils/appid"
 )
 
 func printInfo(client *a2s.Client, json bool) {
@@ -15,7 +16,7 @@ func printInfo(client *a2s.Client, json bool) {
 	}
 
 	if json {
-		printJSONWithDayZ(info)
+		printKeywordsJSON(info)
 		return
 	}
 
@@ -52,8 +53,35 @@ func printInfo(client *a2s.Client, json bool) {
 		}
 	}
 
-	dayz := keywords.ParseDayZ(info.Keywords)
-	if dayz.Shard != "" {
+	switch info.ID {
+	case appid.Arma3.Uint64():
+		arma := keywords.ParseArma3(info.Keywords)
+		if err := table.AddRows([][]string{
+			{"Type of game:", arma.GameType.String()},
+			{"Server OS:", arma.Platform.String()},
+			{"Content hash:", arma.LoadedContentHash},
+			{"Country:", arma.Country},
+			{"Island name:", arma.Island},
+			{"Time left:", fmt.Sprintf("%s", arma.TimeLeft)},
+			{"Required version:", fmt.Sprintf("%d", arma.RequiredVersion)},
+			{"Required build:", fmt.Sprintf("%d", arma.RequiredBuildNo)},
+			{"Language:", arma.Language.String()},
+			{"Longitude:", fmt.Sprintf("%d", arma.Longitude)},
+			{"Latitude:", fmt.Sprintf("%d", arma.Latitude)},
+			{"State of server:", arma.ServerState.String()},
+			{"BattlEye protected:", fmt.Sprintf("%t", arma.BattlEye)},
+			{"Difficulty:", fmt.Sprintf("%d", arma.Difficulty)},
+			{"Require mods equal:", fmt.Sprintf("%t", arma.EqualModRequired)},
+			{"Locked state:", fmt.Sprintf("%t", arma.Lock)},
+			{"Verify signatures:", fmt.Sprintf("%t", arma.VerifySignatures)},
+			{"Dedicated:", fmt.Sprintf("%t", arma.Dedicated)},
+			{"Enabled fle patching:", fmt.Sprintf("%t", arma.AllowedFilePatching)},
+		}); err != nil {
+			fatalf("Create info table (DayZ keywords): %s", err)
+		}
+
+	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+		dayz := keywords.ParseDayZ(info.Keywords)
 		if err := table.AddRows([][]string{
 			{"Shard:", dayz.Shard},
 			{"In game time:", dayz.Time.String()},

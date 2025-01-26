@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning][].
 
 ## [0.2.2][] - 2025-01-26
 
+### Added
+
+* `a3sb-cli` show keywords for Arma3 in info request
+
 ### Changed
 
 * `keywords` fix parse for empty string
