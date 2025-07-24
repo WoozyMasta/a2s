@@ -116,7 +116,10 @@ Options:
 
 <!-- markdownlint-disable MD033 -->
 <details>
-<summary>Examples of output for different commands (Click here to expand) 👈</summary>
+<summary>
+<u>Examples of output for different commands
+<b>(Click here to expand)</b> 👈</u>
+</summary>
 <!-- markdownlint-enable MD033 -->
 
 <!-- omit in toc -->
@@ -251,14 +254,17 @@ Options:
 
 <!-- markdownlint-disable MD033 -->
 <details>
-<summary>Examples of output for different commands (Click here to expand) 👈</summary>
+<summary>
+<u>Examples of output for different commands
+<b>(Click here to expand)</b> 👈</u>
+</summary>
 <!-- markdownlint-enable MD033 -->
 
 <!-- omit in toc -->
 ### Info Arma 3
 
 ```bash
-./a2s-cli -i 107410 info 127.0.0.1:27016
+./a3sb-cli -i 107410 info 127.0.0.1:27016
 ```
 
 ```txt
@@ -289,7 +295,7 @@ A2S_INFO response for 127.0.0.1:27016
 ### Info DayZ
 
 ```bash
-./a2s-cli -i 221100 info 127.0.0.1:27016
+./a3sb-cli -i 221100 info 127.0.0.1:27016
 ```
 
 ```txt
@@ -334,7 +340,7 @@ A2S_INFO response for 127.0.0.1:27016
 ### Rules Arma 3
 
 ```bash
-./a2s-cli -i 107410 info 127.0.0.1:27016
+./a3sb-cli -i 107410 info 127.0.0.1:27016
 ```
 
 ```txt
@@ -353,13 +359,13 @@ A2S_INFO response for 127.0.0.1:27016
   1  Creator DLC: Western Sahara  https://store.steampowered.com/app/1681170
 ==============================================================================
 
-  #  Mod Name                                     Mod URL
-=====================================================================================================================
-  1  Zeus Enhanced 1.15.1                         https://steamcommunity.com/sharedfiles/filedetails/?id=1779063631
-  2  Zeus Additions                               https://steamcommunity.com/sharedfiles/filedetails/?id=2387297579
+  #  Mod Name               Mod URL
+=============================================================================================
+  1  Zeus Enhanced 1.15.1   https://steamcommunity.com/sharedfiles/filedetails/?id=1779063631
+  2  Zeus Additions         https://steamcommunity.com/sharedfiles/filedetails/?id=2387297579
 ...
- 47  3CB Factions                                 https://steamcommunity.com/sharedfiles/filedetails/?id=1673456286
-=====================================================================================================================
+ 47  3CB Factions           https://steamcommunity.com/sharedfiles/filedetails/?id=1673456286
+=============================================================================================
 A2S_RULES response for 144.76.173.27:2393
 ```
 
@@ -367,7 +373,7 @@ A2S_RULES response for 144.76.173.27:2393
 ### Rules DayZ
 
 ```bash
-./a2s-cli -i 221100 info 127.0.0.1:27016
+./a3sb-cli -i 221100 info 127.0.0.1:27016
 ```
 
 ```txt
@@ -402,7 +408,7 @@ A2S_RULES response for 127.0.0.1:27016
 ### Players Arma 3
 
 ```bash
-./a2s-cli -i 107410 info 127.0.0.1:27016
+./a3sb-cli -i 107410 info 127.0.0.1:27016
 ```
 
 ```txt
