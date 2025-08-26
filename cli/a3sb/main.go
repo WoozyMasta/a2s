@@ -5,16 +5,32 @@ import (
 	"github.com/woozymasta/a2s/internal/ping"
 )
 
-// CLI options
+// Options defines CLI options for controlling ping behavior and output formatting.
 type Options struct {
-	AppID      uint64 `short:"i" long:"app-id"`                       // AppID for more accurate results
-	Timeout    int    `short:"t" long:"deadline-timeout" default:"3"` // Set timeout in seconds
-	PingCount  int    `short:"c" long:"ping-count" default:"0"`       // Set the number of ping requests to send
-	PingPeriod int    `short:"p" long:"ping-period" default:"1"`      // Set the period between pings in seconds
-	Buffer     uint16 `short:"b" long:"buffer-size" default:"8096"`   // Set buffer size
-	JSON       bool   `short:"j" long:"json"`                         // Output in JSON format
-	Help       bool   `short:"h" long:"help"`                         // Show this help message
-	Version    bool   `short:"v" long:"version"`                      // Show version and build info
+	// AppID for more accurate results
+	AppID uint64 `short:"i" long:"app-id"`
+
+	// Timeout specifies the timeout in seconds for each request.
+	Timeout int `short:"t" long:"deadline-timeout" default:"3"`
+
+	// PingCount specifies the number of ping requests to send.
+	// A value of 0 means sending requests indefinitely until interrupted.
+	PingCount int `short:"c" long:"ping-count" default:"0"`
+
+	// PingPeriod specifies the delay in seconds between consecutive pings.
+	PingPeriod int `short:"p" long:"ping-period" default:"1"`
+
+	// Buffer specifies the buffer size in bytes for network operations.
+	Buffer uint16 `short:"b" long:"buffer-size" default:"8096"`
+
+	// JSON enables output formatting in JSON.
+	JSON bool `short:"j" long:"json"`
+
+	// Help shows usage information and available command-line options.
+	Help bool `short:"h" long:"help"`
+
+	// Version shows version and build information.
+	Version bool `short:"v" long:"version"`
 }
 
 func main() {

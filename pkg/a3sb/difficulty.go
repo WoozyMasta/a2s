@@ -8,7 +8,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Arma 3 difficulty structure, bytes for level are represented as:
+// Difficulty Arma 3 structure, bytes for level are represented as:
 //   - 0 - newbie
 //   - 1 - normal
 //   - 2 - expert

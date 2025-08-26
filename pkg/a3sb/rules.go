@@ -10,7 +10,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Structure for storing data from the A3SBP response
+// Rules structure for storing data from the A3SBP response
 type Rules struct {
 	Flags           *Flags            `json:"flags,omitempty"`            // Flags, I don't know what's actually encoded there
 	Difficulty      *Difficulty       `json:"difficulty,omitempty"`       // Difficulty (Arma 3 only)
@@ -34,17 +34,17 @@ type Rules struct {
 	Dedicated       bool              `json:"dedicated,omitempty"`        // Dedicated [DayZ]
 }
 
-// A2S_RULES for Arma (wrapper)
+// GetRulesArma3 return A2S_RULES for Arma (wrapper)
 func (c *Client) GetRulesArma3() (*Rules, error) {
 	return c.GetRules(appid.Arma3.Uint64())
 }
 
-// A2S_RULES for DayZ (wrapper)
+// GetRulesDayZ return A2S_RULES for DayZ (wrapper)
 func (c *Client) GetRulesDayZ() (*Rules, error) {
 	return c.GetRules(appid.DayZ.Uint64())
 }
 
-// A2S_RULES for DayZ/Arma
+// GetRules return A2S_RULES for DayZ/Arma
 func (c *Client) GetRules(game uint64) (*Rules, error) {
 	// Need more for DayZ and Arma
 	if c.BufferSize == a2s.DefaultBufferSize {
@@ -175,12 +175,12 @@ func (r *Rules) readA3SB(data []byte) error {
 	return nil
 }
 
-// Return appID
+// GetAppID return appID
 func (r *Rules) GetAppID() uint64 {
 	return r.id
 }
 
-// Return bytes stats of chunk reader progress
+// GetReaderStats return bytes stats of chunk reader progress
 func (r *Rules) GetReaderStats() [4]byte {
 	return r.stats
 }

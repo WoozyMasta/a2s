@@ -2,7 +2,7 @@ package tableprinter
 
 import "strings"
 
-// Join slice of string but with line width limit and return slice of joined strings
+// JoinWithLimit join slice of string but with line width limit and return slice of joined strings
 func JoinWithLimit(elems []string, sep string, limit int) []string {
 	var result []string
 	currentLine := ""

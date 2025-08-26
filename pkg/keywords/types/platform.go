@@ -1,6 +1,6 @@
 package types
 
-// Represent game-server platform (OS)
+// Platform represent game-server platform (OS)
 type Platform string
 
 const (
@@ -10,7 +10,7 @@ const (
 	OSWindows Platform = "w" // Windows
 )
 
-// Return string represent of char
+// String return string represent of char
 func (p Platform) String() string {
 	switch p {
 	case OSWLinux:

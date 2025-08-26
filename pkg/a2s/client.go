@@ -14,12 +14,12 @@ type Client struct {
 	BufferSize uint16
 }
 
-// Create new client with ip and port and open connection
+// New create new client with ip and port and open connection
 func New(ip string, port int) (*Client, error) {
 	return NewWithAddr(&net.UDPAddr{IP: net.ParseIP(ip), Port: port})
 }
 
-// Create new client with ip:port string and open connection
+// NewWithString create new client with ip:port string and open connection
 func NewWithString(addr string) (*Client, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -29,7 +29,7 @@ func NewWithString(addr string) (*Client, error) {
 	return NewWithAddr(udpAddr)
 }
 
-// Create new client with addr and open connection
+// NewWithAddr create new client with addr and open connection
 func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
 	client, err := Create(addr)
 	if err != nil {
@@ -52,7 +52,7 @@ func Create(addr *net.UDPAddr) (*Client, error) {
 	}, nil
 }
 
-// Open connection for Client
+// Dial connection for Client
 func (c *Client) Dial() error {
 	conn, err := net.DialUDP("udp", nil, c.Address)
 	if err != nil {
@@ -63,12 +63,12 @@ func (c *Client) Dial() error {
 	return nil
 }
 
-// Set bytes buffer size for Client, default is 1400
+// SetBufferSize set bytes buffer size for Client, default is 1400
 func (c *Client) SetBufferSize(size uint16) {
 	c.BufferSize = size
 }
 
-// Set deadline timeout for Client, default is 5 seconds
+// SetDeadlineTimeout set deadline timeout for Client, default is 5 seconds
 func (c *Client) SetDeadlineTimeout(seconds int) {
 	c.Timeout = time.Duration(seconds) * time.Second
 }
@@ -78,7 +78,7 @@ func (c *Client) Close() error {
 	return c.Conn.Close()
 }
 
-// Execute request in Client with type and return:
+// Get request in Client with type and return:
 //   - response bytes without header
 //   - response type
 //   - ping (duration from writing bytes to reading response)

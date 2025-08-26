@@ -13,7 +13,7 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-// processing A2S_INFO request as a source to create a cyclic ping to the server
+// Start processing A2S_INFO request as a source to create a cyclic ping to the server
 func Start(client *a2s.Client, count, period int) {
 	var errorCount int
 

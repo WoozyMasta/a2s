@@ -3,10 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"internal/vars"
 	"os"
 	"path/filepath"
 
+	"github.com/woozymasta/a2s/internal/vars"
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 

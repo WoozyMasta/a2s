@@ -8,7 +8,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Get A2S_PING (Deprecated)
+// GetPing A2S_PING (Deprecated)
 func (c *Client) GetPing() (time.Duration, error) {
 	data, _, duration, err := c.Get(PingRequest)
 	if err != nil {

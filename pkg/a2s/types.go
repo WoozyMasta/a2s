@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 )
 
-// Type represents the bytes for the request and response type in the header
+// Flag represents the bytes for the request and response type in the header
 type Flag byte
 
-// Type represents the bytes for Extra Data Flag (EDF) in A2S_INFO response
+// EDF represents the bytes for Extra Data Flag (EDF) in A2S_INFO response
 type EDF byte
 
-// Type represents the bytes for engine type: Source or GoldSource in A2S_INFO response
+// InfoFormat represents the bytes for engine type: Source or GoldSource in A2S_INFO response
 type InfoFormat byte
 
 func (i InfoFormat) String() string {
@@ -24,12 +24,12 @@ func (i InfoFormat) String() string {
 	return "unknown"
 }
 
-// Helper for convert internal type to string in JSON
+// MarshalJSON helper for convert internal type to string in JSON
 func (i InfoFormat) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.String())
 }
 
-// Type represents the bytes for server type: Dedicated, Local or Proxy (SteamTV/HLTV) in A2S_INFO response
+// ServerType represents the bytes for server type: Dedicated, Local or Proxy (SteamTV/HLTV) in A2S_INFO response
 type ServerType byte
 
 func (s ServerType) String() string {
@@ -45,12 +45,12 @@ func (s ServerType) String() string {
 	return "Unknown"
 }
 
-// Helper for convert internal type to string in JSON
+// MarshalJSON helper for convert internal type to string in JSON
 func (s ServerType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
 }
 
-// Type represents the bytes for server OS: Linux, Windows, Mac or Other in A2S_INFO response
+// Environment represents the bytes for server OS: Linux, Windows, Mac or Other in A2S_INFO response
 type Environment byte
 
 func (e Environment) String() string {
@@ -68,12 +68,12 @@ func (e Environment) String() string {
 	return "Unknown"
 }
 
-// Helper for convert internal type to string in JSON
+// MarshalJSON helper for convert internal type to string in JSON
 func (e Environment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.String())
 }
 
-// Type represents the bytes for TheShip game extra mode info in A2S_INFO response
+// TheShipMode represents the bytes for TheShip game extra mode info in A2S_INFO response
 type TheShipMode byte
 
 func (m TheShipMode) String() string {
@@ -95,7 +95,7 @@ func (m TheShipMode) String() string {
 	return "Unknown"
 }
 
-// Helper for convert internal type to string in JSON
+// MarshalJSON helper for convert internal type to string in JSON
 func (m TheShipMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.String())
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_2
+// Player data struct https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_2
 type Player struct {
 	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
@@ -16,7 +16,7 @@ type Player struct {
 	Index    byte          `json:"index,omitempty"`
 }
 
-// Get A2S_PLAYER
+// GetPlayers A2S_PLAYER
 func (c *Client) GetPlayers() (*[]Player, error) {
 	data, _, _, err := c.Get(PlayerRequest)
 	if err != nil {

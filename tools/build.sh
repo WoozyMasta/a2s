@@ -31,10 +31,11 @@ build() {
   echo "./build/$bin"
 }
 
-version="internal/vars.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
-commit="internal/vars.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
-date="internal/vars.BuildTime=$(date -uIs)"
-url="internal/vars.URL=https://$(grep -Po 'module \K.*$' go.mod)"
+mod="$(grep -Po 'module \K.*$' go.mod)"
+version="$mod/internal/vars.Version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)"
+commit="$mod/internal/vars.Commit=$(git rev-parse HEAD 2>/dev/null || :)"
+date="$mod/internal/vars.BuildTime=$(date -uIs)"
+url="$mod/internal/vars.URL=https://$mod"
 
 mkdir -p ./build
 go mod tidy

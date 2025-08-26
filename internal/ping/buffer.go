@@ -6,14 +6,20 @@ import (
 
 const pingBuffSize = 65535
 
-// Stats of ping
+// Stats holds aggregated ping statistics such as minimum,
+// maximum, and average round-trip times.
 type Stats struct {
+	// Min is the smallest round-trip time observed.
 	Min time.Duration
+
+	// Max is the largest round-trip time observed.
 	Max time.Duration
+
+	// Avg is the average round-trip time.
 	Avg time.Duration
 }
 
-// Ring buffer for ping stats
+// Buffer implements a fixed-size ring buffer for storing ping results.
 type Buffer struct {
 	data  []time.Duration
 	head  int
@@ -21,7 +27,7 @@ type Buffer struct {
 	count int
 }
 
-// Create new ping ring buffer
+// NewBuffer creates and initializes a new ring buffer for ping results.
 func NewBuffer() *Buffer {
 	return &Buffer{
 		data:  make([]time.Duration, pingBuffSize),
@@ -31,7 +37,7 @@ func NewBuffer() *Buffer {
 	}
 }
 
-// Add record to ping buff
+// Add inserts a new ping result into the buffer, overwriting the oldest entry if full.
 func (p *Buffer) Add(value time.Duration) {
 	p.data[p.tail] = value
 	p.tail = (p.tail + 1) % len(p.data)
@@ -43,7 +49,7 @@ func (p *Buffer) Add(value time.Duration) {
 	}
 }
 
-// Get all record from ping buff
+// Get returns a slice containing all ping results currently stored in the buffer in insertion order.
 func (p *Buffer) Get() []time.Duration {
 	var result []time.Duration
 
@@ -55,7 +61,7 @@ func (p *Buffer) Get() []time.Duration {
 	return result
 }
 
-// Ping statistics calculation function
+// CalculateStats computes minimum, maximum, and average statistics for the values stored in the given buffer.
 func CalculateStats(buffer *Buffer) Stats {
 	pings := buffer.Get()
 

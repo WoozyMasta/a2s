@@ -24,7 +24,7 @@ type DayZ struct {
 	DLC            bool          `json:"dlc,omitempty"`           // Require DLC
 }
 
-// Parser for DayZ keywords
+// ParseDayZ for DayZ keywords
 func ParseDayZ(keywords []string) *DayZ {
 	data := &DayZ{}
 	data.Parse(keywords)

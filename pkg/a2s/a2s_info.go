@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Structure for store A2S_INFO response data
+// Info for store A2S_INFO response data
 // https://developer.valvesoftware.com/wiki/Server_queries#Response_Format
 type Info struct {
 	TheShip      *TheShip      `json:"the_ship,omitempty"`       // These fields only exist if server is The Ship
@@ -38,7 +38,7 @@ type Info struct {
 	// GameID       uint64        `json:"game_id,omitempty"`        // GameID, already set in ID (EDF 0x01)
 }
 
-// Get A2S_INFO
+// GetInfo A2S_INFO
 func (c *Client) GetInfo() (*Info, error) {
 	data, format, duration, err := c.Get(InfoRequest)
 	if err != nil {

@@ -8,10 +8,10 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// 3rd and 4th bytes of the server browser protocol store the DLC bitmask flags
+// DLC 3rd and 4th bytes of the server browser protocol store the DLC bitmask flags
 type DLC uint16
 
-// Store information about DLC
+// DLCInfo store information about DLC
 type DLCInfo struct {
 	Name string `json:"name,omitempty"` // DLC name from predefined maps
 	ID   uint64 `json:"id,omitempty"`   // DCL Steam AppID
@@ -23,7 +23,8 @@ type DLCInfo struct {
 var dayzDLC = map[DLC]DLCInfo{
 	0x1: {ID: 1151700, Name: "Livonia"},
 	0x2: {ID: 2968040, Name: "Frost Line"},
-	0x4: {ID: 830660, Name: "Survivor GameZ"},
+	0x4: {ID: 3816030, Name: "Badlands"},
+	0x8: {ID: 830660, Name: "Survivor GameZ"},
 }
 
 // Arma 3 DLC Map for DLC byte blocks

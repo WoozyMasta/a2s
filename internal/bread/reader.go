@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Read bytes buffer and return byte
+// Byte read bytes buffer and return byte
 func Byte(buf *bytes.Buffer) (byte, error) {
 	if err := checkLength(buf, 1); err != nil {
 		return 0, err
@@ -17,7 +17,7 @@ func Byte(buf *bytes.Buffer) (byte, error) {
 	return buf.ReadByte()
 }
 
-// Read bytes buffer and return boolean, where 1 is true, 0 is false, other error
+// Bool read bytes buffer and return boolean, where 1 is true, 0 is false, other error
 func Bool(buf *bytes.Buffer) (bool, error) {
 	value, err := Byte(buf)
 	if err != nil {
@@ -34,7 +34,7 @@ func Bool(buf *bytes.Buffer) (bool, error) {
 	}
 }
 
-// Read bytes buffer and return int8
+// Int8 read bytes buffer and return int8
 func Int8(buf *bytes.Buffer) (int8, error) {
 	value, err := Byte(buf)
 	if err != nil {
@@ -44,7 +44,7 @@ func Int8(buf *bytes.Buffer) (int8, error) {
 	return int8(value), nil
 }
 
-// Read bytes buffer and return int16
+// Int16 read bytes buffer and return int16
 func Int16(buf *bytes.Buffer) (int16, error) {
 	var value int16
 	if err := readNumber(buf, &value, 2); err != nil {
@@ -54,7 +54,7 @@ func Int16(buf *bytes.Buffer) (int16, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return int32
+// Int32 read bytes buffer and return int32
 func Int32(buf *bytes.Buffer) (int32, error) {
 	var value int32
 	if err := readNumber(buf, &value, 4); err != nil {
@@ -64,7 +64,7 @@ func Int32(buf *bytes.Buffer) (int32, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return int64
+// Int64 read bytes buffer and return int64
 func Int64(buf *bytes.Buffer) (int64, error) {
 	var value int64
 	if err := readNumber(buf, &value, 8); err != nil {
@@ -74,7 +74,7 @@ func Int64(buf *bytes.Buffer) (int64, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return uint16
+// Uint16 read bytes buffer and return uint16
 func Uint16(buf *bytes.Buffer) (uint16, error) {
 	var value uint16
 	if err := readNumber(buf, &value, 2); err != nil {
@@ -84,7 +84,7 @@ func Uint16(buf *bytes.Buffer) (uint16, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return uint32
+// Uint32 read bytes buffer and return uint32
 func Uint32(buf *bytes.Buffer) (uint32, error) {
 	var value uint32
 	if err := readNumber(buf, &value, 4); err != nil {
@@ -94,7 +94,7 @@ func Uint32(buf *bytes.Buffer) (uint32, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return uint64
+// Uint64 read bytes buffer and return uint64
 func Uint64(buf *bytes.Buffer) (uint64, error) {
 	var value uint64
 	if err := readNumber(buf, &value, 8); err != nil {
@@ -104,7 +104,7 @@ func Uint64(buf *bytes.Buffer) (uint64, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return float32
+// Float32 read bytes buffer and return float32
 func Float32(buf *bytes.Buffer) (float32, error) {
 	var value float32
 	if err := readNumber(buf, &value, 4); err != nil {
@@ -114,7 +114,7 @@ func Float32(buf *bytes.Buffer) (float32, error) {
 	return value, nil
 }
 
-// Read bytes buffer and return float64
+// Float64 read bytes buffer and return float64
 func Float64(buf *bytes.Buffer) (float64, error) {
 	var value float64
 	if err := readNumber(buf, &value, 8); err != nil {
@@ -124,7 +124,7 @@ func Float64(buf *bytes.Buffer) (float64, error) {
 	return value, nil
 }
 
-// Read bytes buffer to first 0x00 delimiter and return as string
+// String read bytes buffer to first 0x00 delimiter and return as string
 func String(buf *bytes.Buffer) (string, error) {
 	value, err := buf.ReadBytes(0x00)
 	if err != nil {
@@ -134,7 +134,7 @@ func String(buf *bytes.Buffer) (string, error) {
 	return string(value[:len(value)-1]), nil
 }
 
-// Read bytes buffer by size count and return as string
+// StringLen read bytes buffer by size count and return as string
 func StringLen(buf *bytes.Buffer, size int) (string, error) {
 	if err := checkLength(buf, size); err != nil {
 		return "", err
@@ -153,7 +153,7 @@ func StringLen(buf *bytes.Buffer, size int) (string, error) {
 	return string(value), nil
 }
 
-// Read bytes buffer as float32 and return as time.Duration
+// Duration32 read bytes buffer as float32 and return as time.Duration
 func Duration32(buf *bytes.Buffer) (time.Duration, error) {
 	f, err := Float32(buf)
 	if err != nil {
@@ -166,7 +166,7 @@ func Duration32(buf *bytes.Buffer) (time.Duration, error) {
 	return time.Duration(seconds)*time.Second + time.Duration(nanoseconds)*time.Nanosecond, nil
 }
 
-// Read bytes buffer as float64 and return as time.Duration
+// Duration64 read bytes buffer as float64 and return as time.Duration
 func Duration64(buf *bytes.Buffer) (time.Duration, error) {
 	f, err := Float64(buf)
 	if err != nil {
@@ -179,7 +179,7 @@ func Duration64(buf *bytes.Buffer) (time.Duration, error) {
 	return time.Duration(seconds)*time.Second + time.Duration(nanoseconds)*time.Nanosecond, nil
 }
 
-// Read bytes buffer to first 0x00 delimiter
+// BytesPage read bytes buffer to first 0x00 delimiter
 func BytesPage(buf *bytes.Buffer) ([]byte, error) {
 	value, err := buf.ReadBytes(0x00)
 	if err != nil {
@@ -190,7 +190,7 @@ func BytesPage(buf *bytes.Buffer) ([]byte, error) {
 	return value[:n], nil
 }
 
-// Replace Escape sequence to Escape value
+// EscapeSequences replace Escape sequence to Escape value
 //
 //	{0x01, 0x01} -> 0x01
 //	{0x01, 0x02} -> 0x00

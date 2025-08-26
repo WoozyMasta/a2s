@@ -7,7 +7,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Get A2S_SERVERQUERY_GETCHALLENGE (Deprecated)
+// GetChallenge A2S_SERVERQUERY_GETCHALLENGE (Deprecated)
 func (c *Client) GetChallenge() (uint32, error) {
 	data, _, _, err := c.Get(ChallengeRequest)
 	if err != nil {

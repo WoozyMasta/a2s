@@ -8,7 +8,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Universal function for outputting result depending on application ID,
+// Parse universal function for outputting result depending on application ID,
 // if parser exists it will return updated structure, otherwise it will return error
 func Parse(id uint64, keywords []string) (any, error) {
 	switch id {
@@ -32,7 +32,7 @@ func parseBool(val string) bool {
 	return val == "t"
 }
 
-// parseUint8 parses a string into a uint8 with overflow checking.
+// ParseUint8 parses a string into a uint8 with overflow checking.
 func ParseUint8(val string) uint8 {
 	num, err := strconv.ParseUint(val, 10, 8)
 	if err != nil || num > 255 {
@@ -42,7 +42,7 @@ func ParseUint8(val string) uint8 {
 	return uint8(num) // #nosec G115
 }
 
-// parseUint16 parses a string into a uint16 with overflow checking.
+// ParseUint16 parses a string into a uint16 with overflow checking.
 func ParseUint16(val string) uint16 {
 	num, err := strconv.ParseUint(val, 10, 16)
 	if err != nil || num > 65535 {

@@ -7,7 +7,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Structure for storing information about mods
+// Mod structure for storing information about mods
 type Mod struct {
 	Name string `json:"name,omitempty"` // Mod name from response
 	ID   uint64 `json:"id,omitempty"`   // Mod ID in SteamWorkshop

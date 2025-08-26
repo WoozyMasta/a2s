@@ -15,7 +15,7 @@ type TheShip struct {
 	Duration  byte        `json:"duration"`
 }
 
-// TheShip A2S_PLAYER additional data
+// TheShipPlayer A2S_PLAYER additional data
 type TheShipPlayer struct {
 	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
@@ -46,7 +46,7 @@ func readTheShipInfo(buf *bytes.Buffer) (*TheShip, error) {
 	return theShip, nil
 }
 
-// Get A2S_PLAYER for TheShip game
+// GetTheShipPlayers return A2S_PLAYER for TheShip game
 func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
 	data, _, _, err := c.Get(PlayerRequest)
 	if err != nil {

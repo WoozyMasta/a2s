@@ -1,6 +1,6 @@
 package types
 
-// Represent game-server type (Arma3)
+// GameType represent game-server type (Arma3)
 type GameType string
 
 const (
@@ -26,7 +26,7 @@ const (
 	GameTZeus    GameType = "zeus"    // Zeus: Zeus
 )
 
-// Return string represent of GameType short value in:
+// String return string represent of GameType short value in:
 func (gt GameType) String() string {
 	switch gt {
 	case GameTApex:

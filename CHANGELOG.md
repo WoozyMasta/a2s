@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.2.3][] - 2025-08-26
+
+### Added
+
+* `a3sb` DayZ Badlands DLC ID and AppID
+
+### Changed
+
+* updated golang ci lint and fix exported code comments
+* updated direct dependencies
+
+[0.2.3]: https://github.com/WoozyMasta/a2s/compare/v0.2.2...v0.2.3
+
 ## [0.2.2][] - 2025-01-26
 
 ### Added

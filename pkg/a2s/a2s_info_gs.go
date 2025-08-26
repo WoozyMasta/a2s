@@ -7,7 +7,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Information about mod info in GoldSource A2S_INFO response
+// ModInfo about mod info in GoldSource A2S_INFO response
 type ModInfo struct {
 	Link         string `json:"link"`          // URL to mod website.
 	DownloadLink string `json:"download_link"` // URL to download the mod.

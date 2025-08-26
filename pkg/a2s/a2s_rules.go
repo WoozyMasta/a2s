@@ -11,7 +11,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Get A2S_RULES
+// GetRules return A2S_RULES
 // https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
 func (c *Client) GetRules() (map[string]string, error) {
 	data, _, _, err := c.Get(RulesRequest)
@@ -53,7 +53,7 @@ func (c *Client) GetRules() (map[string]string, error) {
 	return rules, nil
 }
 
-// Get A2S_RULES and try parse values to int64, float64, boolean and decode base64, save strings by default
+// GetParsedRules return A2S_RULES and try parse values to int64, float64, boolean and decode base64, save strings by default
 func (c *Client) GetParsedRules() (map[string]any, error) {
 	data, err := c.GetRules()
 	if err != nil {

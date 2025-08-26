@@ -33,7 +33,7 @@ type Arma3 struct {
 	AllowedFilePatching bool              `json:"allowed_filepatching,omitempty"` // Enabled fle patching
 }
 
-// Parser for Arma3 keywords
+// ParseArma3 parser for Arma3 keywords
 func ParseArma3(keywords []string) *Arma3 {
 	data := &Arma3{}
 	data.Parse(keywords)

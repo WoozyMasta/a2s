@@ -1,6 +1,6 @@
 package types
 
-// Represent game-server state for Arma3
+// ServerState represent game-server state for Arma3
 type ServerState byte
 
 const (
@@ -16,7 +16,7 @@ const (
 	ServerState9                    // game is aborted
 )
 
-// Return string represent of uint32 value in s* GameTags in A2S_INFO for Arma3
+// String return string represent of uint32 value in s* GameTags in A2S_INFO for Arma3
 func (ss ServerState) String() string {
 	switch ss {
 	case ServerState0:
