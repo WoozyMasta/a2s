@@ -29,12 +29,6 @@ and this project adheres to [Semantic Versioning][].
 
 [0.3.0]: https://github.com/WoozyMasta/a2s/compare/v0.2.3...v0.3.0
 
-## Unreleased
-
-### Changed
-
-* `a2s` and `a3sb` reduced memory allocations and memory usage by up to 3-4x
-
 ## [0.2.3][] - 2025-08-26
 
 ### Added
