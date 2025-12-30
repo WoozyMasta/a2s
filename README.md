@@ -50,9 +50,11 @@ a2s -h && a2s -v
 
 ## A2S CLI
 
-Command-line utility for querying Steam A2S server information with support for Arma 3 and DayZ servers.
+Command-line utility for querying Steam A2S server information with support
+for Arma 3 and DayZ servers.
 
 The utility supports the following commands:
+
 * `info` - Retrieve server information `A2S_INFO`
 * `rules` - Retrieve server rules `A2S_RULES`
 * `players` - Retrieve player list `A2S_PLAYERS`
@@ -171,8 +173,6 @@ problems with additional games!
 Your support is greatly appreciated!
 
 <!-- Links -->
-[logo-a2s]: assets/a2s.png
-
 [Steam Server Queries]: https://developer.valvesoftware.com/wiki/Server_queries
 [Arma 3 Server Browser Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 [A3SB Protocol v3 Specification 🇬🇧]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md "🇬🇧"
