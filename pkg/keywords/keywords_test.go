@@ -132,3 +132,235 @@ func TestCoordinates(t *testing.T) {
 		t.Errorf("Unexpected coordinates, want [1:-1] but return [%d:%d]", lon, lat)
 	}
 }
+
+func TestParseBool(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"true value", "t", true},
+		{"false value empty", "", false},
+		{"false value f", "f", false},
+		{"false value false", "false", false},
+		{"false value 0", "0", false},
+		{"false value 1", "1", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseBool(tt.input)
+			if result != tt.expected {
+				t.Errorf("parseBool(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseUint8(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected uint8
+	}{
+		{"zero", "0", 0},
+		{"one", "1", 1},
+		{"max value", "255", 255},
+		{"overflow", "256", 0},
+		{"large overflow", "1000", 0},
+		{"negative", "-1", 0},
+		{"invalid", "abc", 0},
+		{"empty", "", 0},
+		{"float", "12.5", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseUint8(tt.input)
+			if result != tt.expected {
+				t.Errorf("ParseUint8(%q) = %d, want %d", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseUint16(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected uint16
+	}{
+		{"zero", "0", 0},
+		{"one", "1", 1},
+		{"max value", "65535", 65535},
+		{"overflow", "65536", 0},
+		{"large overflow", "100000", 0},
+		{"negative", "-1", 0},
+		{"invalid", "abc", 0},
+		{"empty", "", 0},
+		{"float", "12.5", 0},
+		{"port 777", "777", 777},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseUint16(tt.input)
+			if result != tt.expected {
+				t.Errorf("ParseUint16(%q) = %d, want %d", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseUint32(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected uint32
+	}{
+		{"zero", "0", 0},
+		{"one", "1", 1},
+		{"max value", "4294967295", 4294967295},
+		{"overflow", "4294967296", 0},
+		{"large overflow", "9999999999", 0},
+		{"negative", "-1", 0},
+		{"invalid", "abc", 0},
+		{"empty", "", 0},
+		{"float", "12.5", 0},
+		{"version 218", "218", 218},
+		{"build 150779", "150779", 150779},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseUint32(tt.input)
+			if result != tt.expected {
+				t.Errorf("parseUint32(%q) = %d, want %d", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseFloat64(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected float64
+	}{
+		{"zero", "0", 0.0},
+		{"one", "1", 1.0},
+		{"negative", "-1", -1.0},
+		{"decimal", "2.3", 2.3},
+		{"negative decimal", "-2.3", -2.3},
+		{"large decimal", "2.300000", 2.3},
+		{"night accel", "6.800000", 6.8},
+		{"invalid", "abc", 0.0},
+		{"empty", "", 0.0},
+		{"scientific", "1e5", 100000.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseFloat64(tt.input)
+			if result != tt.expected {
+				t.Errorf("parseFloat64(%q) = %f, want %f", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestParseCoordinatesTable(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectedLon int32
+		expectedLat int32
+	}{
+		{"both positive", "1-1", 1, 1},
+		{"lon negative", "-1-1", -1, 1},
+		{"lat negative", "1--1", 1, -1},
+		{"both negative", "-1--1", -1, -1},
+		{"large values", "2147483647--2147483648", 2147483647, -2147483648},
+		{"zero", "0-0", 0, 0},
+		{"invalid format", "abc", 0, 0},
+		{"empty", "", 0, 0},
+		{"single number", "123", 0, 0},
+		{"no dash", "123456", 0, 0},
+		{"multiple dashes", "1-2-3", 1, 2}, // fmt.Sscanf reads only first two numbers
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lon, lat := parseCoordinates(tt.input)
+			if lon != tt.expectedLon || lat != tt.expectedLat {
+				t.Errorf("parseCoordinates(%q) = [%d:%d], want [%d:%d]", tt.input, lon, lat, tt.expectedLon, tt.expectedLat)
+			}
+		})
+	}
+}
+
+func TestParseTable(t *testing.T) {
+	tests := []struct {
+		name        string
+		appID       uint64
+		keywords    []string
+		expectError bool
+		expectType  string
+	}{
+		{
+			name:        "Arma3 valid",
+			appID:       107410,
+			keywords:    []string{"bt", "r218"},
+			expectError: false,
+			expectType:  "*keywords.Arma3",
+		},
+		{
+			name:        "DayZ valid",
+			appID:       1024020,
+			keywords:    []string{"battleye", "shard001"},
+			expectError: false,
+			expectType:  "*keywords.DayZ",
+		},
+		{
+			name:        "unsupported appID",
+			appID:       1337,
+			keywords:    []string{"some"},
+			expectError: true,
+			expectType:  "",
+		},
+		{
+			name:        "empty keywords",
+			appID:       107410,
+			keywords:    []string{},
+			expectError: false,
+			expectType:  "*keywords.Arma3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Parse(tt.appID, tt.keywords)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Parse() expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Parse() unexpected error: %v", err)
+				return
+			}
+
+			if result == nil {
+				t.Errorf("Parse() returned nil result")
+				return
+			}
+
+			gotType := fmt.Sprintf("%T", result)
+			if gotType != tt.expectType {
+				t.Errorf("Parse() returned type %s, want %s", gotType, tt.expectType)
+			}
+		})
+	}
+}
