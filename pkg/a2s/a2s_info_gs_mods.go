@@ -1,39 +1,38 @@
 package a2s
 
 import (
-	"bytes"
-	"fmt"
+	"errors"
 
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Read buffer and return ModInfo struct for GoldSource protocol (Obsolete)
-func readGoldSourceMods(buf *bytes.Buffer) (*ModInfo, error) {
+// readGoldSourceMods parses mod information from GoldSource protocol (obsolete).
+func readGoldSourceMods(r *bread.Reader) (*ModInfo, error) {
 	info := &ModInfo{}
 
 	var err error
-	if info.Link, err = bread.String(buf); err != nil {
-		return nil, fmt.Errorf("link: %w", err)
+	if info.Link, err = r.String(); err != nil {
+		return nil, errors.Join(ErrInfoGSModLink, err)
 	}
 
-	if info.DownloadLink, err = bread.String(buf); err != nil {
-		return nil, fmt.Errorf("download link: %w", err)
+	if info.DownloadLink, err = r.String(); err != nil {
+		return nil, errors.Join(ErrInfoGSModDownloadLink, err)
 	}
 
-	if info.Version, err = bread.Uint32(buf); err != nil {
-		return nil, fmt.Errorf("version: %w", err)
+	if info.Version, err = r.Uint32(); err != nil {
+		return nil, errors.Join(ErrInfoGSModVersion, err)
 	}
 
-	if info.Size, err = bread.Uint32(buf); err != nil {
-		return nil, fmt.Errorf("size: %w", err)
+	if info.Size, err = r.Uint32(); err != nil {
+		return nil, errors.Join(ErrInfoGSModSize, err)
 	}
 
-	if info.Type, err = bread.Bool(buf); err != nil {
-		return nil, fmt.Errorf("type: %w", err)
+	if info.Type, err = r.Bool(); err != nil {
+		return nil, errors.Join(ErrInfoGSModType, err)
 	}
 
-	if info.DLL, err = bread.Bool(buf); err != nil {
-		return nil, fmt.Errorf("DLL: %w", err)
+	if info.DLL, err = r.Bool(); err != nil {
+		return nil, errors.Join(ErrInfoGSModDLL, err)
 	}
 
 	return info, nil

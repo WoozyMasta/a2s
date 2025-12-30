@@ -1,92 +1,91 @@
 package a2s
 
 import (
-	"bytes"
-	"fmt"
+	"errors"
 
 	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Read buffer for populate Info struct for Source protocol
-func (i *Info) readSourceInfo(buf *bytes.Buffer) error {
+// readSourceInfo parses Source protocol A2S_INFO response.
+func (i *Info) readSourceInfo(r *bread.Reader) error {
 	var err error
 
-	if i.Protocol, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("protocol: %w", err)
+	if i.Protocol, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoProtocol, err)
 	}
 
-	if i.Name, err = bread.String(buf); err != nil {
-		return fmt.Errorf("server name: %w", err)
+	if i.Name, err = r.String(); err != nil {
+		return errors.Join(ErrInfoServerName, err)
 	}
 
-	if i.Map, err = bread.String(buf); err != nil {
-		return fmt.Errorf("map name: %w", err)
+	if i.Map, err = r.String(); err != nil {
+		return errors.Join(ErrInfoMapName, err)
 	}
 
-	if i.Folder, err = bread.String(buf); err != nil {
-		return fmt.Errorf("folder name: %w", err)
+	if i.Folder, err = r.String(); err != nil {
+		return errors.Join(ErrInfoFolderName, err)
 	}
 
-	if i.Game, err = bread.String(buf); err != nil {
-		return fmt.Errorf("game name: %w", err)
+	if i.Game, err = r.String(); err != nil {
+		return errors.Join(ErrInfoGameName, err)
 	}
 
-	id, err := bread.Uint16(buf)
+	id, err := r.Uint16()
 	if err != nil {
-		return fmt.Errorf("game ID: %w", err)
+		return errors.Join(ErrInfoGameID, err)
 	}
 	i.ID = uint64(id)
 
-	if i.Players, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("player count: %w", err)
+	if i.Players, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoPlayerCount, err)
 	}
 
-	if i.MaxPlayers, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("max player count: %w", err)
+	if i.MaxPlayers, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoMaxPlayerCount, err)
 	}
 
-	if i.Bots, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("bots count: %w", err)
+	if i.Bots, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoBotsCount, err)
 	}
 
-	serverType, err := bread.Byte(buf)
+	serverType, err := r.Byte()
 	if err != nil {
-		return fmt.Errorf("server type: %w", err)
+		return errors.Join(ErrInfoServerType, err)
 	}
 	i.ServerType = ServerType(serverType)
 
-	environment, err := bread.Byte(buf)
+	environment, err := r.Byte()
 	if err != nil {
-		return fmt.Errorf("environment type: %w", err)
+		return errors.Join(ErrInfoEnvironment, err)
 	}
 	i.Environment = Environment(environment)
 
-	if i.Visibility, err = bread.Bool(buf); err != nil {
-		return fmt.Errorf("server visibility: %w", err)
+	if i.Visibility, err = r.Bool(); err != nil {
+		return errors.Join(ErrInfoVisibility, err)
 	}
 
-	if i.VAC, err = bread.Bool(buf); err != nil {
-		return fmt.Errorf("VAC status: %w", err)
+	if i.VAC, err = r.Bool(); err != nil {
+		return errors.Join(ErrInfoVAC, err)
 	}
 
 	if i.ID == appid.TheShip.Uint64() {
-		if i.TheShip, err = readTheShipInfo(buf); err != nil {
-			return fmt.Errorf("TheShip data: %w", err)
+		if i.TheShip, err = readTheShipInfo(r); err != nil {
+			return errors.Join(ErrInfoTheShip, err)
 		}
 	}
 
-	if i.Version, err = bread.String(buf); err != nil {
-		return fmt.Errorf("version: %w", err)
+	if i.Version, err = r.String(); err != nil {
+		return errors.Join(ErrInfoVersion, err)
 	}
 
-	edf, err := bread.Byte(buf)
+	edf, err := r.Byte()
 	if err != nil {
-		return fmt.Errorf("extra data flag: %w", err)
+		return errors.Join(ErrInfoEDF, err)
 	}
 	if edf != 0 {
-		if err := i.readEDF(buf, EDF(edf)); err != nil {
-			return fmt.Errorf("EDF: %w", err)
+		if err := i.readEDF(r, EDF(edf)); err != nil {
+			return errors.Join(ErrInfoEDF, err)
 		}
 	}
 

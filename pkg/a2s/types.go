@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 )
 
-// Flag represents the bytes for the request and response type in the header
+// Flag represents request/response type byte in A2S protocol header.
 type Flag byte
 
-// EDF represents the bytes for Extra Data Flag (EDF) in A2S_INFO response
+// EDF represents Extra Data Flag bits in A2S_INFO response.
 type EDF byte
 
-// InfoFormat represents the bytes for engine type: Source or GoldSource in A2S_INFO response
+// InfoFormat represents engine type (Source or GoldSource) in A2S_INFO response.
 type InfoFormat byte
 
 func (i InfoFormat) String() string {
@@ -24,7 +24,7 @@ func (i InfoFormat) String() string {
 	return "unknown"
 }
 
-// MarshalJSON helper for convert internal type to string in JSON
+// MarshalJSON converts InfoFormat to JSON string.
 func (i InfoFormat) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.String())
 }
@@ -45,12 +45,12 @@ func (s ServerType) String() string {
 	return "Unknown"
 }
 
-// MarshalJSON helper for convert internal type to string in JSON
+// MarshalJSON converts ServerType to JSON string.
 func (s ServerType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.String())
 }
 
-// Environment represents the bytes for server OS: Linux, Windows, Mac or Other in A2S_INFO response
+// Environment represents server operating system in A2S_INFO response.
 type Environment byte
 
 func (e Environment) String() string {
@@ -68,12 +68,12 @@ func (e Environment) String() string {
 	return "Unknown"
 }
 
-// MarshalJSON helper for convert internal type to string in JSON
+// MarshalJSON converts Environment to JSON string.
 func (e Environment) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.String())
 }
 
-// TheShipMode represents the bytes for TheShip game extra mode info in A2S_INFO response
+// TheShipMode represents game mode for The Ship game in A2S_INFO response.
 type TheShipMode byte
 
 func (m TheShipMode) String() string {
@@ -95,7 +95,7 @@ func (m TheShipMode) String() string {
 	return "Unknown"
 }
 
-// MarshalJSON helper for convert internal type to string in JSON
+// MarshalJSON converts TheShipMode to JSON string.
 func (m TheShipMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.String())
 }

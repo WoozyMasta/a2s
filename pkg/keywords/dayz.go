@@ -1,7 +1,6 @@
 package keywords
 
 import (
-	"strings"
 	"time"
 )
 
@@ -35,7 +34,7 @@ func ParseDayZ(keywords []string) *DayZ {
 // Parse A2S INFO gametype data for DayZ
 func (d *DayZ) Parse(keywords []string) {
 	for _, tag := range keywords {
-		if tag == "" {
+		if len(tag) == 0 {
 			continue
 		}
 
@@ -52,22 +51,22 @@ func (d *DayZ) Parse(keywords []string) {
 		case tag == "privHive":
 			d.PrivateHive = true
 
-		case strings.HasPrefix(tag, "shard"):
-			d.Shard = strings.TrimPrefix(tag, "shard")
+		case len(tag) > 5 && tag[:5] == "shard":
+			d.Shard = tag[5:]
 
-		case strings.HasPrefix(tag, "lqs"):
+		case len(tag) > 3 && tag[:3] == "lqs":
 			d.PlayersQueue = ParseUint8(tag[3:])
 
-		case strings.HasPrefix(tag, "etm"):
+		case len(tag) > 3 && tag[:3] == "etm":
 			d.TimeDayAccel = parseFloat64(tag[3:])
 
-		case strings.HasPrefix(tag, "entm"):
+		case len(tag) > 4 && tag[:4] == "entm":
 			d.TimeNightAccel = parseFloat64(tag[4:])
 
 		case tag == "mod":
 			d.Modded = true
 
-		case strings.HasPrefix(tag, "port"):
+		case len(tag) > 4 && tag[:4] == "port":
 			d.GamePort = ParseUint16(tag[4:])
 
 		case tag == "whitelisting":
@@ -79,7 +78,7 @@ func (d *DayZ) Parse(keywords []string) {
 		case tag == "isDLC":
 			d.DLC = true
 
-		case len(tag) == 5 && strings.Contains(tag, ":"):
+		case len(tag) == 5 && tag[2] == ':':
 			if t, err := time.ParseDuration(tag[:2] + "h" + tag[3:] + "m"); err == nil {
 				d.Time = t
 			}

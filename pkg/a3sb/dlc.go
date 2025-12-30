@@ -1,8 +1,8 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
+	"math/bits"
 
 	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/steam/utils/appid"
@@ -46,10 +46,8 @@ var arma3DLC = map[DLC]DLCInfo{
 	0x1000: {ID: 1325500, Name: "Art of War"},
 }
 
-// Read DLC from Arma 3 server browser proto
-func (r *Rules) readDLC(buf *bytes.Buffer, dlcMask uint16) error {
-	var dlcHashes []uint32
-
+// readDLC parses DLC information from bitmask and reads hashes.
+func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 	switch r.id {
 	case appid.Arma3.Uint64():
 		r.DLC = parseDLC(dlcMask, arma3DLC)
@@ -59,27 +57,32 @@ func (r *Rules) readDLC(buf *bytes.Buffer, dlcMask uint16) error {
 		r.DLC = parseDLC(dlcMask, map[DLC]DLCInfo{})
 	}
 
-	// Read DLC 4-byte hashes and store them
-	for i := 0; i < len(r.DLC); i++ {
-		hash, err := bread.Uint32(buf)
+	dlcCount := len(r.DLC)
+	if dlcCount == 0 {
+		return nil
+	}
+
+	for i := 0; i < dlcCount; i++ {
+		hash, err := reader.Uint32()
 		if err != nil {
 			return err
 		}
-		dlcHashes = append(dlcHashes, hash)
-	}
-
-	// Assign hashes to corresponding DLCInfo structs
-	for i := 0; i < len(r.DLC) && i < len(dlcHashes); i++ {
-		r.DLC[i].Hash = dlcHashes[i]
+		r.DLC[i].Hash = hash
 	}
 
 	return nil
 }
 
-// Parser for DLC mask
+// parseDLC parses DLC bitmask into DLCInfo slice.
 func parseDLC(mask uint16, dlcs map[DLC]DLCInfo) []DLCInfo {
 	dlc := DLC(mask)
-	var result []DLCInfo
+
+	bitCount := bits.OnesCount16(uint16(dlc))
+	if bitCount == 0 {
+		return nil
+	}
+
+	result := make([]DLCInfo, 0, bitCount)
 
 	// Processing of known DLCs
 	for bit, info := range dlcs {

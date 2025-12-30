@@ -6,10 +6,10 @@ import (
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
-// Parse DayZ specific rules from A2S_RULES keywords
+// parseRulesDayZ parses DayZ-specific rules from A2S_RULES key-value pairs.
 func (r *Rules) parseRulesDayZ(data map[string]string) error {
 	var err error
-	var extra = make(map[string]string)
+	var extra map[string]string
 
 	for k, v := range data {
 		switch k {
@@ -67,6 +67,9 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			}
 
 		default:
+			if extra == nil {
+				extra = make(map[string]string, 4)
+			}
 			extra[k] = v
 		}
 	}
@@ -78,7 +81,6 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 	return nil
 }
 
-// Parse string as uint16
 func strToUint16(str string) (uint16, error) {
 	number, err := strconv.ParseUint(str, 10, 16)
 	if err != nil {

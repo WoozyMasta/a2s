@@ -2,10 +2,11 @@ package a2s
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
-// Checks the packet header and returns true if the response is multi-packet
+// isMultiPacket checks if response uses multi-packet format.
 func isMultiPacket(data []byte) (bool, error) {
 	header := binary.LittleEndian.Uint32(data[:4])
 
@@ -23,40 +24,40 @@ func isMultiPacket(data []byte) (bool, error) {
 		return true, nil
 
 	default:
-		return false, fmt.Errorf("%w in header: 0x%X", ErrWrongByte, header)
+		return false, errors.Join(ErrValidatorHeader, fmt.Errorf("0x%X", header))
 	}
 }
 
-// Checks the response type in the packet against the type that was sent
+// validateResponseType verifies response type matches the request type.
 func validateResponseType(request, response Flag) error {
 	switch request {
 	case InfoRequest:
 		if response != infoResponseSource && response != infoResponseGoldSource {
-			return fmt.Errorf("%w: 0x%X for A2S_INFO", ErrWrongByte, response)
+			return errors.Join(ErrValidatorInfo, fmt.Errorf("0x%X", response))
 		}
 
 	case PlayerRequest:
 		if response != playerResponse {
-			return fmt.Errorf("%w: 0x%X for A2S_PLAYER", ErrWrongByte, response)
+			return errors.Join(ErrValidatorPlayer, fmt.Errorf("0x%X", response))
 		}
 
 	case RulesRequest:
 		if response != rulesResponse {
-			return fmt.Errorf("%w: 0x%X for A2S_RULES", ErrWrongByte, response)
+			return errors.Join(ErrValidatorRules, fmt.Errorf("0x%X", response))
 		}
 
 	case PingRequest:
 		if response != pingResponse {
-			return fmt.Errorf("%w: 0x%X for A2A_PING", ErrWrongByte, response)
+			return errors.Join(ErrValidatorPing, fmt.Errorf("0x%X", response))
 		}
 
 	case ChallengeRequest:
 		if response != challengeResponse {
-			return fmt.Errorf("%w: 0x%X for A2S_SERVERQUERY_GETCHALLENGE", ErrWrongByte, response)
+			return errors.Join(ErrValidatorChallenge, fmt.Errorf("0x%X", response))
 		}
 
 	default:
-		return fmt.Errorf("%w: 0x%X", ErrWrongRequest, request)
+		return errors.Join(ErrValidatorRequest, fmt.Errorf("0x%X", request))
 	}
 
 	return nil

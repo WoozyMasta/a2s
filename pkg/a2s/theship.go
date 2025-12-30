@@ -1,21 +1,20 @@
 package a2s
 
 import (
-	"bytes"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// TheShip A2S_INFO additional data
+// TheShip contains additional game-specific data for The Ship game.
 type TheShip struct {
 	Mode      TheShipMode `json:"mode"`
 	Witnesses byte        `json:"witnesses"`
 	Duration  byte        `json:"duration"`
 }
 
-// TheShipPlayer A2S_PLAYER additional data
+// TheShipPlayer contains player data with additional fields for The Ship game.
 type TheShipPlayer struct {
 	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
@@ -25,67 +24,73 @@ type TheShipPlayer struct {
 	Index    byte          `json:"index,omitempty"`
 }
 
-// Read extra info for TheShip game for A2S_INFO
-func readTheShipInfo(buf *bytes.Buffer) (*TheShip, error) {
+// readTheShipInfo parses The Ship game-specific data from A2S_INFO response.
+func readTheShipInfo(r *bread.Reader) (*TheShip, error) {
 	theShip := &TheShip{}
 
-	mode, err := bread.Byte(buf)
+	mode, err := r.Byte()
 	if err != nil {
 		return nil, err
 	}
 	theShip.Mode = TheShipMode(mode)
 
-	if theShip.Witnesses, err = bread.Byte(buf); err != nil {
+	if theShip.Witnesses, err = r.Byte(); err != nil {
 		return nil, err
 	}
 
-	if theShip.Duration, err = bread.Byte(buf); err != nil {
+	if theShip.Duration, err = r.Byte(); err != nil {
 		return nil, err
 	}
 
 	return theShip, nil
 }
 
-// GetTheShipPlayers return A2S_PLAYER for TheShip game
+// GetTheShipPlayers queries player list with The Ship game-specific fields (A2S_PLAYER).
 func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
 	data, _, _, err := c.Get(PlayerRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := bytes.NewBuffer(data)
-	count, err := bread.Byte(buf)
+	if cap(c.parseData) < len(data) {
+		c.parseData = make([]byte, len(data)+64)
+	}
+	c.parseData = c.parseData[:len(data)]
+	copy(c.parseData, data)
+
+	reader := bread.NewReader(c.parseData)
+	count, err := reader.Byte()
 	if err != nil {
-		return nil, fmt.Errorf("%w count: %w", ErrPlayerRead, err)
+		return nil, errors.Join(ErrPlayerCount, err)
 	}
 
-	players := []TheShipPlayer{}
+	players := make([]TheShipPlayer, 0, int(count))
 
 	for i := 0; i < int(count); i++ {
 		player := TheShipPlayer{}
 
-		if player.Index, err = bread.Byte(buf); err != nil {
-			return nil, fmt.Errorf("%w index: %w", ErrPlayerRead, err)
+		if player.Index, err = reader.Byte(); err != nil {
+			return nil, errors.Join(ErrPlayerIndex, err)
 		}
 
-		if player.Name, err = bread.String(buf); err != nil {
-			return nil, fmt.Errorf("%w name: %w", ErrPlayerRead, err)
+		if player.Name, err = reader.String(); err != nil {
+			return nil, errors.Join(ErrPlayerName, err)
 		}
 
-		if player.Score, err = bread.Uint32(buf); err != nil {
-			return nil, fmt.Errorf("%w score: %w", ErrPlayerRead, err)
+		if player.Score, err = reader.Uint32(); err != nil {
+			return nil, errors.Join(ErrPlayerScore, err)
 		}
 
-		if player.Duration, err = bread.Duration32(buf); err != nil {
-			return nil, fmt.Errorf("%w duration: %w", ErrPlayerRead, err)
+		if player.Duration, err = reader.Duration32(); err != nil {
+			return nil, errors.Join(ErrPlayerDuration, err)
 		}
 
-		if player.Deaths, err = bread.Uint32(buf); err != nil {
-			return nil, fmt.Errorf("%w deaths: %w", ErrPlayerRead, err)
+		if player.Deaths, err = reader.Uint32(); err != nil {
+			return nil, errors.Join(ErrPlayerDeaths, err)
 		}
 
-		if player.Money, err = bread.Uint32(buf); err != nil {
-			return nil, fmt.Errorf("%w money: %w", ErrPlayerRead, err)
+		if player.Money, err = reader.Uint32(); err != nil {
+			return nil, errors.Join(ErrPlayerMoney, err)
 		}
 
 		players = append(players, player)
