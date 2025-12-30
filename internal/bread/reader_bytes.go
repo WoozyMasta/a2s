@@ -151,6 +151,18 @@ func (r *Reader) BytesPage() ([]byte, error) {
 	return result, nil
 }
 
+// StringLen reads a string of specified length
+// Returns the string without allocation (Go optimizes string([]byte))
+func (r *Reader) StringLen(size int) (string, error) {
+	if r.pos+size > len(r.data) {
+		return "", ErrUnderflow
+	}
+
+	str := string(r.data[r.pos : r.pos+size])
+	r.pos += size
+	return str, nil
+}
+
 // Duration32 reads float32 and converts to time.Duration
 func (r *Reader) Duration32() (time.Duration, error) {
 	f, err := r.Float32()

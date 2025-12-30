@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -56,24 +55,24 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 		return nil, err
 	}
 
-	buf := bytes.NewBuffer(data)
+	reader := bread.NewReader(data)
 
 	// Get A2S_RULES records count
-	count, err := bread.Uint16(buf)
+	count, err := reader.Uint16()
 	if err != nil {
 		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data[:4])
 	}
 
 	var a3sb []byte
 	var rawRules = make(map[string]string)
-	rules := &Rules{id: game, stats: [4]byte{buf.Bytes()[1], 0, 0, 0}}
+	rules := &Rules{id: game, stats: [4]byte{data[1], 0, 0, 0}}
 
 	for i := 0; i < int(count); i++ {
-		key, err := bread.BytesPage(buf)
+		key, err := reader.BytesPage()
 		if err != nil {
 			return nil, fmt.Errorf("%w key: %w", ErrRules, err)
 		}
-		value, err := bread.BytesPage(buf)
+		value, err := reader.BytesPage()
 		if err != nil {
 			return nil, fmt.Errorf("%w value: %w", ErrRules, err)
 		}
@@ -103,7 +102,7 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 		}
 	}
 
-	if buf.Len() != 0 {
+	if reader.Len() != 0 {
 		return nil, ErrRulesDataRemains
 	}
 
@@ -120,56 +119,59 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 
 // Read Arma 3 server browser protocol from merged and prepared data
 func (r *Rules) readA3SB(data []byte) error {
-	buf := bytes.NewBuffer(data)
+	reader := bread.NewReader(data)
 	var err error
 
-	if err := r.readVersion(buf); err != nil {
+	if err := r.readVersion(reader); err != nil {
 		return fmt.Errorf("%w: %w", ErrVersion, err)
 	}
 
-	if err := r.readFlags(buf); err != nil {
+	if err := r.readFlags(reader); err != nil {
 		return fmt.Errorf("%w: %w", ErrFlags, err)
 	}
 
-	dlcMask, err := bread.Uint16(buf)
+	dlcMask, err := reader.Uint16()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDLC, err)
 	}
 
-	if err := r.readDifficulty(buf); err != nil {
+	if err := r.readDifficulty(reader); err != nil {
 		return fmt.Errorf("%w: %w", ErrDifficulty, err)
 	}
 
 	if dlcMask != 0 {
-		if err := r.readDLC(buf, dlcMask); err != nil {
+		if err := r.readDLC(reader, dlcMask); err != nil {
 			return fmt.Errorf("%w: %w", ErrDLC, err)
 		}
 	}
 
-	if err := r.readMods(buf); err != nil {
+	if err := r.readMods(reader); err != nil {
 		return fmt.Errorf("%w: %w", ErrMod, err)
 	}
 
-	if err := r.readSignatures(buf); err != nil {
+	if err := r.readSignatures(reader); err != nil {
 		return fmt.Errorf("%w: %w", ErrSignature, err)
 	}
 
 	// Stop here for arma3
-	if buf.Len() == 0 {
+	if reader.Len() == 0 {
 		return nil
 	}
 
 	// Read DayZ server description
-	descLen, err := bread.Byte(buf)
+	descLen, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("%w length: %w", ErrDescription, err)
 	}
-	if r.Description, err = bread.StringLen(buf, int(descLen)); err != nil {
+	if r.Description, err = reader.StringLen(int(descLen)); err != nil {
 		return fmt.Errorf("%w: %w", ErrDescription, err)
 	}
 
-	if buf.Len() > 0 {
-		return fmt.Errorf("%w: 0x%X (%s)", ErrRulesDataRemains, buf.Bytes(), buf.Bytes())
+	if reader.Len() > 0 {
+		// Get remaining bytes for error message
+		pos := reader.Pos()
+		remaining := data[pos:]
+		return fmt.Errorf("%w: 0x%X (%s)", ErrRulesDataRemains, remaining, remaining)
 	}
 
 	return nil

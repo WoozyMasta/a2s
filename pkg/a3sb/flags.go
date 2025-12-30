@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -21,8 +20,8 @@ type Flags struct {
 
 // Read flags from Arma 3 server browser proto
 // i don't know what is it
-func (r *Rules) readFlags(buf *bytes.Buffer) error {
-	value, err := bread.Byte(buf)
+func (r *Rules) readFlags(reader *bread.Reader) error {
+	value, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("flags: %w", err)
 	}

@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -25,8 +24,8 @@ and v3 is the response for Arma 3 if the game was not specified explicitly.
 [Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 [Protocol v2]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol2
 */
-func (r *Rules) readVersion(buf *bytes.Buffer) error {
-	version, err := bread.Byte(buf)
+func (r *Rules) readVersion(reader *bread.Reader) error {
+	version, err := reader.Byte()
 	if err != nil {
 		return err
 	}

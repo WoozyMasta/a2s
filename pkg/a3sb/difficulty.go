@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -27,12 +26,12 @@ type Difficulty struct {
 }
 
 // Read difficulty from Arma 3 server browser proto
-func (r *Rules) readDifficulty(buf *bytes.Buffer) error {
+func (r *Rules) readDifficulty(reader *bread.Reader) error {
 	if r.id != appid.Arma3.Uint64() {
 		return nil
 	}
 
-	value, err := bread.Byte(buf)
+	value, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("first byte: %w", err)
 	}
@@ -47,7 +46,7 @@ func (r *Rules) readDifficulty(buf *bytes.Buffer) error {
 		ThirdPerson:   value&(1<<7) != 0,         // Checking bit 7
 	}
 
-	crosshair, err := bread.Byte(buf)
+	crosshair, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("second byte: %w", err)
 	}

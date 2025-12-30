@@ -1,7 +1,6 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -47,7 +46,7 @@ var arma3DLC = map[DLC]DLCInfo{
 }
 
 // Read DLC from Arma 3 server browser proto
-func (r *Rules) readDLC(buf *bytes.Buffer, dlcMask uint16) error {
+func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 	var dlcHashes []uint32
 
 	switch r.id {
@@ -61,7 +60,7 @@ func (r *Rules) readDLC(buf *bytes.Buffer, dlcMask uint16) error {
 
 	// Read DLC 4-byte hashes and store them
 	for i := 0; i < len(r.DLC); i++ {
-		hash, err := bread.Uint32(buf)
+		hash, err := reader.Uint32()
 		if err != nil {
 			return err
 		}

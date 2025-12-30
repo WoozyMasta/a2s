@@ -1,15 +1,14 @@
 package a3sb
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
 // Read signatures from Arma 3 server browser proto
-func (r *Rules) readSignatures(buf *bytes.Buffer) error {
-	signCount, err := bread.Byte(buf)
+func (r *Rules) readSignatures(reader *bread.Reader) error {
+	signCount, err := reader.Byte()
 	if err != nil {
 		return err
 	}
@@ -19,7 +18,7 @@ func (r *Rules) readSignatures(buf *bytes.Buffer) error {
 	}
 
 	for i := 0; i < int(signCount); i++ {
-		signLen, err := bread.Byte(buf)
+		signLen, err := reader.Byte()
 		if err != nil {
 			return fmt.Errorf("%d length: %w", i, err)
 		}
@@ -27,7 +26,7 @@ func (r *Rules) readSignatures(buf *bytes.Buffer) error {
 			continue
 		}
 
-		signature, err := bread.StringLen(buf, int(signLen))
+		signature, err := reader.StringLen(int(signLen))
 		if err != nil {
 			return fmt.Errorf("%d name: %w", i, err)
 		}
