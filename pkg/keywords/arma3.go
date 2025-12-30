@@ -43,77 +43,85 @@ func ParseArma3(keywords []string) *Arma3 {
 
 // Parse A2S INFO gametype data for Arma3
 func (d *Arma3) Parse(keywords []string) {
+	if len(keywords) > 0 {
+		d.Unknowns = make([]string, 0, len(keywords)/10+1)
+	}
+
 	for _, tag := range keywords {
-		if tag == "" {
+		if len(tag) == 0 {
 			continue
 		}
 
-		val := string([]rune(tag)[1:])
+		firstByte := tag[0]
+		if len(tag) > 1 {
+			val := tag[1:]
+			switch firstByte {
+			case 'b':
+				d.BattlEye = parseBool(val)
 
-		switch string([]rune(tag)[0]) {
-		case "b":
-			d.BattlEye = parseBool(val)
+			case 'r':
+				d.RequiredVersion = parseUint32(val)
 
-		case "r":
-			d.RequiredVersion = parseUint32(val)
+			case 'n':
+				d.RequiredBuildNo = parseUint32(val)
 
-		case "n":
-			d.RequiredBuildNo = parseUint32(val)
+			case 's':
+				d.ServerState = types.ServerState(ParseUint8(val))
 
-		case "s":
-			d.ServerState = types.ServerState(ParseUint8(val))
+			case 'i':
+				d.Difficulty = ParseUint8(val)
 
-		case "i":
-			d.Difficulty = ParseUint8(val)
+			case 'm':
+				d.EqualModRequired = parseBool(val)
 
-		case "m":
-			d.EqualModRequired = parseBool(val)
+			case 'l':
+				d.Lock = parseBool(val)
 
-		case "l":
-			d.Lock = parseBool(val)
+			case 'v':
+				d.VerifySignatures = parseBool(val)
 
-		case "v":
-			d.VerifySignatures = parseBool(val)
+			case 'd':
+				d.Dedicated = parseBool(val)
 
-		case "d":
-			d.Dedicated = parseBool(val)
+			case 't':
+				d.GameType = types.GameType(val)
 
-		case "t":
-			d.GameType = types.GameType(val)
+			case 'g':
+				d.Language = types.ServerLang(parseUint32(val))
 
-		case "g":
-			d.Language = types.ServerLang(parseUint32(val))
+			case 'c':
+				d.Longitude, d.Latitude = parseCoordinates(val)
 
-		case "c":
-			d.Longitude, d.Latitude = parseCoordinates(val)
+			case 'p':
+				d.Platform = types.Platform(val)
 
-		case "p":
-			d.Platform = types.Platform(val)
+			case 'h':
+				d.LoadedContentHash = val
 
-		case "h":
-			d.LoadedContentHash = val
+			case 'o':
+				d.Country = val
 
-		case "o":
-			d.Country = val
+			case 'e':
+				if t, err := time.ParseDuration(val + "m"); err == nil {
+					d.TimeLeft = t
+				}
 
-		case "e":
-			if t, err := time.ParseDuration(val + "m"); err == nil {
-				d.TimeLeft = t
+			case 'j':
+				d.Param1 = ParseUint8(val)
+
+			case 'k':
+				d.Param2 = ParseUint8(val)
+
+			case 'f':
+				d.AllowedFilePatching = parseBool(val)
+
+			case 'y':
+				d.Island = val
+
+			default:
+				d.Unknowns = append(d.Unknowns, tag)
 			}
-
-		case "j":
-			d.Param1 = ParseUint8(val)
-
-		case "k":
-			d.Param1 = ParseUint8(val)
-
-		case "f":
-			d.AllowedFilePatching = parseBool(val)
-
-		case "y":
-			d.Island = val
-
-		default:
+		} else {
 			d.Unknowns = append(d.Unknowns, tag)
 		}
 	}

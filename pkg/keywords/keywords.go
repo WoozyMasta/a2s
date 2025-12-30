@@ -80,11 +80,70 @@ func parseFloat64(val string) float64 {
 //   - longitude as int32
 //   - latitude as int32
 func parseCoordinates(val string) (int32, int32) {
-	var lon, lat int32
-	n, err := fmt.Sscanf(val, "%d-%d", &lon, &lat)
-	if err != nil || n != 2 {
+	dashIdx := -1
+	for i := 1; i < len(val); i++ {
+		if val[i] == '-' {
+			if val[i-1] >= '0' && val[i-1] <= '9' {
+				dashIdx = i
+				break
+			}
+		}
+	}
+
+	if dashIdx <= 0 || dashIdx >= len(val)-1 {
+		return 0, 0
+	}
+
+	lonStr := val[:dashIdx]
+	latStr := val[dashIdx+1:]
+
+	lon, err1 := parseInt32(lonStr)
+	lat, err2 := parseInt32(latStr)
+
+	if err1 != nil || err2 != nil {
 		return 0, 0
 	}
 
 	return lon, lat
+}
+
+// parseInt32 parses a string into int32.
+func parseInt32(s string) (int32, error) {
+	if len(s) == 0 {
+		return 0, strconv.ErrSyntax
+	}
+
+	neg := false
+	start := 0
+	if s[0] == '-' {
+		neg = true
+		start = 1
+		if len(s) == 1 {
+			return 0, strconv.ErrSyntax
+		}
+	}
+
+	var n int32
+	for i := start; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			break // Stop at first non-digit (for cases like "2-3")
+		}
+
+		digit := int32(s[i] - '0')
+		if neg && n == 214748364 && digit == 8 && i == len(s)-1 {
+			return -2147483648, nil
+		}
+
+		if n > (2147483647-digit)/10 {
+			return 0, strconv.ErrRange
+		}
+
+		n = n*10 + digit
+	}
+
+	if neg {
+		n = -n
+	}
+
+	return n, nil
 }
