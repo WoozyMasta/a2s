@@ -9,9 +9,8 @@ server information.
 Built with specific support for Arma 3 and DayZ, this tool provides a
 seamless way to retrieve essential server data.
 
-## Description
-
-Features
+<!-- markdownlint-disable-next-line MD033 -->
+## Description <br clear="right"/>
 
 A2S supports querying Steam servers using the following methods:
 
