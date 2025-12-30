@@ -10,7 +10,7 @@ func executePing(cmd *PingCommand) {
 	}
 
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer client.Close()
+	defer closeClient(client)
 
 	ping.Start(client, cmd.PingCount, cmd.PingPeriod)
 }

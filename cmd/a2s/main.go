@@ -147,6 +147,13 @@ func createClient(host, port string, timeout int, buffer uint16) *a2s.Client {
 	return client
 }
 
+// closeClient safely closes the client and logs any error.
+func closeClient(client *a2s.Client) {
+	if err := client.Close(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to close client: %s\n", err)
+	}
+}
+
 func fatal(a ...any) {
 	fmt.Fprintln(os.Stderr, a...)
 	os.Exit(1)

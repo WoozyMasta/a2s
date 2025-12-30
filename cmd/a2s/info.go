@@ -17,7 +17,7 @@ func executeInfo(cmd *InfoCommand) {
 	}
 
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer client.Close()
+	defer closeClient(client)
 
 	info, err := client.GetInfo()
 	if err != nil {

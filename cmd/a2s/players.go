@@ -13,7 +13,7 @@ func executePlayers(cmd *PlayersCommand) {
 	}
 
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer client.Close()
+	defer closeClient(client)
 
 	players, err := client.GetPlayers()
 	if err != nil {

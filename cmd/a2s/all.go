@@ -10,7 +10,7 @@ func executeAll(cmd *AllCommand) {
 	}
 
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer client.Close()
+	defer closeClient(client)
 
 	// Execute info
 	infoCmd := InfoCommand{

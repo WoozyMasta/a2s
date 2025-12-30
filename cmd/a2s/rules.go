@@ -36,7 +36,7 @@ func executeRules(cmd *RulesCommand) {
 	}
 
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer client.Close()
+	defer closeClient(client)
 
 	formatter := NewFormatter(cmd.Format)
 
@@ -45,13 +45,13 @@ func executeRules(cmd *RulesCommand) {
 	var appID uint64
 
 	// Convert game string to AppID if specified
-	if cmd.RulesOptions.Game != "" {
-		appID = gameToAppID(cmd.RulesOptions.Game)
+	if cmd.Game != "" {
+		appID = gameToAppID(cmd.Game)
 		if appID == 0 {
-			fatalf("Unknown game: %s. Supported games: arma3, dayz", cmd.RulesOptions.Game)
+			fatalf("Unknown game: %s. Supported games: arma3, dayz", cmd.Game)
 		}
 		useA3SB = true
-	} else if !cmd.RulesOptions.SkipInfo && !cmd.RulesOptions.Raw {
+	} else if !cmd.SkipInfo && !cmd.Raw {
 		// If game not specified and skip-info is not set, try to detect from server info
 		info, err := client.GetInfo()
 		if err == nil {
@@ -62,10 +62,10 @@ func executeRules(cmd *RulesCommand) {
 		}
 	}
 
-	if useA3SB && !cmd.RulesOptions.Raw {
+	if useA3SB && !cmd.Raw {
 		executeRulesA3SB(client, appID, formatter)
 	} else {
-		executeRulesStandard(client, cmd.RulesOptions.Raw, formatter)
+		executeRulesStandard(client, cmd.Raw, formatter)
 	}
 }
 
