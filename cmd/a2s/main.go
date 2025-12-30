@@ -17,7 +17,6 @@ type Options struct {
 	Rules   RulesCommand   `command:"rules" description:"Retrieve server rules A2S_RULES"`
 	All     AllCommand     `command:"all" description:"Retrieve all available server information"`
 	Ping    PingCommand    `command:"ping" description:"Ping the server with A2S_INFO"`
-	Help    bool           `short:"h" long:"help" description:"Show this help message"`
 	Version bool           `short:"v" long:"version" description:"Show version, commit, and build time"`
 }
 
@@ -87,12 +86,6 @@ func main() {
 			os.Exit(0)
 		}
 		os.Exit(1)
-	}
-
-	// Handle root-level help/version flags
-	if opts.Help {
-		p.WriteHelp(os.Stdout)
-		return
 	}
 
 	if opts.Version {
