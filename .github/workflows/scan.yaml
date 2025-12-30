@@ -19,10 +19,7 @@ jobs:
           rate_limit: 4
           update_release: true
           file_globs: |
-            a2s-cli-darwin-*
-            a2s-cli-linux-*
-            a2s-cli-windows-*.exe
-            a3sb-cli-darwin-*
-            a3sb-cli-linux-*
-            a3sb-cli-windows-*.exe
+            a2s-darwin-*
+            a2s-linux-*
+            a2s-windows-*.exe
           excluded_extensions: ".json"

@@ -13,9 +13,6 @@ jobs:
     name: Build and Release Binaries
     runs-on: ubuntu-latest
 
-    env:
-      UPX_VERSION: 4.2.4
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,18 +22,12 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Install dependencies
-        run: bash ./tools/dependencies.sh
-
       - name: Build A2S
-        run: bash ./tools/build.sh cli/a2s a2s-cli
-
-      - name: Build A3SB
-        run: bash ./tools/build.sh cli/a3sb a3sb-cli
+        run: make release
 
       - name: Extract changelog
         id: changelog
-        run: awk -f ./tools/release_notes.awk ./CHANGELOG.md > release.md
+        run: make release-notes > release.md
 
       - name: Create GitHub release
         uses: ncipollo/release-action@v1
