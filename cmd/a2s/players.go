@@ -2,19 +2,28 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/woozymasta/a2s/internal/tableprinter"
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-func printPlayers(client *a2s.Client, json bool) {
+func executePlayers(cmd *PlayersCommand) {
+	if cmd.Args.Host == "" {
+		fatal("Host must be provided")
+	}
+
+	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+	defer client.Close()
+
 	players, err := client.GetPlayers()
 	if err != nil {
 		fatalf("Failed to get players: %s", err)
 	}
 
-	if json {
-		printJSON(players)
+	formatter := NewFormatter(cmd.Format)
+
+	if formatter.ShouldUseJSON() {
+		formatter.PrintJSON(players)
 		return
 	}
 
@@ -23,6 +32,7 @@ func printPlayers(client *a2s.Client, json bool) {
 		return
 	}
 
+	// Determine which columns to show
 	counter := [4]byte{}
 	for _, player := range *players {
 		if player.Duration != 0 {
@@ -39,7 +49,7 @@ func printPlayers(client *a2s.Client, json bool) {
 		}
 	}
 
-	columns := []string{"  #"}
+	columns := []interface{}{"#"}
 	if counter[0] > 0 {
 		columns = append(columns, "PlayTime")
 	}
@@ -53,10 +63,15 @@ func printPlayers(client *a2s.Client, json bool) {
 		columns = append(columns, "Index")
 	}
 
-	table := tableprinter.NewTablePrinter(columns, "=")
+	t := table.NewWriter()
+	if formatter.IsTableFormat() {
+		t.SetOutputMirror(os.Stdout)
+	}
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row(columns))
 
 	for i, player := range *players {
-		row := []string{fmt.Sprintf("%3d", i+1)}
+		row := []interface{}{fmt.Sprintf("%d", i+1)}
 
 		if counter[0] > 0 {
 			row = append(row, player.Duration.String())
@@ -71,11 +86,13 @@ func printPlayers(client *a2s.Client, json bool) {
 			row = append(row, fmt.Sprint(player.Index))
 		}
 
-		if err := table.AddRow(row); err != nil {
-			fatalf("Create players table: %s", err)
-		}
+		t.AppendRow(table.Row(row))
 	}
 
-	table.Print()
-	fmt.Printf("A2S_PLAYERS response for %s\n", client.Address)
+	formatter.PrintTable(t)
+
+	// Only print footer message for table format
+	if formatter.IsTableFormat() {
+		fmt.Printf("A2S_PLAYERS response for %s\n", client.Address)
+	}
 }

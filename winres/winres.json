@@ -16,7 +16,7 @@
           "name": "A2S CLI",
           "version": ""
         },
-        "description": "Command line utility for querying Steam A2S server information",
+        "description": "Command line utility for querying Steam A2S server information and working with A3SB subprotocol for Arma 3 and DayZ",
         "minimum-os": "win7",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -45,12 +45,12 @@
           "0409": {
             "Comments": "",
             "CompanyName": "",
-            "FileDescription": "Command line utility for querying Steam A2S server information",
+            "FileDescription": "Command line utility for querying Steam A2S server information and working with A3SB subprotocol for Arma 3 and DayZ",
             "FileVersion": "",
             "InternalName": "A2S CLI",
             "LegalCopyright": "WoozyMasta",
             "LegalTrademarks": "",
-            "OriginalFilename": "a2s-cli.exe",
+            "OriginalFilename": "a2s.exe",
             "PrivateBuild": "",
             "ProductName": "A2S CLI",
             "ProductVersion": "",
