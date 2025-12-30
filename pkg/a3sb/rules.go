@@ -9,7 +9,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Rules structure for storing data from the A3SBP response
+// Rules contains parsed A3SBP response data.
 type Rules struct {
 	Flags           *Flags            `json:"flags,omitempty"`            // Flags, I don't know what's actually encoded there
 	Difficulty      *Difficulty       `json:"difficulty,omitempty"`       // Difficulty (Arma 3 only)
@@ -33,19 +33,18 @@ type Rules struct {
 	Dedicated       bool              `json:"dedicated,omitempty"`        // Dedicated [DayZ]
 }
 
-// GetRulesArma3 return A2S_RULES for Arma (wrapper)
+// GetRulesArma3 returns A2S_RULES for Arma 3.
 func (c *Client) GetRulesArma3() (*Rules, error) {
 	return c.GetRules(appid.Arma3.Uint64())
 }
 
-// GetRulesDayZ return A2S_RULES for DayZ (wrapper)
+// GetRulesDayZ returns A2S_RULES for DayZ.
 func (c *Client) GetRulesDayZ() (*Rules, error) {
 	return c.GetRules(appid.DayZ.Uint64())
 }
 
-// GetRules return A2S_RULES for DayZ/Arma
+// GetRules parses A2S_RULES response using A3SBP for Arma 3 and DayZ.
 func (c *Client) GetRules(game uint64) (*Rules, error) {
-	// Need more for DayZ and Arma
 	if c.BufferSize == a2s.DefaultBufferSize {
 		c.SetBufferSize(8192)
 	}
@@ -57,14 +56,13 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 
 	reader := bread.NewReader(data)
 
-	// Get A2S_RULES records count
 	count, err := reader.Uint16()
 	if err != nil {
 		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data[:4])
 	}
 
 	var a3sb []byte
-	var rawRules = make(map[string]string)
+	var rawRules map[string]string
 	rules := &Rules{id: game, stats: [4]byte{data[1], 0, 0, 0}}
 
 	for i := 0; i < int(count); i++ {
@@ -77,23 +75,30 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 			return nil, fmt.Errorf("%w value: %w", ErrRules, err)
 		}
 
-		// Skip a rule key-value pair if the key is empty
 		if len(key) == 0 {
 			rules.stats[2]++
 			continue
 		}
 
-		// The length of the value must be no more than 127 bytes according to the specification
-		// but will not break logic
 		if len(value) > 127 {
 			rules.stats[3]++
 		}
 
-		// If the key length is 2 bytes (page number and page count) and it is in the page range
-		// fill the Arma 3 Server Browser Protocol (A3SBP) byte array with data, handling escape sequences
+		// A3SBP pages have 2-byte keys: [page_number, page_count]
 		if len(key) == 2 && key[0] <= key[1] {
-			a3sb = append(a3sb, bread.EscapeSequences(value[:])...)
-		} else { // Read A2S_RULES as is after A3SBP bytes
+			if a3sb == nil {
+				remainingPages := int(count) - i
+				estimatedSize := remainingPages * 64
+				if estimatedSize > len(data) {
+					estimatedSize = len(data)
+				}
+				a3sb = make([]byte, 0, estimatedSize)
+			}
+			a3sb = bread.AppendEscapeSequences(a3sb, value)
+		} else {
+			if rawRules == nil {
+				rawRules = make(map[string]string, 8)
+			}
 			rawRules[string(key)] = string(value)
 		}
 
@@ -117,7 +122,7 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 	return rules, nil
 }
 
-// Read Arma 3 server browser protocol from merged and prepared data
+// readA3SB parses Arma 3 Server Browser Protocol data.
 func (r *Rules) readA3SB(data []byte) error {
 	reader := bread.NewReader(data)
 	var err error
@@ -158,7 +163,7 @@ func (r *Rules) readA3SB(data []byte) error {
 		return nil
 	}
 
-	// Read DayZ server description
+	// DayZ-specific: server description
 	descLen, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("%w length: %w", ErrDescription, err)
@@ -177,12 +182,12 @@ func (r *Rules) readA3SB(data []byte) error {
 	return nil
 }
 
-// GetAppID return appID
+// GetAppID returns the Steam AppID.
 func (r *Rules) GetAppID() uint64 {
 	return r.id
 }
 
-// GetReaderStats return bytes stats of chunk reader progress
+// GetReaderStats returns parsing statistics: [raw, pager, blank, overflow].
 func (r *Rules) GetReaderStats() [4]byte {
 	return r.stats
 }

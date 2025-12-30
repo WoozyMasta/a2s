@@ -1,7 +1,6 @@
 package a2s
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -16,8 +15,8 @@ func (c *Client) GetPing() (time.Duration, error) {
 		return 0, err
 	}
 
-	buf := bytes.NewBuffer(data)
-	if _, err := bread.String(buf); err != nil {
+	reader := bread.NewReader(data)
+	if _, err := reader.String(); err != nil {
 		return duration, fmt.Errorf("%w payload: %w", ErrPingRead, err)
 	}
 

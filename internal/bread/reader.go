@@ -1,25 +1,53 @@
-// Package bread is a set of helper functions for reading bytes into different types from a buffer.
+// Package bread provides optimized byte reading utilities for binary protocol parsing.
+// The Reader type works directly with []byte to minimize allocations and improve performance.
 package bread
 
 import (
-	"bytes"
-	"fmt"
+	"encoding/binary"
 	"math"
 	"time"
 )
 
-// Byte read bytes buffer and return byte
-func Byte(buf *bytes.Buffer) (byte, error) {
-	if err := checkLength(buf, 1); err != nil {
-		return 0, err
-	}
-
-	return buf.ReadByte()
+// Reader provides efficient byte reading from []byte without buffer allocations.
+type Reader struct {
+	data []byte
+	pos  int
 }
 
-// Bool read bytes buffer and return boolean, where 1 is true, 0 is false, other error
-func Bool(buf *bytes.Buffer) (bool, error) {
-	value, err := Byte(buf)
+// NewReader creates a new reader from []byte
+func NewReader(data []byte) *Reader {
+	return &Reader{data: data, pos: 0}
+}
+
+// Reset resets the reader to the beginning
+func (r *Reader) Reset(data []byte) {
+	r.data = data
+	r.pos = 0
+}
+
+// Pos returns current position
+func (r *Reader) Pos() int {
+	return r.pos
+}
+
+// Len returns remaining bytes
+func (r *Reader) Len() int {
+	return len(r.data) - r.pos
+}
+
+// Byte reads a single byte
+func (r *Reader) Byte() (byte, error) {
+	if r.pos >= len(r.data) {
+		return 0, ErrUnderflow
+	}
+	b := r.data[r.pos]
+	r.pos++
+	return b, nil
+}
+
+// Bool reads a boolean (1 = true, 0 = false)
+func (r *Reader) Bool() (bool, error) {
+	value, err := r.Byte()
 	if err != nil {
 		return false, err
 	}
@@ -30,145 +58,106 @@ func Bool(buf *bytes.Buffer) (bool, error) {
 	case 0:
 		return false, nil
 	default:
-		return false, fmt.Errorf("%w: 0x%X", ErrBool, value)
+		return false, ErrBool
 	}
 }
 
-// Int8 read bytes buffer and return int8
-func Int8(buf *bytes.Buffer) (int8, error) {
-	value, err := Byte(buf)
-	if err != nil {
-		return 0, err
+// Uint16 reads uint16 in LittleEndian
+func (r *Reader) Uint16() (uint16, error) {
+	if r.pos+2 > len(r.data) {
+		return 0, ErrUnderflow
 	}
-
-	return int8(value), nil
-}
-
-// Int16 read bytes buffer and return int16
-func Int16(buf *bytes.Buffer) (int16, error) {
-	var value int16
-	if err := readNumber(buf, &value, 2); err != nil {
-		return 0, err
-	}
-
+	value := binary.LittleEndian.Uint16(r.data[r.pos:])
+	r.pos += 2
 	return value, nil
 }
 
-// Int32 read bytes buffer and return int32
-func Int32(buf *bytes.Buffer) (int32, error) {
-	var value int32
-	if err := readNumber(buf, &value, 4); err != nil {
-		return 0, err
+// Uint32 reads uint32 in LittleEndian
+func (r *Reader) Uint32() (uint32, error) {
+	if r.pos+4 > len(r.data) {
+		return 0, ErrUnderflow
 	}
-
+	value := binary.LittleEndian.Uint32(r.data[r.pos:])
+	r.pos += 4
 	return value, nil
 }
 
-// Int64 read bytes buffer and return int64
-func Int64(buf *bytes.Buffer) (int64, error) {
-	var value int64
-	if err := readNumber(buf, &value, 8); err != nil {
-		return 0, err
+// Uint64 reads uint64 in LittleEndian
+func (r *Reader) Uint64() (uint64, error) {
+	if r.pos+8 > len(r.data) {
+		return 0, ErrUnderflow
 	}
-
+	value := binary.LittleEndian.Uint64(r.data[r.pos:])
+	r.pos += 8
 	return value, nil
 }
 
-// Uint16 read bytes buffer and return uint16
-func Uint16(buf *bytes.Buffer) (uint16, error) {
-	var value uint16
-	if err := readNumber(buf, &value, 2); err != nil {
-		return 0, err
+// Float32 reads float32 in LittleEndian
+func (r *Reader) Float32() (float32, error) {
+	if r.pos+4 > len(r.data) {
+		return 0, ErrUnderflow
 	}
-
-	return value, nil
+	bits := binary.LittleEndian.Uint32(r.data[r.pos:])
+	r.pos += 4
+	return math.Float32frombits(bits), nil
 }
 
-// Uint32 read bytes buffer and return uint32
-func Uint32(buf *bytes.Buffer) (uint32, error) {
-	var value uint32
-	if err := readNumber(buf, &value, 4); err != nil {
-		return 0, err
+// Float64 reads float64 in LittleEndian
+func (r *Reader) Float64() (float64, error) {
+	if r.pos+8 > len(r.data) {
+		return 0, ErrUnderflow
 	}
-
-	return value, nil
+	bits := binary.LittleEndian.Uint64(r.data[r.pos:])
+	r.pos += 8
+	return math.Float64frombits(bits), nil
 }
 
-// Uint64 read bytes buffer and return uint64
-func Uint64(buf *bytes.Buffer) (uint64, error) {
-	var value uint64
-	if err := readNumber(buf, &value, 8); err != nil {
-		return 0, err
+// String reads a null-terminated string, returning it without the null terminator.
+func (r *Reader) String() (string, error) {
+	start := r.pos
+	for r.pos < len(r.data) && r.data[r.pos] != 0 {
+		r.pos++
 	}
 
-	return value, nil
+	if r.pos >= len(r.data) {
+		return "", ErrString
+	}
+
+	str := string(r.data[start:r.pos])
+	r.pos++
+	return str, nil
 }
 
-// Float32 read bytes buffer and return float32
-func Float32(buf *bytes.Buffer) (float32, error) {
-	var value float32
-	if err := readNumber(buf, &value, 4); err != nil {
-		return 0, err
+// BytesPage reads bytes until null terminator, returning a slice pointing to original data.
+func (r *Reader) BytesPage() ([]byte, error) {
+	start := r.pos
+	for r.pos < len(r.data) && r.data[r.pos] != 0 {
+		r.pos++
 	}
 
-	return value, nil
+	if r.pos >= len(r.data) {
+		return nil, ErrString
+	}
+
+	result := r.data[start:r.pos]
+	r.pos++
+	return result, nil
 }
 
-// Float64 read bytes buffer and return float64
-func Float64(buf *bytes.Buffer) (float64, error) {
-	var value float64
-	if err := readNumber(buf, &value, 8); err != nil {
-		return 0, err
+// StringLen reads a string of specified length.
+func (r *Reader) StringLen(size int) (string, error) {
+	if r.pos+size > len(r.data) {
+		return "", ErrUnderflow
 	}
 
-	return value, nil
+	str := string(r.data[r.pos : r.pos+size])
+	r.pos += size
+	return str, nil
 }
 
-// String read bytes buffer to first 0x00 delimiter and return as string
-// Optimized to avoid double allocation (ReadBytes + string conversion)
-func String(buf *bytes.Buffer) (string, error) {
-	// ReadBytes allocates, but we can optimize by using the result directly
-	// and avoiding the intermediate slice operation
-	value, err := buf.ReadBytes(0x00)
-	if err != nil {
-		return "", err
-	}
-
-	// Create string directly from slice without the null terminator
-	// This avoids the intermediate value[:len(value)-1] allocation
-	// by using the known length
-	n := len(value) - 1
-	if n < 0 {
-		return "", fmt.Errorf("%w: invalid string format", ErrString)
-	}
-
-	// Use unsafe string conversion would be faster, but unsafe is not recommended
-	// Instead, we create string directly which Go optimizes
-	return string(value[:n]), nil
-}
-
-// StringLen read bytes buffer by size count and return as string
-func StringLen(buf *bytes.Buffer, size int) (string, error) {
-	if err := checkLength(buf, size); err != nil {
-		return "", err
-	}
-
-	value := make([]byte, size)
-	n, err := buf.Read(value)
-	if err != nil {
-		return "", err
-	}
-
-	if n != size {
-		return "", fmt.Errorf("%w: got '%s' with %d length but expected %d", ErrString, value, n, size)
-	}
-
-	return string(value), nil
-}
-
-// Duration32 read bytes buffer as float32 and return as time.Duration
-func Duration32(buf *bytes.Buffer) (time.Duration, error) {
-	f, err := Float32(buf)
+// Duration32 reads float32 and converts to time.Duration
+func (r *Reader) Duration32() (time.Duration, error) {
+	f, err := r.Float32()
 	if err != nil {
 		return 0, err
 	}
@@ -179,9 +168,9 @@ func Duration32(buf *bytes.Buffer) (time.Duration, error) {
 	return time.Duration(seconds)*time.Second + time.Duration(nanoseconds)*time.Nanosecond, nil
 }
 
-// Duration64 read bytes buffer as float64 and return as time.Duration
-func Duration64(buf *bytes.Buffer) (time.Duration, error) {
-	f, err := Float64(buf)
+// Duration64 reads float64 and converts to time.Duration
+func (r *Reader) Duration64() (time.Duration, error) {
+	f, err := r.Float64()
 	if err != nil {
 		return 0, err
 	}
@@ -190,46 +179,4 @@ func Duration64(buf *bytes.Buffer) (time.Duration, error) {
 	nanoseconds := int64(math.Round((f - float64(seconds)) * 1e9))
 
 	return time.Duration(seconds)*time.Second + time.Duration(nanoseconds)*time.Nanosecond, nil
-}
-
-// BytesPage read bytes buffer to first 0x00 delimiter
-func BytesPage(buf *bytes.Buffer) ([]byte, error) {
-	value, err := buf.ReadBytes(0x00)
-	if err != nil {
-		return nil, err
-	}
-	n := len(value) - 1
-
-	return value[:n], nil
-}
-
-// EscapeSequences replace Escape sequence to Escape value
-//
-//	{0x01, 0x01} -> 0x01
-//	{0x01, 0x02} -> 0x00
-//	{0x01, 0x03} -> 0xFF
-func EscapeSequences(data []byte) []byte {
-	buf := make([]byte, 0, len(data))
-
-	for i := 0; i < len(data); i++ {
-		if data[i] == 0x01 && i+1 < len(data) {
-			switch data[i+1] {
-			case 0x01:
-				buf = append(buf, 0x01)
-				i++
-			case 0x02:
-				buf = append(buf, 0x00)
-				i++
-			case 0x03:
-				buf = append(buf, 0xFF)
-				i++
-			default:
-				buf = append(buf, data[i])
-			}
-		} else {
-			buf = append(buf, data[i])
-		}
-	}
-
-	return buf
 }

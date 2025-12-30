@@ -6,7 +6,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Read signatures from Arma 3 server browser proto
+// readSignatures parses signature list from A3SBP.
 func (r *Rules) readSignatures(reader *bread.Reader) error {
 	signCount, err := reader.Byte()
 	if err != nil {
@@ -16,6 +16,8 @@ func (r *Rules) readSignatures(reader *bread.Reader) error {
 	if signCount == 0 {
 		return nil
 	}
+
+	r.Signatures = make([]string, 0, int(signCount))
 
 	for i := 0; i < int(signCount); i++ {
 		signLen, err := reader.Byte()

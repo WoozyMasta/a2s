@@ -6,7 +6,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Flags stored in response (wtf is it?)
+// Flags represents bit flags from A3SBP response (purpose unknown).
 type Flags struct {
 	Flag0 bool `json:"0,omitempty"` // Some 0 flag
 	Flag1 bool `json:"1,omitempty"` // Some 1 flag
@@ -18,8 +18,7 @@ type Flags struct {
 	Flag7 bool `json:"7,omitempty"` // Some 7 flag
 }
 
-// Read flags from Arma 3 server browser proto
-// i don't know what is it
+// readFlags parses flags byte from A3SBP.
 func (r *Rules) readFlags(reader *bread.Reader) error {
 	value, err := reader.Byte()
 	if err != nil {
