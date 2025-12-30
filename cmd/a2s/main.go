@@ -12,60 +12,54 @@ import (
 
 // Options defines the root command structure.
 type Options struct {
-	Help    bool `short:"h" long:"help" description:"Show this help message"`
-	Version bool `short:"v" long:"version" description:"Show version, commit, and build time"`
-
 	Info    InfoCommand    `command:"info" description:"Retrieve server information A2S_INFO"`
 	Players PlayersCommand `command:"players" description:"Retrieve player list A2S_PLAYERS"`
 	Rules   RulesCommand   `command:"rules" description:"Retrieve server rules A2S_RULES"`
 	All     AllCommand     `command:"all" description:"Retrieve all available server information"`
 	Ping    PingCommand    `command:"ping" description:"Ping the server with A2S_INFO"`
+	Help    bool           `short:"h" long:"help" description:"Show this help message"`
+	Version bool           `short:"v" long:"version" description:"Show version, commit, and build time"`
 }
 
 // InfoCommand handles the 'info' subcommand.
 type InfoCommand struct {
-	GlobalOptions
-
 	Args ServerArgs `positional-args:"yes"`
+	GlobalOptions
 }
 
 // PlayersCommand handles the 'players' subcommand.
 type PlayersCommand struct {
-	GlobalOptions
-
 	Args ServerArgs `positional-args:"yes"`
+	GlobalOptions
 }
 
 // RulesCommand handles the 'rules' subcommand.
 type RulesCommand struct {
-	GlobalOptions
-	RulesOptions
-
 	Args ServerArgs `positional-args:"yes"`
+	RulesOptions
+	GlobalOptions
 }
 
 // AllCommand handles the 'all' subcommand.
 type AllCommand struct {
-	GlobalOptions
-	RulesOptions
-
 	Args ServerArgs `positional-args:"yes"`
+	RulesOptions
+	GlobalOptions
 }
 
 // PingCommand handles the 'ping' subcommand.
 type PingCommand struct {
+	Args ServerArgs `positional-args:"yes"`
 	GlobalOptions
-
-	PingCount  int        `short:"c" long:"ping-count" default:"0" description:"Set the number of ping requests to send (0 = infinite)"`
-	PingPeriod int        `short:"p" long:"ping-period" default:"1" description:"Set the period between pings in seconds"`
-	Args       ServerArgs `positional-args:"yes"`
+	PingCount  int `short:"c" long:"ping-count" default:"0" description:"Set the number of ping requests to send (0 = infinite)"`
+	PingPeriod int `short:"p" long:"ping-period" default:"1" description:"Set the period between pings in seconds"`
 }
 
 // GlobalOptions defines global CLI options applicable to all commands.
 type GlobalOptions struct {
+	Format  string `short:"f" long:"format" default:"table" description:"Output format" choice:"json" choice:"table" choice:"raw" choice:"md" choice:"html"`
 	Timeout int    `short:"t" long:"timeout" default:"3" description:"Set connection timeout in seconds"`
 	Buffer  uint16 `short:"b" long:"buffer-size" default:"8096" description:"Set connection buffer size"`
-	Format  string `short:"f" long:"format" default:"table" description:"Output format" choice:"json" choice:"table" choice:"raw" choice:"md" choice:"html"`
 }
 
 // ServerArgs defines positional arguments for server connection.
@@ -76,8 +70,8 @@ type ServerArgs struct {
 
 // RulesOptions defines options specific to rules command.
 type RulesOptions struct {
-	Raw      bool   `short:"r" long:"raw" description:"Disable parse A2S_RULES values to types"`
 	Game     string `short:"g" long:"game" description:"Game type for more accurate results" choice:"dayz" choice:"arma3"`
+	Raw      bool   `short:"r" long:"raw" description:"Disable parse A2S_RULES values to types"`
 	SkipInfo bool   `short:"s" long:"skip-info" description:"Skip automatic AppID detection via A2S_INFO"`
 }
 
