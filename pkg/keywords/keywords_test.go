@@ -364,3 +364,109 @@ func TestParseTable(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkParseDayZ(b *testing.B) {
+	kw := []string{
+		"unknown", "battleye", "no3rd", "shard001", "lqs0", "port777",
+		"etm2.300000", "entm6.800000", "isDLC", "13:38",
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ParseDayZ(kw)
+	}
+}
+
+func BenchmarkParseArma3(b *testing.B) {
+	kw := []string{
+		"bt", "r218", "n150779", "s3", "i1", "mf", "lf", "vt", "dt", "tzeus", "g65541",
+		"h285fa806", "oDE", "f0", "c-25--25", "pw", "e15", "j0", "k0", "x1", "z1",
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ParseArma3(kw)
+	}
+}
+
+func BenchmarkParse(b *testing.B) {
+	kwA := []string{
+		"bt", "r218", "n150779", "s3", "i1", "mf", "lf", "vt", "dt", "tzeus", "g65541",
+		"h285fa806", "f0", "c-2147483648--2147483648", "pw", "e15", "j0", "k0",
+	}
+
+	kwD := []string{
+		"unknown", "battleye", "no3rd", "shard001", "lqs0", "port777",
+		"etm2.300000", "entm6.800000", "isDLC", "13:38",
+	}
+
+	b.Run("Arma3", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = Parse(107410, kwA)
+		}
+	})
+
+	b.Run("DayZ", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = Parse(1024020, kwD)
+		}
+	})
+}
+
+func BenchmarkParseCoordinates(b *testing.B) {
+	coords := []string{
+		"1-1", "-1-1", "1--1", "-1--1",
+		"2147483647--2147483648", "0-0", "1-2-3",
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, coord := range coords {
+			_, _ = parseCoordinates(coord)
+		}
+	}
+}
+
+func BenchmarkParseUint8(b *testing.B) {
+	values := []string{"0", "1", "255", "256", "777", "abc"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, val := range values {
+			_ = ParseUint8(val)
+		}
+	}
+}
+
+func BenchmarkParseUint16(b *testing.B) {
+	values := []string{"0", "1", "65535", "777", "100000", "abc"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, val := range values {
+			_ = ParseUint16(val)
+		}
+	}
+}
+
+func BenchmarkParseUint32(b *testing.B) {
+	values := []string{"0", "1", "218", "150779", "4294967295", "4294967296"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, val := range values {
+			_ = parseUint32(val)
+		}
+	}
+}
+
+func BenchmarkParseFloat64(b *testing.B) {
+	values := []string{"0", "1", "2.3", "6.800000", "-1.5", "1e5", "abc"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, val := range values {
+			_ = parseFloat64(val)
+		}
+	}
+}
