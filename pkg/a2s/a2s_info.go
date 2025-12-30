@@ -1,13 +1,14 @@
 package a2s
 
 import (
-	"bytes"
-	"fmt"
+	"errors"
 	"time"
+
+	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Info for store A2S_INFO response data
-// https://developer.valvesoftware.com/wiki/Server_queries#Response_Format
+// Info contains A2S_INFO response data.
+// See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format
 type Info struct {
 	TheShip      *TheShip      `json:"the_ship,omitempty"`       // These fields only exist if server is The Ship
 	Mod          *ModInfo      `json:"mod,omitempty"`            // Mod info, present if field Mod is 0x01 [Additional for GoldSource]
@@ -38,29 +39,35 @@ type Info struct {
 	// GameID       uint64        `json:"game_id,omitempty"`        // GameID, already set in ID (EDF 0x01)
 }
 
-// GetInfo A2S_INFO
+// GetInfo queries server information (A2S_INFO).
 func (c *Client) GetInfo() (*Info, error) {
 	data, format, duration, err := c.Get(InfoRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := bytes.NewBuffer(data)
+	if cap(c.parseData) < len(data) {
+		c.parseData = make([]byte, len(data)+64)
+	}
+	c.parseData = c.parseData[:len(data)]
+	copy(c.parseData, data)
+
+	reader := bread.NewReader(c.parseData)
 	info := &Info{Ping: duration, Format: InfoFormat(format)}
 
 	switch format {
 	case infoResponseSource:
-		if err := info.readSourceInfo(buf); err != nil {
-			return nil, fmt.Errorf("%w Source response: %w", ErrInfoRead, err)
+		if err := info.readSourceInfo(reader); err != nil {
+			return nil, errors.Join(ErrInfoSourceResponse, err)
 		}
 
 	case infoResponseGoldSource:
-		if err := info.readGoldSourceInfo(buf); err != nil {
-			return nil, fmt.Errorf("%w GoldSource response: %w", ErrInfoRead, err)
+		if err := info.readGoldSourceInfo(reader); err != nil {
+			return nil, errors.Join(ErrInfoGoldSourceResponse, err)
 		}
 
 	default:
-		return nil, fmt.Errorf("%w header: unsupported format 0x%X", ErrInfoRead, format)
+		return nil, ErrInfoUnsupportedFormat
 	}
 
 	return info, nil

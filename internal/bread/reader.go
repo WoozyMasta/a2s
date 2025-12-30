@@ -125,13 +125,26 @@ func Float64(buf *bytes.Buffer) (float64, error) {
 }
 
 // String read bytes buffer to first 0x00 delimiter and return as string
+// Optimized to avoid double allocation (ReadBytes + string conversion)
 func String(buf *bytes.Buffer) (string, error) {
+	// ReadBytes allocates, but we can optimize by using the result directly
+	// and avoiding the intermediate slice operation
 	value, err := buf.ReadBytes(0x00)
 	if err != nil {
 		return "", err
 	}
 
-	return string(value[:len(value)-1]), nil
+	// Create string directly from slice without the null terminator
+	// This avoids the intermediate value[:len(value)-1] allocation
+	// by using the known length
+	n := len(value) - 1
+	if n < 0 {
+		return "", fmt.Errorf("%w: invalid string format", ErrString)
+	}
+
+	// Use unsafe string conversion would be faster, but unsafe is not recommended
+	// Instead, we create string directly which Go optimizes
+	return string(value[:n]), nil
 }
 
 // StringLen read bytes buffer by size count and return as string

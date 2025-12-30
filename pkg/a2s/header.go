@@ -2,10 +2,10 @@ package a2s
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
-// Create header for request type byte
+// createHeader builds A2S protocol request header.
+// InfoRequest includes "Source Engine Query" payload, other requests include challenge value.
 //   - InfoRequest      = 0x54
 //   - PlayerRequest    = 0x55
 //   - RulesRequest     = 0x56
@@ -33,7 +33,6 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		return req, nil
 
 	case PlayerRequest, RulesRequest:
-		// Pre-allocate with exact capacity: 4 (header) + 1 (type) + 4 (challenge)
 		req = make([]byte, 0, 9)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))
@@ -41,13 +40,12 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		return req, nil
 
 	case PingRequest, ChallengeRequest:
-		// Pre-allocate with exact capacity: 4 (header) + 1 (type)
 		req = make([]byte, 0, 5)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))
 		return req, nil
 
 	default:
-		return nil, fmt.Errorf("%w: 0x%X", ErrWrongRequest, requestType)
+		return nil, ErrHeaderWrongRequest
 	}
 }

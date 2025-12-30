@@ -1,29 +1,32 @@
 package a2s
 
 import (
-	"bytes"
 	"encoding/base64"
-	"fmt"
+	"errors"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// GetRules return A2S_RULES
-// https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
+// GetRules queries server rules (A2S_RULES).
+// See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
 func (c *Client) GetRules() (map[string]string, error) {
 	data, _, _, err := c.Get(RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := bytes.NewBuffer(data)
+	if cap(c.parseData) < len(data) {
+		c.parseData = make([]byte, len(data)+64)
+	}
+	c.parseData = c.parseData[:len(data)]
+	copy(c.parseData, data)
 
-	count, err := bread.Uint16(buf)
+	reader := bread.NewReader(c.parseData)
+	count, err := reader.Uint16()
 	if err != nil {
-		return nil, fmt.Errorf("%w rules count: 0x%X", ErrRuleRead, data[:4])
+		return nil, errors.Join(ErrRuleCount, err)
 	}
 
 	if count == 0 {
@@ -33,18 +36,18 @@ func (c *Client) GetRules() (map[string]string, error) {
 	rules := make(map[string]string, int(count))
 
 	for i := 0; i < int(count); i++ {
-		if buf.Len() < 4 {
-			return nil, fmt.Errorf("%w in rule %d", ErrInsufficientData, i)
+		if reader.Len() < 4 {
+			return nil, ErrInsufficientData
 		}
 
-		key, err := bread.String(buf)
+		key, err := reader.String()
 		if err != nil {
-			return nil, fmt.Errorf("%w key: %w", ErrRuleRead, err)
+			return nil, errors.Join(ErrRuleKey, err)
 		}
 
-		value, err := bread.String(buf)
+		value, err := reader.String()
 		if err != nil {
-			return nil, fmt.Errorf("%w value for key '%s': %w", ErrRuleRead, key, err)
+			return nil, errors.Join(ErrRuleValue, err)
 		}
 
 		rules[key] = value
@@ -53,28 +56,107 @@ func (c *Client) GetRules() (map[string]string, error) {
 	return rules, nil
 }
 
-// GetParsedRules return A2S_RULES and try parse values to int64, float64, boolean and decode base64, save strings by default
+// GetParsedRules queries server rules and parses values into appropriate types.
+// Attempts to parse as int64, float64, bool, or base64-encoded string. Falls back to string if parsing fails.
 func (c *Client) GetParsedRules() (map[string]any, error) {
-	data, err := c.GetRules()
+	data, _, _, err := c.Get(RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	rules := make(map[string]any, len(data))
+	if cap(c.parseData) < len(data) {
+		c.parseData = make([]byte, len(data)+64)
+	}
+	c.parseData = c.parseData[:len(data)]
+	copy(c.parseData, data)
 
-	for k, v := range data {
-		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
-			rules[k] = num // Try parse integer
-		} else if num, err := strconv.ParseFloat(strings.TrimSuffix(v, "f"), 64); err == nil {
-			rules[k] = num // Try parse float
-		} else if boolean, err := strconv.ParseBool(v); err == nil {
-			rules[k] = boolean // try parse boolean
-		} else if decoded, err := base64.StdEncoding.DecodeString(v); err == nil && utf8.Valid(decoded) {
-			rules[k] = string(decoded) // try parse base64
-		} else {
-			rules[k] = v // Save as is
+	reader := bread.NewReader(c.parseData)
+	count, err := reader.Uint16()
+	if err != nil {
+		return nil, errors.Join(ErrRuleCount, err)
+	}
+
+	if count == 0 {
+		return nil, nil
+	}
+
+	rules := make(map[string]any, int(count))
+
+	var base64Buf []byte
+
+	for i := 0; i < int(count); i++ {
+		if reader.Len() < 4 {
+			return nil, ErrInsufficientData
 		}
+
+		key, err := reader.String()
+		if err != nil {
+			return nil, errors.Join(ErrRuleKey, err)
+		}
+
+		value, err := reader.String()
+		if err != nil {
+			return nil, errors.Join(ErrRuleValue, err)
+		}
+
+		parsed := parseRuleValue(value, &base64Buf)
+		rules[key] = parsed
 	}
 
 	return rules, nil
+}
+
+// parseRuleValue attempts to parse value string into int64, float64, bool, or base64-decoded string.
+// Uses reusable base64Buf to minimize allocations.
+func parseRuleValue(v string, base64Buf *[]byte) any {
+	vLen := len(v)
+	if vLen == 0 {
+		return v
+	}
+
+	switch vLen {
+	case 4:
+		if v[0] == 't' && v[1] == 'r' && v[2] == 'u' && v[3] == 'e' {
+			return true
+		}
+	case 5:
+		if v[0] == 'f' && v[1] == 'a' && v[2] == 'l' && v[3] == 's' && v[4] == 'e' {
+			return false
+		}
+	}
+
+	first := v[0]
+	if (first >= '0' && first <= '9') || (first == '-' && vLen > 1 && v[1] >= '0' && v[1] <= '9') {
+		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return num
+		}
+	}
+
+	var floatStr string
+	if vLen > 1 && v[vLen-1] == 'f' {
+		floatStr = v[:vLen-1]
+	} else {
+		floatStr = v
+	}
+	if num, err := strconv.ParseFloat(floatStr, 64); err == nil {
+		return num
+	}
+
+	if vLen%4 == 0 && vLen > 8 {
+		decodedLen := base64.StdEncoding.DecodedLen(vLen)
+		if cap(*base64Buf) < decodedLen {
+			*base64Buf = make([]byte, decodedLen)
+		}
+		buf := (*base64Buf)[:decodedLen]
+
+		n, err := base64.StdEncoding.Decode(buf, []byte(v))
+		if err == nil && n > 0 {
+			decoded := buf[:n]
+			if utf8.Valid(decoded) {
+				return string(decoded)
+			}
+		}
+	}
+
+	return v
 }

@@ -1,13 +1,12 @@
 package a2s
 
 import (
-	"bytes"
-	"fmt"
+	"errors"
 
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// ModInfo about mod info in GoldSource A2S_INFO response
+// ModInfo contains mod information from GoldSource A2S_INFO response.
 type ModInfo struct {
 	Link         string `json:"link"`          // URL to mod website.
 	DownloadLink string `json:"download_link"` // URL to download the mod.
@@ -17,75 +16,75 @@ type ModInfo struct {
 	DLL          bool   `json:"dll"`           // false - original DLL, true - own DLL
 }
 
-// Read buffer for populate Info struct for GoldSource protocol (Obsolete)
-func (i *Info) readGoldSourceInfo(buf *bytes.Buffer) error {
+// readGoldSourceInfo parses GoldSource protocol A2S_INFO response (obsolete).
+func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 	var err error
 
-	if i.Address, err = bread.String(buf); err != nil {
-		return fmt.Errorf("server address: %w", err)
+	if i.Address, err = r.String(); err != nil {
+		return errors.Join(ErrInfoGSAddress, err)
 	}
 
-	if i.Name, err = bread.String(buf); err != nil {
-		return fmt.Errorf("server name: %w", err)
+	if i.Name, err = r.String(); err != nil {
+		return errors.Join(ErrInfoServerName, err)
 	}
 
-	if i.Map, err = bread.String(buf); err != nil {
-		return fmt.Errorf("map name: %w", err)
+	if i.Map, err = r.String(); err != nil {
+		return errors.Join(ErrInfoMapName, err)
 	}
 
-	if i.Folder, err = bread.String(buf); err != nil {
-		return fmt.Errorf("folder name: %w", err)
+	if i.Folder, err = r.String(); err != nil {
+		return errors.Join(ErrInfoFolderName, err)
 	}
 
-	if i.Game, err = bread.String(buf); err != nil {
-		return fmt.Errorf("game name: %w", err)
+	if i.Game, err = r.String(); err != nil {
+		return errors.Join(ErrInfoGameName, err)
 	}
 
-	if i.Players, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("player count: %w", err)
+	if i.Players, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoPlayerCount, err)
 	}
 
-	if i.MaxPlayers, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("max player count: %w", err)
+	if i.MaxPlayers, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoMaxPlayerCount, err)
 	}
 
-	if i.Protocol, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("protocol: %w", err)
+	if i.Protocol, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoProtocol, err)
 	}
 
-	serverType, err := bread.Byte(buf)
+	serverType, err := r.Byte()
 	if err != nil {
-		return fmt.Errorf("server type: %w", err)
+		return errors.Join(ErrInfoServerType, err)
 	}
 	i.ServerType = ServerType(serverType)
 
-	environment, err := bread.Byte(buf)
+	environment, err := r.Byte()
 	if err != nil {
-		return fmt.Errorf("environment type: %w", err)
+		return errors.Join(ErrInfoEnvironment, err)
 	}
 	i.Environment = Environment(environment)
 
-	if i.Visibility, err = bread.Bool(buf); err != nil {
-		return fmt.Errorf("server visibility: %w", err)
+	if i.Visibility, err = r.Bool(); err != nil {
+		return errors.Join(ErrInfoVisibility, err)
 	}
 
-	modded, err := bread.Bool(buf)
+	modded, err := r.Bool()
 	if err != nil {
-		return fmt.Errorf("modded status: %w", err)
+		return errors.Join(ErrInfoGSModded, err)
 	}
 
 	if modded {
-		if i.Mod, err = readGoldSourceMods(buf); err != nil {
-			return fmt.Errorf("mod data: %w", err)
+		if i.Mod, err = readGoldSourceMods(r); err != nil {
+			return errors.Join(ErrInfoGSModData, err)
 		}
 	}
 
-	if i.VAC, err = bread.Bool(buf); err != nil {
-		return fmt.Errorf("VAC: %w", err)
+	if i.VAC, err = r.Bool(); err != nil {
+		return errors.Join(ErrInfoVAC, err)
 	}
 
-	if i.Bots, err = bread.Byte(buf); err != nil {
-		return fmt.Errorf("bots count: %w", err)
+	if i.Bots, err = r.Byte(); err != nil {
+		return errors.Join(ErrInfoBotsCount, err)
 	}
 
 	return nil

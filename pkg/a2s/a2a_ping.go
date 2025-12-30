@@ -8,7 +8,8 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// GetPing A2S_PING (Deprecated)
+// GetPing queries server ping (A2A_PING).
+// Deprecated: ping is included in all query responses.
 func (c *Client) GetPing() (time.Duration, error) {
 	data, _, duration, err := c.Get(PingRequest)
 	if err != nil {

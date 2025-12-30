@@ -6,22 +6,23 @@ import (
 	"time"
 )
 
-// Client for handle connection and options
+// Client handles UDP connection and A2S protocol queries.
 type Client struct {
 	Conn       *net.UDPConn
 	Address    *net.UDPAddr
+	packetsBuf map[int][]byte
+	parseData  []byte
+	readBuf    []byte
 	Timeout    time.Duration
 	BufferSize uint16
-	readBuf    []byte
-	packetsBuf map[int][]byte
 }
 
-// New create new client with ip and port and open connection
+// New creates a new client with IP and port and opens UDP connection.
 func New(ip string, port int) (*Client, error) {
 	return NewWithAddr(&net.UDPAddr{IP: net.ParseIP(ip), Port: port})
 }
 
-// NewWithString create new client with ip:port string and open connection
+// NewWithString creates a new client from "ip:port" string and opens UDP connection.
 func NewWithString(addr string) (*Client, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
@@ -31,7 +32,7 @@ func NewWithString(addr string) (*Client, error) {
 	return NewWithAddr(udpAddr)
 }
 
-// NewWithAddr create new client with addr and open connection
+// NewWithAddr creates a new client with address and opens UDP connection.
 func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
 	client, err := Create(addr)
 	if err != nil {
@@ -45,7 +46,7 @@ func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
 	return client, nil
 }
 
-// Create client only
+// Create creates a client without opening connection. Use Dial() to establish connection.
 func Create(addr *net.UDPAddr) (*Client, error) {
 	return &Client{
 		Address:    addr,
@@ -53,10 +54,11 @@ func Create(addr *net.UDPAddr) (*Client, error) {
 		BufferSize: DefaultBufferSize,
 		readBuf:    make([]byte, DefaultBufferSize),
 		packetsBuf: make(map[int][]byte, 8),
+		parseData:  make([]byte, 0, 4096),
 	}, nil
 }
 
-// Dial connection for Client
+// Dial establishes UDP connection to the server.
 func (c *Client) Dial() error {
 	conn, err := net.DialUDP("udp", nil, c.Address)
 	if err != nil {
@@ -67,10 +69,9 @@ func (c *Client) Dial() error {
 	return nil
 }
 
-// SetBufferSize set bytes buffer size for Client, default is 1400
+// SetBufferSize sets read buffer size. Default is 1400 bytes.
 func (c *Client) SetBufferSize(size uint16) {
 	c.BufferSize = size
-	// Reallocate read buffer if needed
 	if cap(c.readBuf) < int(size) {
 		c.readBuf = make([]byte, size)
 	} else {
@@ -78,23 +79,18 @@ func (c *Client) SetBufferSize(size uint16) {
 	}
 }
 
-// SetDeadlineTimeout set deadline timeout for Client, default is 5 seconds
+// SetDeadlineTimeout sets read deadline timeout. Default is 5 seconds.
 func (c *Client) SetDeadlineTimeout(seconds int) {
 	c.Timeout = time.Duration(seconds) * time.Second
 }
 
-// Close connection for Client
+// Close closes UDP connection.
 func (c *Client) Close() error {
 	return c.Conn.Close()
 }
 
-// Get request in Client with type and return:
-//   - response bytes without header
-//   - response type
-//   - ping (duration from writing bytes to reading response)
-//   - error (if any)
-//
-// Is responsible for processing the challenge and executes it if available
+// Get sends request and returns response data (without header), response type, ping duration and error.
+// Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	resp, duration, err := c.request(requestType, singlePacket)
 	if err != nil {
@@ -104,7 +100,6 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 
 	if flag == challengeResponse {
 		challenge := binary.BigEndian.Uint32(resp[5:9])
-		// use duration from challenge as most real ping
 		resp, _, err = c.request(requestType, challenge)
 		if err != nil {
 			return nil, 0, 0, err
@@ -119,14 +114,14 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	return resp[5:], flag, duration, nil
 }
 
-// Creates a request header, executes the request and returns the response, handles multi-packet response processing
+// request creates header, sends request and returns response with ping duration.
+// Handles multi-packet responses by collecting and assembling packets.
 func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Duration, error) {
 	req, err := createHeader(requestType, challenge)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// start send (ping start)
 	start := time.Now()
 
 	if _, err := c.Conn.Write(req); err != nil {
@@ -136,18 +131,15 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return nil, 0, err
 	}
 
-	// Reuse read buffer
 	if cap(c.readBuf) < int(c.BufferSize) {
 		c.readBuf = make([]byte, c.BufferSize)
 	}
-	// Use full buffer capacity for reading
 	resp := c.readBuf[:c.BufferSize]
 	n, err := c.Conn.Read(resp)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// end receive (ping end)
 	duration := time.Since(start)
 
 	multi, err := isMultiPacket(resp)
@@ -157,14 +149,13 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return result, 0, err
 	}
 
-	// return single-packet data
 	if !multi {
 		result := make([]byte, n)
 		copy(result, resp[:n])
 		return result, duration, nil
 	}
 
-	// multi-packet processing
+	// Multi-packet response: extract metadata from first packet
 	packetID := binary.LittleEndian.Uint32(resp[4:8])
 	packetCount := int(resp[8] & 0x0F)
 	currentPacket := int(resp[9] & 0x0F)
@@ -192,7 +183,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	copy(firstPacketData, resp[12:n])
 	packets[currentPacket] = firstPacketData
 
-	// Read remaining packets
+	// Collect remaining packets
 	for len(packets) < packetCount {
 		if cap(c.readBuf) < int(c.BufferSize) {
 			c.readBuf = make([]byte, c.BufferSize)
@@ -216,7 +207,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		}
 	}
 
-	// Pre-allocate assembled response with estimated capacity
+	// Calculate total size and assemble packets in order
 	totalSize := 0
 	for i := 0; i < packetCount; i++ {
 		if data, exists := packets[i]; exists {
@@ -226,7 +217,6 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		}
 	}
 
-	// Combine packets in order
 	assembledResp := make([]byte, 0, totalSize)
 	for i := 0; i < packetCount; i++ {
 		if data, exists := packets[i]; exists {
