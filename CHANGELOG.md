@@ -13,6 +13,22 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.3.0][] - 2025-12-30
+
+### Added
+
+* `a2s` package now exports 50+ specific error types for detailed error handling
+* `a2s` CLI unified `a2s-cli` and `a3sb-cli` into single `a2s`
+  command with subcommands
+
+### Changed
+
+* `a2s` and `a3sb` reduced memory allocations and memory usage by up
+  to 3-4x through buffer reuse
+* `a2s` improved error messages with context using `errors.Join`
+
+[0.3.0]: https://github.com/WoozyMasta/a2s/compare/v0.2.3...v0.3.0
+
 ## Unreleased
 
 ### Changed
