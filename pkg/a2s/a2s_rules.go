@@ -30,7 +30,7 @@ func (c *Client) GetRules() (map[string]string, error) {
 		return nil, nil
 	}
 
-	rules := make(map[string]string)
+	rules := make(map[string]string, int(count))
 
 	for i := 0; i < int(count); i++ {
 		if buf.Len() < 4 {
@@ -60,7 +60,7 @@ func (c *Client) GetParsedRules() (map[string]any, error) {
 		return nil, err
 	}
 
-	rules := make(map[string]any)
+	rules := make(map[string]any, len(data))
 
 	for k, v := range data {
 		if num, err := strconv.ParseInt(v, 10, 64); err == nil {

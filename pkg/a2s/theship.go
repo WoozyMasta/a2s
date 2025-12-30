@@ -59,7 +59,7 @@ func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
 		return nil, fmt.Errorf("%w count: %w", ErrPlayerRead, err)
 	}
 
-	players := []TheShipPlayer{}
+	players := make([]TheShipPlayer, 0, int(count))
 
 	for i := 0; i < int(count); i++ {
 		player := TheShipPlayer{}

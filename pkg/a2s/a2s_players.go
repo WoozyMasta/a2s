@@ -29,7 +29,7 @@ func (c *Client) GetPlayers() (*[]Player, error) {
 		return nil, fmt.Errorf("%w count: %w", ErrPlayerRead, err)
 	}
 
-	players := []Player{}
+	players := make([]Player, 0, int(count))
 
 	for i := 0; i < int(count); i++ {
 		player := Player{}

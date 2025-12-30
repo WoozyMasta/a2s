@@ -39,7 +39,16 @@ func (i *Info) readEDF(buf *bytes.Buffer, edf EDF) error {
 		if err != nil {
 			return fmt.Errorf("keywords name: %w", err)
 		}
-		i.Keywords = strings.Split(kw, ",")
+
+		commaCount := strings.Count(kw, ",")
+		keywords := make([]string, 0, commaCount+1)
+		for _, keyword := range strings.Split(kw, ",") {
+			if keyword != "" {
+				keywords = append(keywords, keyword)
+			}
+		}
+
+		i.Keywords = keywords
 	}
 
 	if (edf & edfGameID) != 0 {

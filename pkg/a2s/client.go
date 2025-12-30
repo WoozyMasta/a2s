@@ -12,6 +12,8 @@ type Client struct {
 	Address    *net.UDPAddr
 	Timeout    time.Duration
 	BufferSize uint16
+	readBuf    []byte
+	packetsBuf map[int][]byte
 }
 
 // New create new client with ip and port and open connection
@@ -49,6 +51,8 @@ func Create(addr *net.UDPAddr) (*Client, error) {
 		Address:    addr,
 		Timeout:    DefaultDeadlineTimeout * time.Second,
 		BufferSize: DefaultBufferSize,
+		readBuf:    make([]byte, DefaultBufferSize),
+		packetsBuf: make(map[int][]byte, 8),
 	}, nil
 }
 
@@ -66,6 +70,12 @@ func (c *Client) Dial() error {
 // SetBufferSize set bytes buffer size for Client, default is 1400
 func (c *Client) SetBufferSize(size uint16) {
 	c.BufferSize = size
+	// Reallocate read buffer if needed
+	if cap(c.readBuf) < int(size) {
+		c.readBuf = make([]byte, size)
+	} else {
+		c.readBuf = c.readBuf[:size]
+	}
 }
 
 // SetDeadlineTimeout set deadline timeout for Client, default is 5 seconds
@@ -126,7 +136,12 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return nil, 0, err
 	}
 
-	resp := make([]byte, c.BufferSize)
+	// Reuse read buffer
+	if cap(c.readBuf) < int(c.BufferSize) {
+		c.readBuf = make([]byte, c.BufferSize)
+	}
+	// Use full buffer capacity for reading
+	resp := c.readBuf[:c.BufferSize]
 	n, err := c.Conn.Read(resp)
 	if err != nil {
 		return nil, 0, err
@@ -137,12 +152,16 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 
 	multi, err := isMultiPacket(resp)
 	if err != nil {
-		return resp, 0, err
+		result := make([]byte, n)
+		copy(result, resp[:n])
+		return result, 0, err
 	}
 
 	// return single-packet data
 	if !multi {
-		return resp[:n], duration, nil
+		result := make([]byte, n)
+		copy(result, resp[:n])
+		return result, duration, nil
 	}
 
 	// multi-packet processing
@@ -161,13 +180,25 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		*/
 	}
 
-	// Add first packet
-	packets := make(map[int][]byte)
-	packets[currentPacket] = resp[12:n]
+	for k := range c.packetsBuf {
+		delete(c.packetsBuf, k)
+	}
+	if packetCount > 8 && len(c.packetsBuf) == 0 {
+		c.packetsBuf = make(map[int][]byte, packetCount)
+	}
+
+	packets := c.packetsBuf
+	firstPacketData := make([]byte, n-12)
+	copy(firstPacketData, resp[12:n])
+	packets[currentPacket] = firstPacketData
 
 	// Read remaining packets
 	for len(packets) < packetCount {
-		resp := make([]byte, c.BufferSize)
+		if cap(c.readBuf) < int(c.BufferSize) {
+			c.readBuf = make([]byte, c.BufferSize)
+		}
+
+		resp = c.readBuf[:c.BufferSize]
 		n, err := c.Conn.Read(resp)
 		if err != nil {
 			return nil, 0, err
@@ -179,12 +210,24 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 
 		currentPacket = int(resp[9] & 0x0F)
 		if _, exists := packets[currentPacket]; !exists {
-			packets[currentPacket] = resp[12:n]
+			packetData := make([]byte, n-12)
+			copy(packetData, resp[12:n])
+			packets[currentPacket] = packetData
+		}
+	}
+
+	// Pre-allocate assembled response with estimated capacity
+	totalSize := 0
+	for i := 0; i < packetCount; i++ {
+		if data, exists := packets[i]; exists {
+			totalSize += len(data)
+		} else {
+			return nil, 0, ErrMultiPacketMismatch
 		}
 	}
 
 	// Combine packets in order
-	var assembledResp []byte
+	assembledResp := make([]byte, 0, totalSize)
 	for i := 0; i < packetCount; i++ {
 		if data, exists := packets[i]; exists {
 			assembledResp = append(assembledResp, data...)

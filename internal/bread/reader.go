@@ -196,27 +196,27 @@ func BytesPage(buf *bytes.Buffer) ([]byte, error) {
 //	{0x01, 0x02} -> 0x00
 //	{0x01, 0x03} -> 0xFF
 func EscapeSequences(data []byte) []byte {
-	var buf bytes.Buffer
+	buf := make([]byte, 0, len(data))
 
 	for i := 0; i < len(data); i++ {
 		if data[i] == 0x01 && i+1 < len(data) {
 			switch data[i+1] {
 			case 0x01:
-				buf.WriteByte(0x01)
+				buf = append(buf, 0x01)
 				i++
 			case 0x02:
-				buf.WriteByte(0x00)
+				buf = append(buf, 0x00)
 				i++
 			case 0x03:
-				buf.WriteByte(0xFF)
+				buf = append(buf, 0xFF)
 				i++
 			default:
-				buf.WriteByte(data[i])
+				buf = append(buf, data[i])
 			}
 		} else {
-			buf.WriteByte(data[i])
+			buf = append(buf, data[i])
 		}
 	}
 
-	return buf.Bytes()
+	return buf
 }
