@@ -81,6 +81,9 @@ func (i *Info) readSourceInfo(r *bread.Reader) error {
 
 	edf, err := r.Byte()
 	if err != nil {
+		if errors.Is(err, bread.ErrUnderflow) {
+			return nil
+		}
 		return errors.Join(ErrInfoEDF, err)
 	}
 	if edf != 0 {

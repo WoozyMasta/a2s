@@ -18,7 +18,7 @@ func isMultiPacket(data []byte) (bool, error) {
 		return false, nil
 
 	case multiPacket:
-		if len(data) < 10 {
+		if len(data) < 9 {
 			return true, ErrMultiPacket
 		}
 		return true, nil

@@ -2,6 +2,7 @@ package a2s
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 	"time"
 )
@@ -92,26 +93,39 @@ func (c *Client) Close() error {
 // Get sends request and returns response data (without header), response type, ping duration and error.
 // Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
-	resp, duration, err := c.request(requestType, singlePacket)
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	flag := Flag(resp[4])
+	var lastErr error
 
-	if flag == challengeResponse {
-		challenge := binary.BigEndian.Uint32(resp[5:9])
-		resp, _, err = c.request(requestType, challenge)
+	for attempt := 0; attempt < 3; attempt++ {
+		resp, duration, err := c.request(requestType, singlePacket)
 		if err != nil {
 			return nil, 0, 0, err
 		}
-		flag = Flag(resp[4])
+		flag := Flag(resp[4])
+
+		for challengeAttempt := 0; challengeAttempt < 2 && flag == challengeResponse; challengeAttempt++ {
+			challenge := binary.BigEndian.Uint32(resp[5:9])
+			resp, _, err = c.request(requestType, challenge)
+			if err != nil {
+				return nil, 0, 0, err
+			}
+			flag = Flag(resp[4])
+		}
+
+		if err := validateResponseType(requestType, flag); err != nil {
+			if requestType == RulesRequest && (flag == infoResponseSource || flag == infoResponseGoldSource || flag == challengeResponse) {
+				lastErr = err
+				continue
+			}
+			return resp[5:], flag, duration, err
+		}
+
+		return resp[5:], flag, duration, nil
 	}
 
-	if err := validateResponseType(requestType, flag); err != nil {
-		return resp[5:], flag, duration, err
+	if lastErr == nil {
+		lastErr = ErrValidatorRules
 	}
-
-	return resp[5:], flag, duration, nil
+	return nil, 0, 0, lastErr
 }
 
 // request creates header, sends request and returns response with ping duration.
@@ -131,18 +145,30 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return nil, 0, err
 	}
 
-	if cap(c.readBuf) < int(c.BufferSize) {
-		c.readBuf = make([]byte, c.BufferSize)
-	}
-	resp := c.readBuf[:c.BufferSize]
-	n, err := c.Conn.Read(resp)
-	if err != nil {
-		return nil, 0, err
+	var (
+		resp []byte
+		n    int
+	)
+	for attempt := 0; attempt < 3; attempt++ {
+		if cap(c.readBuf) < int(c.BufferSize) {
+			c.readBuf = make([]byte, c.BufferSize)
+		}
+		resp = c.readBuf[:c.BufferSize]
+		n, err = c.Conn.Read(resp)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		multi, err := isMultiPacket(resp[:n])
+		if err != nil && errors.Is(err, ErrMultiPacket) && multi {
+			continue // Some servers send a truncated split packet first; read again.
+		}
+		break
 	}
 
 	duration := time.Since(start)
 
-	multi, err := isMultiPacket(resp)
+	multi, err := isMultiPacket(resp[:n])
 	if err != nil {
 		result := make([]byte, n)
 		copy(result, resp[:n])
@@ -156,35 +182,28 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	}
 
 	// Multi-packet response: extract metadata from first packet
-	packetID := binary.LittleEndian.Uint32(resp[4:8])
-	packetCount := int(resp[8] & 0x0F)
-	currentPacket := int(resp[9] & 0x0F)
-
-	if (packetID & 0x80000000) != 0 {
-		return nil, 0, errBzip2
-
-		// TODO: implement Bzip2 unpacking, need examples of working servers with this answer
-		//! this code is incorrect, need collect all multi-packets, while reading the CRC and size only from the first packet
-		/*
-			decompressed, _ := decompressBzip2(resp, n)
-			return decompressed, duration, nil
-		*/
+	info, err := parseSplitHeader(resp[:n])
+	if err != nil {
+		return nil, 0, err
 	}
 
 	for k := range c.packetsBuf {
 		delete(c.packetsBuf, k)
 	}
-	if packetCount > 8 && len(c.packetsBuf) == 0 {
-		c.packetsBuf = make(map[int][]byte, packetCount)
+	if info.packetCount > 8 && len(c.packetsBuf) == 0 {
+		c.packetsBuf = make(map[int][]byte, info.packetCount)
 	}
 
 	packets := c.packetsBuf
-	firstPacketData := make([]byte, n-12)
-	copy(firstPacketData, resp[12:n])
-	packets[currentPacket] = firstPacketData
+	if n < info.dataOffset {
+		return nil, 0, ErrMultiPacket
+	}
+	firstPacketData := make([]byte, n-info.dataOffset)
+	copy(firstPacketData, resp[info.dataOffset:n])
+	packets[info.currentPacket] = firstPacketData
 
 	// Collect remaining packets
-	for len(packets) < packetCount {
+	for len(packets) < info.packetCount {
 		if cap(c.readBuf) < int(c.BufferSize) {
 			c.readBuf = make([]byte, c.BufferSize)
 		}
@@ -195,21 +214,24 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			return nil, 0, err
 		}
 
-		if binary.LittleEndian.Uint32(resp[4:8]) != packetID {
+		if binary.LittleEndian.Uint32(resp[4:8]) != info.packetID {
 			return nil, 0, ErrMultiPacketInvalid
 		}
 
-		currentPacket = int(resp[9] & 0x0F)
+		currentPacket := info.readPacketNumber(resp[:n])
 		if _, exists := packets[currentPacket]; !exists {
-			packetData := make([]byte, n-12)
-			copy(packetData, resp[12:n])
+			if n < info.baseHeaderSize {
+				return nil, 0, ErrMultiPacket
+			}
+			packetData := make([]byte, n-info.baseHeaderSize)
+			copy(packetData, resp[info.baseHeaderSize:n])
 			packets[currentPacket] = packetData
 		}
 	}
 
 	// Calculate total size and assemble packets in order
 	totalSize := 0
-	for i := 0; i < packetCount; i++ {
+	for i := 0; i < info.packetCount; i++ {
 		if data, exists := packets[i]; exists {
 			totalSize += len(data)
 		} else {
@@ -218,12 +240,20 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	}
 
 	assembledResp := make([]byte, 0, totalSize)
-	for i := 0; i < packetCount; i++ {
+	for i := 0; i < info.packetCount; i++ {
 		if data, exists := packets[i]; exists {
 			assembledResp = append(assembledResp, data...)
 		} else {
 			return nil, 0, ErrMultiPacketMismatch
 		}
+	}
+
+	if info.compressed {
+		decompressed, err := decompressBzip2(assembledResp, info.decompressedSize, info.crc)
+		if err != nil {
+			return nil, 0, err
+		}
+		return decompressed, duration, nil
 	}
 
 	return assembledResp, duration, nil

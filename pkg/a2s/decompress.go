@@ -1,40 +1,35 @@
 package a2s
 
-// TODO: notes for bzip2 decompression
-/*
 import (
 	"bytes"
 	"compress/bzip2"
-	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"io"
 )
 
-func decompressBzip2(resp []byte, n int) ([]byte, error) {
-	size := binary.LittleEndian.Uint32(resp[12:16])
-	crc := binary.LittleEndian.Uint32(resp[16:20])
+const maxDecompressedSize = 16 * 1024 * 1024
 
-	if size > 1024*1024 {
-		return nil, fmt.Errorf("bz2 decompressed size exceeds 1 MB")
+func decompressBzip2(compressed []byte, size uint32, crc uint32) ([]byte, error) {
+	if size > maxDecompressedSize {
+		return nil, fmt.Errorf("%w: %d > %d", ErrDecompressSize, size, maxDecompressedSize)
 	}
 
-	compressedData := resp[20:n]
-	reader := bzip2.NewReader(bytes.NewReader(compressedData))
-
+	reader := bzip2.NewReader(bytes.NewReader(compressed))
 	decompressed := make([]byte, size)
-	readBytes, err := reader.Read(decompressed)
-	if err != nil {
-		return nil, fmt.Errorf("bz2 decompression failed: %w", err)
+
+	readBytes, err := io.ReadFull(reader, decompressed)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, ErrDecompressFailed
 	}
 
-	if uint32(readBytes) != size {
-		return nil, fmt.Errorf("bz2 decompressed size mismatch: expected %d, got %d", size, readBytes)
+	if readBytes != int(size) {
+		return nil, ErrDecompressSizeMismatch
 	}
 
 	if crc32.ChecksumIEEE(decompressed) != crc {
-		return nil, fmt.Errorf("bz2 CRC32 checksum mismatch")
+		return nil, ErrDecompressCRC
 	}
 
 	return decompressed, nil
 }
-*/

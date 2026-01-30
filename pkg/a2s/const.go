@@ -6,7 +6,7 @@ import (
 
 const (
 	DefaultDeadlineTimeout time.Duration = 5    // Default deadline timeout in seconds
-	DefaultBufferSize      uint16        = 1400 // 1400 default size for A2S but maybe max to 64KB
+	DefaultBufferSize      uint16        = 4096 // conservative default to avoid UDP truncation
 
 	singlePacket uint32 = 0xFFFFFFFF // A2S single-packet header
 	multiPacket  uint32 = 0xFFFFFFFE // A2S multi-packet header
