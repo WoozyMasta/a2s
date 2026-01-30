@@ -70,7 +70,7 @@ func (c *Client) Dial() error {
 	return nil
 }
 
-// SetBufferSize sets read buffer size. Default is 1400 bytes.
+// SetBufferSize sets read buffer size. Default is 4096 bytes.
 func (c *Client) SetBufferSize(size uint16) {
 	c.BufferSize = size
 	if cap(c.readBuf) < int(size) {
@@ -190,20 +190,20 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	for k := range c.packetsBuf {
 		delete(c.packetsBuf, k)
 	}
-	if info.packetCount > 8 && len(c.packetsBuf) == 0 {
-		c.packetsBuf = make(map[int][]byte, info.packetCount)
+	if info.count > 8 && len(c.packetsBuf) == 0 {
+		c.packetsBuf = make(map[int][]byte, info.count)
 	}
 
 	packets := c.packetsBuf
-	if n < info.dataOffset {
+	if n < info.dataOff {
 		return nil, 0, ErrMultiPacket
 	}
-	firstPacketData := make([]byte, n-info.dataOffset)
-	copy(firstPacketData, resp[info.dataOffset:n])
-	packets[info.currentPacket] = firstPacketData
+	firstPacketData := make([]byte, n-info.dataOff)
+	copy(firstPacketData, resp[info.dataOff:n])
+	packets[info.index] = firstPacketData
 
 	// Collect remaining packets
-	for len(packets) < info.packetCount {
+	for len(packets) < info.count {
 		if cap(c.readBuf) < int(c.BufferSize) {
 			c.readBuf = make([]byte, c.BufferSize)
 		}
@@ -214,24 +214,24 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			return nil, 0, err
 		}
 
-		if binary.LittleEndian.Uint32(resp[4:8]) != info.packetID {
+		if binary.LittleEndian.Uint32(resp[4:8]) != info.id {
 			return nil, 0, ErrMultiPacketInvalid
 		}
 
 		currentPacket := info.readPacketNumber(resp[:n])
 		if _, exists := packets[currentPacket]; !exists {
-			if n < info.baseHeaderSize {
+			if n < info.headerSize {
 				return nil, 0, ErrMultiPacket
 			}
-			packetData := make([]byte, n-info.baseHeaderSize)
-			copy(packetData, resp[info.baseHeaderSize:n])
+			packetData := make([]byte, n-info.headerSize)
+			copy(packetData, resp[info.headerSize:n])
 			packets[currentPacket] = packetData
 		}
 	}
 
 	// Calculate total size and assemble packets in order
 	totalSize := 0
-	for i := 0; i < info.packetCount; i++ {
+	for i := 0; i < info.count; i++ {
 		if data, exists := packets[i]; exists {
 			totalSize += len(data)
 		} else {
@@ -240,7 +240,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	}
 
 	assembledResp := make([]byte, 0, totalSize)
-	for i := 0; i < info.packetCount; i++ {
+	for i := 0; i < info.count; i++ {
 		if data, exists := packets[i]; exists {
 			assembledResp = append(assembledResp, data...)
 		} else {
@@ -249,7 +249,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	}
 
 	if info.compressed {
-		decompressed, err := decompressBzip2(assembledResp, info.decompressedSize, info.crc)
+		decompressed, err := decompressBzip2(assembledResp, info.unpackedSize, info.crc)
 		if err != nil {
 			return nil, 0, err
 		}
