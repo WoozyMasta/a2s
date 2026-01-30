@@ -92,9 +92,8 @@ var (
 
 	// Bzip2 errors
 
-	ErrDecompressSize         = errors.New("bz2 decompressed size exceeds 1 MB")
+	ErrDecompressSize         = errors.New("bz2 decompressed size exceeds limit")
 	ErrDecompressFailed       = errors.New("bz2 decompression failed")
 	ErrDecompressSizeMismatch = errors.New("bz2 decompressed size mismatch")
 	ErrDecompressCRC          = errors.New("bz2 CRC32 checksum mismatch")
-	errBzip2                  = errors.New("response compressed with bzip2: not implemented")
 )
