@@ -2,26 +2,37 @@ package a2s
 
 import "encoding/binary"
 
+const (
+	splitMin       = 9                // Minimum size of a split header.
+	srcSplitHeader = 12               // Size of a Source split header.
+	srcSplitNoSize = 10               // Size of a Source split header without split size.
+	goldSrcHeader  = 9                // Size of a GoldSource split header.
+	splitSizeOff   = 10               // Offset of the split size in a Source split header.
+	splitSizeMax   = 4096             // Max allowed split size.
+	unpackProbeMax = 32 * 1024 * 1024 // Max allowed decompressed size for probe.
+)
+
 // splitHeaderInfo contains metadata about a split packet.
 type splitHeaderInfo struct {
-	packetCount      int    // The total number of packets in the response.
-	currentPacket    int    // The current packet number.
-	baseHeaderSize   int    // The size of the base header.
-	dataOffset       int    // The offset of the data in the packet.
-	packetID         uint32 // The ID of the packet.
-	decompressedSize uint32 // The size of the decompressed data.
-	crc              uint32 // The CRC of the decompressed data.
-	compressed       bool   // Whether the packet is compressed.
-	useGoldSrc       bool   // Whether the packet is from the GoldSource engine.
+	count        int    // Total number of packets in the response.
+	index        int    // Current packet number.
+	headerSize   int    // Size of the base header.
+	dataOff      int    // Offset of the data in the packet.
+	id           uint32 // ID of the packet.
+	unpackedSize uint32 // Size of the decompressed data.
+	crc          uint32 // CRC of the decompressed data.
+	compressed   bool   // Whether the packet is compressed.
+	goldSrc      bool   // Whether the packet is from the GoldSource engine.
 }
 
 // parseSplitHeader parses the split header from a packet.
 // Returns the split header info and an error if the packet is not a split packet.
 func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
-	if len(data) < 9 {
+	if len(data) < splitMin {
 		return splitHeaderInfo{}, ErrMultiPacket
 	}
 
+	// Get the packet ID.
 	packetID := binary.LittleEndian.Uint32(data[4:8])
 	countSrc := 0
 	numberSrc := 0
@@ -33,60 +44,65 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 	countGold := int(data[8] & 0x0F)
 	numberGold := int((data[8] & 0xF0) >> 4)
 
+	// Check if the packet is from the Source engine.
 	isSource := false
 	if len(data) >= 13 && binary.LittleEndian.Uint32(data[9:13]) == singlePacket {
 		isSource = false
 	} else if len(data) >= 16 && binary.LittleEndian.Uint32(data[12:16]) == singlePacket {
 		isSource = true
-	} else if len(data) >= 12 {
-		splitSize := binary.LittleEndian.Uint16(data[10:12])
-		if splitSize > 0 && splitSize <= 4096 {
+	} else if len(data) >= srcSplitHeader {
+		splitSize := binary.LittleEndian.Uint16(data[splitSizeOff:srcSplitHeader])
+		if splitSize > 0 && splitSize <= splitSizeMax {
 			isSource = true
 		}
 	}
 
+	// Set packet count and current packet number.
 	packetCount := countGold
 	currentPacket := numberGold
-	baseHeaderSize := 9
+	baseHeaderSize := goldSrcHeader
 	useGold := !isSource
 	if isSource {
 		packetCount = countSrc
 		currentPacket = numberSrc
-		baseHeaderSize = 12
+		baseHeaderSize = srcSplitHeader
 	}
 
+	// Create split header info.
 	info := splitHeaderInfo{
-		packetID:       packetID,
-		packetCount:    packetCount,
-		currentPacket:  currentPacket,
-		baseHeaderSize: baseHeaderSize,
-		dataOffset:     baseHeaderSize,
-		useGoldSrc:     useGold,
+		id:         packetID,
+		count:      packetCount,
+		index:      currentPacket,
+		headerSize: baseHeaderSize,
+		dataOff:    baseHeaderSize,
+		goldSrc:    useGold,
 	}
 
+	// Check if packet is compressed and set decompressed size and CRC.
 	if (packetID & 0x80000000) != 0 {
 		if len(data) < baseHeaderSize+8 {
 			return splitHeaderInfo{}, ErrMultiPacket
 		}
+
 		info.compressed = true
-		info.decompressedSize = binary.LittleEndian.Uint32(data[baseHeaderSize : baseHeaderSize+4])
+		info.unpackedSize = binary.LittleEndian.Uint32(data[baseHeaderSize : baseHeaderSize+4])
 		info.crc = binary.LittleEndian.Uint32(data[baseHeaderSize+4 : baseHeaderSize+8])
-		info.dataOffset = baseHeaderSize + 8
+		info.dataOff = baseHeaderSize + 8
 
 		// Some servers omit the split-size field (base header 10 instead of 12).
-		if !useGold && baseHeaderSize == 12 && info.decompressedSize > 32*1024*1024 && len(data) >= 18 {
-			altSize := binary.LittleEndian.Uint32(data[10:14])
-			altCRC := binary.LittleEndian.Uint32(data[14:18])
-			if altSize > 0 && altSize <= 32*1024*1024 {
-				info.decompressedSize = altSize
+		if !useGold && baseHeaderSize == srcSplitHeader && info.unpackedSize > unpackProbeMax && len(data) >= 18 {
+			altSize := binary.LittleEndian.Uint32(data[splitSizeOff : splitSizeOff+4])
+			altCRC := binary.LittleEndian.Uint32(data[splitSizeOff+4 : splitSizeOff+8])
+			if altSize > 0 && altSize <= unpackProbeMax {
+				info.unpackedSize = altSize
 				info.crc = altCRC
-				info.baseHeaderSize = 10
-				info.dataOffset = 18
+				info.headerSize = srcSplitNoSize
+				info.dataOff = splitSizeOff + 8
 			}
 		}
 	}
 
-	if info.packetCount <= 0 {
+	if info.count <= 0 {
 		return splitHeaderInfo{}, ErrMultiPacket
 	}
 
@@ -96,7 +112,7 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 // readPacketNumber reads the packet number from a packet.
 // Returns the packet number.
 func (s splitHeaderInfo) readPacketNumber(data []byte) int {
-	if s.useGoldSrc {
+	if s.goldSrc {
 		return int((data[8] & 0xF0) >> 4)
 	}
 
