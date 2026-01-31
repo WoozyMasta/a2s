@@ -16,7 +16,7 @@ func decompressBzip2(compressed []byte, size uint32, crc uint32) ([]byte, error)
 	}
 
 	reader := bzip2.NewReader(bytes.NewReader(compressed))
-	decompressed := make([]byte, size)
+	decompressed := make([]byte, int(size))
 
 	readBytes, err := io.ReadFull(reader, decompressed)
 	if err != nil && err != io.ErrUnexpectedEOF {
