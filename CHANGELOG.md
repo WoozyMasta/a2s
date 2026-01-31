@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## [0.3.1][] - 2026-01-31
+
+### Added
+
+* `a2s` support bz2-compressed multi-packet responses
+* `a2s` support split (multi-packet) responses
+  (rewritten for correctness and reliability)
+
+### Fixed
+
+* `a2s` avoid panics on truncated UDP reads and
+  tolerate missing EDF byte in `A2S_INFO`
+
+### Changed
+
+* `a2s` increased default read buffer size to 4096 bytes
+  to reduce UDP truncation risk
+
+[0.3.1]: https://github.com/WoozyMasta/a2s/compare/v0.3.0...v0.3.1
+
 ## [0.3.0][] - 2025-12-30
 
 ### Added
