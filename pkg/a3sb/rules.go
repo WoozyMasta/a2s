@@ -45,7 +45,7 @@ func (c *Client) GetRulesDayZ() (*Rules, error) {
 
 // GetRules parses A2S_RULES response using A3SBP for Arma 3 and DayZ.
 func (c *Client) GetRules(game uint64) (*Rules, error) {
-	if c.BufferSize == a2s.DefaultBufferSize {
+	if c.BufferSize <= a2s.DefaultBufferSize {
 		c.SetBufferSize(8192)
 	}
 

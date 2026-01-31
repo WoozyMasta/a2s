@@ -8,6 +8,11 @@ import (
 
 // isMultiPacket checks if response uses multi-packet format.
 func isMultiPacket(data []byte) (bool, error) {
+	// Some servers can send a truncated packet first; avoid panics on short reads.
+	if len(data) < 4 {
+		return true, ErrMultiPacket
+	}
+
 	header := binary.LittleEndian.Uint32(data[:4])
 
 	switch header {
