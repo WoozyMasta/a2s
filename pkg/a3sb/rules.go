@@ -9,7 +9,10 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Rules contains parsed A3SBP response data.
+// DefaultRulesBufferSize is default buffer size for A3SB rules responses.
+const DefaultRulesBufferSize uint16 = 8192
+
+// Rules contains parsed A3SB rules response data.
 type Rules struct {
 	Flags           *Flags            `json:"flags,omitempty"`            // Flags, I don't know what's actually encoded there
 	Difficulty      *Difficulty       `json:"difficulty,omitempty"`       // Difficulty (Arma 3 only)
@@ -43,10 +46,10 @@ func (c *Client) GetRulesDayZ() (*Rules, error) {
 	return c.GetRules(appid.DayZ.Uint64())
 }
 
-// GetRules parses A2S_RULES response using A3SBP for Arma 3 and DayZ.
+// GetRules parses A2S_RULES response using A3SB for Arma 3 and DayZ.
 func (c *Client) GetRules(game uint64) (*Rules, error) {
 	if c.BufferSize == a2s.DefaultBufferSize {
-		c.SetBufferSize(8192)
+		c.SetBufferSize(DefaultRulesBufferSize)
 	}
 
 	data, _, _, err := c.Get(a2s.RulesRequest)
