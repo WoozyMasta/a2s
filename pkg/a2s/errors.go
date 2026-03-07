@@ -79,6 +79,8 @@ var (
 	ErrInsufficientData    = errors.New("insufficient data length")
 	ErrMultiPacketInvalid  = errors.New("received invalid packet identifier in response")
 	ErrMultiPacketMismatch = errors.New("mismatched number of packets received")
+	ErrChallengeLoop       = errors.New("server keeps returning challenge response")
+	ErrQueryUnsupported    = errors.New("server does not support requested query")
 
 	// Validator errors
 

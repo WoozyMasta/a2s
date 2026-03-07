@@ -80,10 +80,16 @@ func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 	}
 
 	if i.VAC, err = r.Bool(); err != nil {
+		if errors.Is(err, bread.ErrUnderflow) {
+			return nil
+		}
 		return errors.Join(ErrInfoVAC, err)
 	}
 
 	if i.Bots, err = r.Byte(); err != nil {
+		if errors.Is(err, bread.ErrUnderflow) {
+			return nil
+		}
 		return errors.Join(ErrInfoBotsCount, err)
 	}
 

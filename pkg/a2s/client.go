@@ -93,39 +93,97 @@ func (c *Client) Close() error {
 // Get sends request and returns response data (without header), response type, ping duration and error.
 // Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
-	var lastErr error
+	var (
+		lastUnexpectedErr  error
+		lastUnexpectedFlag Flag
+		lastDuration       time.Duration
+	)
 
 	for attempt := 0; attempt < 3; attempt++ {
 		resp, duration, err := c.request(requestType, singlePacket)
 		if err != nil {
+			if lastUnexpectedErr != nil {
+				return nil, lastUnexpectedFlag, lastDuration, errors.Join(lastUnexpectedErr, err)
+			}
 			return nil, 0, 0, err
 		}
-		flag := Flag(resp[4])
 
-		for challengeAttempt := 0; challengeAttempt < 2 && flag == challengeResponse; challengeAttempt++ {
+		flag := Flag(resp[4])
+		retryAfterChallengeError := false
+
+		for challengeAttempt := 0; challengeAttempt < 4 && flag == challengeResponse; challengeAttempt++ {
 			challenge := binary.BigEndian.Uint32(resp[5:9])
 			resp, _, err = c.request(requestType, challenge)
 			if err != nil {
-				return nil, 0, 0, err
+				challengeErr := errors.Join(validationErrForRequest(requestType), ErrChallengeLoop, err)
+				if requestType == RulesRequest || requestType == PlayerRequest {
+					lastUnexpectedErr = challengeErr
+					lastUnexpectedFlag = challengeResponse
+					lastDuration = duration
+					retryAfterChallengeError = true
+					break
+				}
+
+				return nil, challengeResponse, duration, challengeErr
 			}
 			flag = Flag(resp[4])
 		}
 
+		if retryAfterChallengeError {
+			continue
+		}
+
+		// If response type is not valid, classify error as ErrQueryUnsupported and continue.
 		if err := validateResponseType(requestType, flag); err != nil {
-			if requestType == RulesRequest && (flag == infoResponseSource || flag == infoResponseGoldSource || flag == challengeResponse) {
-				lastErr = err
+			classified := err
+			switch {
+			case flag == challengeResponse:
+				classified = errors.Join(err, ErrChallengeLoop)
+			case requestType != InfoRequest && (flag == infoResponseSource || flag == infoResponseGoldSource):
+				classified = errors.Join(err, ErrQueryUnsupported)
+			}
+
+			if requestType != InfoRequest && (flag == challengeResponse || flag == infoResponseSource || flag == infoResponseGoldSource) {
+				lastUnexpectedErr = classified
+				lastUnexpectedFlag = flag
+				lastDuration = duration
 				continue
 			}
-			return resp[5:], flag, duration, err
+
+			return resp[5:], flag, duration, classified
 		}
 
 		return resp[5:], flag, duration, nil
 	}
 
-	if lastErr == nil {
-		lastErr = ErrValidatorRules
+	if lastUnexpectedErr != nil {
+		return nil, lastUnexpectedFlag, lastDuration, lastUnexpectedErr
 	}
-	return nil, 0, 0, lastErr
+
+	return nil, 0, 0, validationErrForRequest(requestType)
+}
+
+// validationErrForRequest returns an error for an unsupported request type.
+func validationErrForRequest(requestType Flag) error {
+	switch requestType {
+	case InfoRequest:
+		return ErrValidatorInfo
+
+	case PlayerRequest:
+		return ErrValidatorPlayer
+
+	case RulesRequest:
+		return ErrValidatorRules
+
+	case PingRequest:
+		return ErrValidatorPing
+
+	case ChallengeRequest:
+		return ErrValidatorChallenge
+
+	default:
+		return ErrValidatorRequest
+	}
 }
 
 // request creates header, sends request and returns response with ping duration.
@@ -149,7 +207,9 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		resp []byte
 		n    int
 	)
-	for attempt := 0; attempt < 3; attempt++ {
+	var packetErr error
+	readOK := false
+	for attempt := 0; attempt < 6; attempt++ {
 		if cap(c.readBuf) < int(c.BufferSize) {
 			c.readBuf = make([]byte, c.BufferSize)
 		}
@@ -159,14 +219,28 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			return nil, 0, err
 		}
 
-		multi, err := isMultiPacket(resp[:n])
-		if err != nil && errors.Is(err, ErrMultiPacket) && multi {
-			continue // Some servers send a truncated split packet first; read again.
+		_, packetErr = isMultiPacket(resp[:n])
+		if packetErr != nil {
+			if errors.Is(packetErr, ErrMultiPacket) || errors.Is(packetErr, ErrSinglePacket) || errors.Is(packetErr, ErrValidatorHeader) {
+				continue // Ignore truncated or unrelated datagrams and keep reading.
+			}
+			break
 		}
+
+		readOK = true
 		break
 	}
 
 	duration := time.Since(start)
+
+	if !readOK {
+		if packetErr != nil {
+			result := make([]byte, n)
+			copy(result, resp[:n])
+			return result, 0, packetErr
+		}
+		return nil, 0, ErrSinglePacket
+	}
 
 	multi, err := isMultiPacket(resp[:n])
 	if err != nil {
@@ -214,15 +288,31 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			return nil, 0, err
 		}
 
+		if n < splitMin {
+			continue
+		}
+
+		header := binary.LittleEndian.Uint32(resp[:4])
+		if header != multiPacket {
+			continue
+		}
+
 		if binary.LittleEndian.Uint32(resp[4:8]) != info.id {
-			return nil, 0, ErrMultiPacketInvalid
+			continue
+		}
+
+		// Packet belongs to current split response but is too short for its header.
+		// Treat as malformed response instead of waiting for read timeout.
+		if n < info.headerSize {
+			return nil, 0, ErrMultiPacket
 		}
 
 		currentPacket := info.readPacketNumber(resp[:n])
+		if currentPacket >= info.count {
+			continue
+		}
+
 		if _, exists := packets[currentPacket]; !exists {
-			if n < info.headerSize {
-				return nil, 0, ErrMultiPacket
-			}
 			packetData := make([]byte, n-info.headerSize)
 			copy(packetData, resp[info.headerSize:n])
 			packets[currentPacket] = packetData
