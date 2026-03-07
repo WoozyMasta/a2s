@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
-## Unreleased
+## [0.3.2][] - 2026-03-07
 
 ### Added
 
@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning][].
 
 * `a2s` return clearer diagnostics for unsupported queries
  (e.g. `A2S_INFO` returned for `rules`) and challenge-loop behavior
+
+[0.3.2]: https://github.com/WoozyMasta/a2s/compare/v0.3.1...v0.3.2
 
 ## [0.3.1][] - 2026-01-31
 
