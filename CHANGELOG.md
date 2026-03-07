@@ -24,8 +24,6 @@ and this project adheres to [Semantic Versioning][].
 
 * `a2s` tolerate truncated GoldSource `A2S_INFO` responses where trailing
   `VAC` and/or `bots` bytes are missing
-* `a2s` restored compatibility for `rules`/`players` on servers that require
-  repeated challenge negotiation before returning final data
 * `a2s` improve UDP response handling by skipping unrelated or truncated
   datagrams during packet reads and split-packet assembly
 
