@@ -70,6 +70,25 @@ func rulesSinglePacketFixture(payload []byte) []byte {
 	return packet
 }
 
+type rulesFixtureEntry struct {
+	key   []byte
+	value []byte
+}
+
+func rulesResponsePayload(entries ...rulesFixtureEntry) []byte {
+	payload := make([]byte, 2)
+	binary.LittleEndian.PutUint16(payload, uint16(len(entries)))
+
+	for _, entry := range entries {
+		payload = append(payload, entry.key...)
+		payload = append(payload, 0)
+		payload = append(payload, entry.value...)
+		payload = append(payload, 0)
+	}
+
+	return payload
+}
+
 func TestMinimalDayZProtocolFixture(t *testing.T) {
 	// v2, zero flags, no DLC, no mods, and no signatures.
 	data := []byte{2, 0, 0, 0, 0, 0}
@@ -103,5 +122,43 @@ func TestGetRulesRejectsTruncatedCountFixtures(t *testing.T) {
 				t.Fatalf("error = %v, want ErrRules", err)
 			}
 		})
+	}
+}
+
+func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
+	fixtureData := rulesResponsePayload(
+		rulesFixtureEntry{value: []byte("blank")},
+		rulesFixtureEntry{key: []byte{0x01}, value: []byte("one")},
+		rulesFixtureEntry{
+			key:   []byte{0x01, 0x01},
+			value: []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02},
+		},
+		rulesFixtureEntry{key: []byte{0x02, 0x03, 0x04}, value: []byte("long")},
+	)
+	fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(fixtureData))
+
+	baseClient, err := a2s.NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create a2s client: %v", err)
+	}
+	defer baseClient.Close()
+
+	client := &Client{Client: baseClient}
+	rules, err := client.GetRules(appid.DayZ.Uint64())
+	if err != nil {
+		t.Fatalf("GetRules returned error: %v", err)
+	}
+
+	if got := rules.ExtraRules[string([]byte{0x01})]; got != "one" {
+		t.Fatalf("one-byte raw rule = %q, want %q", got, "one")
+	}
+	if got := rules.ExtraRules[string([]byte{0x02, 0x03, 0x04})]; got != "long" {
+		t.Fatalf("long raw rule = %q, want %q", got, "long")
+	}
+	if _, ok := rules.ExtraRules[""]; ok {
+		t.Fatal("blank rule key should not be preserved as a raw rule")
+	}
+	if stats := rules.GetReaderStats(); stats[1] != 1 {
+		t.Fatalf("page count stat = %d, want 1", stats[1])
 	}
 }

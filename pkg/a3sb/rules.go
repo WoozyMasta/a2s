@@ -98,15 +98,14 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 				a3sb = make([]byte, 0, estimatedSize)
 			}
 			a3sb = bread.AppendEscapeSequences(a3sb, value)
+			if rules.stats[1] == 0 {
+				rules.stats[1] = key[1]
+			}
 		} else {
 			if rawRules == nil {
 				rawRules = make(map[string]string, 8)
 			}
 			rawRules[string(key)] = string(value)
-		}
-
-		if rules.stats[1] == 0 {
-			rules.stats[1] = key[1]
 		}
 	}
 
