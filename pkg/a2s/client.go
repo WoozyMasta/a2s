@@ -3,6 +3,7 @@ package a2s
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
 	"time"
 )
@@ -112,6 +113,15 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 		retryAfterChallengeError := false
 
 		for challengeAttempt := 0; challengeAttempt < 4 && flag == challengeResponse; challengeAttempt++ {
+			if len(resp) < 9 {
+				return nil, challengeResponse, duration, fmt.Errorf(
+					"%w: %w (got %d bytes, want at least 9)",
+					ErrChallengeRead,
+					ErrInsufficientData,
+					len(resp),
+				)
+			}
+
 			challenge := binary.BigEndian.Uint32(resp[5:9])
 			resp, _, err = c.request(requestType, challenge)
 			if err != nil {

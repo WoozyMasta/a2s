@@ -2,7 +2,9 @@ package a2s
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
+	"strconv"
 	"testing"
 )
 
@@ -192,5 +194,56 @@ func TestMalformedPacketFixtures(t *testing.T) {
 				t.Fatalf("error = %v, want %v", err, test.want)
 			}
 		})
+	}
+}
+
+func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
+	for length := 5; length <= 8; length++ {
+		t.Run(strconv.Itoa(length), func(t *testing.T) {
+			packet := make([]byte, length)
+			binary.LittleEndian.PutUint32(packet[:4], singlePacket)
+			packet[4] = byte(challengeResponse)
+			fixture := newUDPPacketFixture(t, packet)
+
+			client, err := NewWithAddr(fixture.Addr())
+			if err != nil {
+				t.Fatalf("create client: %v", err)
+			}
+			defer client.Close()
+
+			_, _, _, err = client.Get(RulesRequest)
+			if err == nil {
+				t.Fatal("Get returned nil error for truncated challenge")
+			}
+			if !errors.Is(err, ErrChallengeRead) {
+				t.Fatalf("error = %v, want ErrChallengeRead", err)
+			}
+			if !errors.Is(err, ErrInsufficientData) {
+				t.Fatalf("error = %v, want ErrInsufficientData", err)
+			}
+		})
+	}
+}
+
+func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
+	challenge := singlePacketFixture(challengeResponse, []byte{0x01, 0x02, 0x03, 0x04})
+	response := singlePacketFixture(rulesResponse, []byte("rules"))
+	fixture := newUDPPacketFixture(t, challenge, response)
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	data, flag, _, err := client.Get(RulesRequest)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if flag != rulesResponse {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	}
+	if string(data) != "rules" {
+		t.Fatalf("response payload = %q, want %q", data, "rules")
 	}
 }
