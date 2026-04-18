@@ -61,7 +61,7 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 
 	count, err := reader.Uint16()
 	if err != nil {
-		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data[:4])
+		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data)
 	}
 
 	var a3sb []byte
