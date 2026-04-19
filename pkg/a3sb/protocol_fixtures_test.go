@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/steam/utils/appid"
 )
@@ -160,5 +161,81 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	}
 	if stats := rules.GetReaderStats(); stats[1] != 1 {
 		t.Fatalf("page count stat = %d, want 1", stats[1])
+	}
+}
+
+func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
+	marker := byte(0xAA)
+	tests := []struct {
+		name       string
+		data       []byte
+		want       *Difficulty
+		wantErr    bool
+		wantMarker bool
+	}{
+		{
+			name:       "zero bytes",
+			data:       []byte{0x00, 0x00, marker},
+			wantMarker: true,
+		},
+		{
+			name:       "zero value with nonzero second byte",
+			data:       []byte{0x00, 0x01, marker},
+			wantMarker: true,
+		},
+		{
+			name: "normal values",
+			data: []byte{0xC9, 0x01, marker},
+			want: &Difficulty{
+				Level:         1,
+				AILevel:       1,
+				AdvanceFlight: false,
+				ThirdPerson:   true,
+				Crosshair:     true,
+			},
+			wantMarker: true,
+		},
+		{
+			name:    "truncated zero first byte",
+			data:    []byte{0x00},
+			wantErr: true,
+		},
+		{
+			name:    "truncated normal first byte",
+			data:    []byte{0xC9},
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rules := &Rules{id: appid.Arma3.Uint64()}
+			reader := bread.NewReader(test.data)
+
+			err := rules.readDifficulty(reader)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("readDifficulty returned nil error for truncated field")
+				}
+				if !errors.Is(err, bread.ErrUnderflow) {
+					t.Fatalf("error = %v, want bread.ErrUnderflow", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("readDifficulty returned error: %v", err)
+			}
+			if (rules.Difficulty == nil) != (test.want == nil) {
+				t.Fatalf("difficulty = %+v, want %+v", rules.Difficulty, test.want)
+			}
+			if rules.Difficulty != nil && *rules.Difficulty != *test.want {
+				t.Fatalf("difficulty = %+v, want %+v", *rules.Difficulty, *test.want)
+			}
+			if test.wantMarker {
+				if got, err := reader.Byte(); err != nil || got != marker {
+					t.Fatalf("marker read = 0x%X, %v; want 0x%X", got, err, marker)
+				}
+			}
+		})
 	}
 }

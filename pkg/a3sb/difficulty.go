@@ -30,6 +30,11 @@ func (r *Rules) readDifficulty(reader *bread.Reader) error {
 	if err != nil {
 		return fmt.Errorf("first byte: %w", err)
 	}
+
+	crosshair, err := reader.Byte()
+	if err != nil {
+		return fmt.Errorf("second byte: %w", err)
+	}
 	if value == 0 {
 		return nil
 	}
@@ -39,11 +44,6 @@ func (r *Rules) readDifficulty(reader *bread.Reader) error {
 		AILevel:       (value >> 3) & 0b00000111, // Shift 3 bits right, then mask for next 3 bits
 		AdvanceFlight: value&(1<<6) == 0,         // Checking bit 6
 		ThirdPerson:   value&(1<<7) != 0,         // Checking bit 7
-	}
-
-	crosshair, err := reader.Byte()
-	if err != nil {
-		return fmt.Errorf("second byte: %w", err)
 	}
 	r.Difficulty.Crosshair = (crosshair & 0x01) != 0
 
