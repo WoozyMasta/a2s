@@ -75,34 +75,27 @@ func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 
 // parseDLC parses DLC bitmask into DLCInfo slice.
 func parseDLC(mask uint16, dlcs map[DLC]DLCInfo) []DLCInfo {
-	dlc := DLC(mask)
-
-	bitCount := bits.OnesCount16(uint16(dlc))
+	bitCount := bits.OnesCount16(mask)
 	if bitCount == 0 {
 		return nil
 	}
 
 	result := make([]DLCInfo, 0, bitCount)
 
-	// Processing of known DLCs
-	for bit, info := range dlcs {
-		if dlc&bit != 0 {
-			result = append(result, info)
-			dlc &^= bit // Removing match DLC from the mask
+	for bit := DLC(1); bit != 0; bit <<= 1 {
+		if DLC(mask)&bit == 0 {
+			continue
 		}
-	}
 
-	// Checking the remaining bits for unknown DLCs
-	bit := DLC(1) // Start with the least significant bit
-	for dlc != 0 {
-		if dlc&bit != 0 {
-			result = append(result, DLCInfo{
-				ID:   0,
-				Name: fmt.Sprintf("Unknown DLC %d", bit),
-			})
-			dlc &^= bit // Remove the processed bit from the mask
+		if info, ok := dlcs[bit]; ok {
+			result = append(result, info)
+			continue
 		}
-		bit <<= 1 // Move on to the next bit
+
+		result = append(result, DLCInfo{
+			ID:   0,
+			Name: fmt.Sprintf("Unknown DLC %d", bit),
+		})
 	}
 
 	return result

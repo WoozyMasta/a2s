@@ -239,3 +239,39 @@ func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
 		})
 	}
 }
+
+func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
+	const mask = uint16(0x2201)
+
+	hashData := make([]byte, 12)
+	binary.LittleEndian.PutUint32(hashData[0:4], 0x11111111)
+	binary.LittleEndian.PutUint32(hashData[4:8], 0x22222222)
+	binary.LittleEndian.PutUint32(hashData[8:12], 0x33333333)
+
+	for iteration := 0; iteration < 100; iteration++ {
+		rules := &Rules{id: appid.Arma3.Uint64()}
+		if err := rules.readDLC(bread.NewReader(hashData), mask); err != nil {
+			t.Fatalf("readDLC returned error: %v", err)
+		}
+
+		if len(rules.DLC) != 3 {
+			t.Fatalf("DLC count = %d, want 3", len(rules.DLC))
+		}
+
+		want := []struct {
+			name string
+			id   uint64
+			hash uint32
+		}{
+			{name: "Karts", id: 288520, hash: 0x11111111},
+			{name: "Tanks", id: 798390, hash: 0x22222222},
+			{name: "Unknown DLC 8192", id: 0, hash: 0x33333333},
+		}
+		for index, expected := range want {
+			got := rules.DLC[index]
+			if got.Name != expected.name || got.ID != expected.id || got.Hash != expected.hash {
+				t.Fatalf("iteration %d DLC[%d] = %+v, want %+v", iteration, index, got, expected)
+			}
+		}
+	}
+}
