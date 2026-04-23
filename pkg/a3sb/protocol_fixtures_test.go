@@ -275,3 +275,51 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 		}
 	}
 }
+
+func TestGetRulesParsesDayZDedicatedRule(t *testing.T) {
+	page := []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
+	tests := []struct {
+		name      string
+		value     string
+		want      bool
+		wantError bool
+	}{
+		{name: "dedicated", value: "1", want: true},
+		{name: "non-dedicated", value: "0", want: false},
+		{name: "unexpected", value: "2", wantError: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixtureData := rulesResponsePayload(
+				rulesFixtureEntry{key: []byte{0x01, 0x01}, value: page},
+				rulesFixtureEntry{key: []byte("dedicated"), value: []byte(test.value)},
+			)
+			fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(fixtureData))
+
+			baseClient, err := a2s.NewWithAddr(fixture.Addr())
+			if err != nil {
+				t.Fatalf("create a2s client: %v", err)
+			}
+			defer baseClient.Close()
+
+			client := &Client{Client: baseClient}
+			rules, err := client.GetRules(appid.DayZ.Uint64())
+			if test.wantError {
+				if err == nil {
+					t.Fatal("GetRules returned nil error for unexpected dedicated value")
+				}
+				if !errors.Is(err, ErrRulesDayZDedicated) {
+					t.Fatalf("error = %v, want ErrRulesDayZDedicated", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("GetRules returned error: %v", err)
+			}
+			if rules.Dedicated != test.want {
+				t.Fatalf("Dedicated = %t, want %t", rules.Dedicated, test.want)
+			}
+		})
+	}
+}

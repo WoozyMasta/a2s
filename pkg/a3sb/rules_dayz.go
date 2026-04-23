@@ -1,6 +1,7 @@
 package a3sb
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/woozymasta/a2s/pkg/keywords/types"
@@ -26,7 +27,14 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			}
 
 		case "dedicated":
-			r.Dedicated = (v == "0")
+			switch v {
+			case "0":
+				r.Dedicated = false
+			case "1":
+				r.Dedicated = true
+			default:
+				return fmt.Errorf("%w: %q", ErrRulesDayZDedicated, v)
+			}
 
 		case "island":
 			r.Island = v
