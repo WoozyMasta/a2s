@@ -40,8 +40,10 @@ func (r *Reader) Byte() (byte, error) {
 	if r.pos >= len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	b := r.data[r.pos]
 	r.pos++
+
 	return b, nil
 }
 
@@ -67,8 +69,10 @@ func (r *Reader) Uint16() (uint16, error) {
 	if r.pos+2 > len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	value := binary.LittleEndian.Uint16(r.data[r.pos:])
 	r.pos += 2
+
 	return value, nil
 }
 
@@ -77,8 +81,22 @@ func (r *Reader) Uint32() (uint32, error) {
 	if r.pos+4 > len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	value := binary.LittleEndian.Uint32(r.data[r.pos:])
 	r.pos += 4
+
+	return value, nil
+}
+
+// Int32 reads int32 in LittleEndian.
+func (r *Reader) Int32() (int32, error) {
+	if r.pos+4 > len(r.data) {
+		return 0, ErrUnderflow
+	}
+
+	value := int32(binary.LittleEndian.Uint32(r.data[r.pos:]))
+	r.pos += 4
+
 	return value, nil
 }
 
@@ -87,8 +105,10 @@ func (r *Reader) Uint64() (uint64, error) {
 	if r.pos+8 > len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	value := binary.LittleEndian.Uint64(r.data[r.pos:])
 	r.pos += 8
+
 	return value, nil
 }
 
@@ -97,8 +117,10 @@ func (r *Reader) Float32() (float32, error) {
 	if r.pos+4 > len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	bits := binary.LittleEndian.Uint32(r.data[r.pos:])
 	r.pos += 4
+
 	return math.Float32frombits(bits), nil
 }
 
@@ -107,8 +129,10 @@ func (r *Reader) Float64() (float64, error) {
 	if r.pos+8 > len(r.data) {
 		return 0, ErrUnderflow
 	}
+
 	bits := binary.LittleEndian.Uint64(r.data[r.pos:])
 	r.pos += 8
+
 	return math.Float64frombits(bits), nil
 }
 
@@ -125,6 +149,7 @@ func (r *Reader) String() (string, error) {
 
 	str := string(r.data[start:r.pos])
 	r.pos++
+
 	return str, nil
 }
 
@@ -141,6 +166,7 @@ func (r *Reader) BytesPage() ([]byte, error) {
 
 	result := r.data[start:r.pos]
 	r.pos++
+
 	return result, nil
 }
 

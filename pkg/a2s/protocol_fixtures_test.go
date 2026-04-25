@@ -3,6 +3,7 @@ package a2s
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 	"net"
 	"strconv"
 	"testing"
@@ -245,5 +246,64 @@ func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
 	}
 	if string(data) != "rules" {
 		t.Fatalf("response payload = %q, want %q", data, "rules")
+	}
+}
+
+func TestGetPlayersParsesSignedScores(t *testing.T) {
+	payload := []byte{3}
+	for index, score := range []int32{-1, 0, math.MaxInt32} {
+		payload = append(payload, byte(index))
+		payload = append(payload, "player"...)
+		payload = append(payload, byte('0'+index), 0)
+		payload = binary.LittleEndian.AppendUint32(payload, uint32(score))
+		payload = binary.LittleEndian.AppendUint32(payload, math.Float32bits(1))
+	}
+
+	fixture := newUDPPacketFixture(t, singlePacketFixture(playerResponse, payload))
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	players, err := client.GetPlayers()
+	if err != nil {
+		t.Fatalf("GetPlayers returned error: %v", err)
+	}
+	if got, want := len(*players), 3; got != want {
+		t.Fatalf("player count = %d, want %d", got, want)
+	}
+
+	want := []int32{-1, 0, math.MaxInt32}
+	for index, player := range *players {
+		if player.Score != want[index] {
+			t.Errorf("player %d score = %d, want %d", index, player.Score, want[index])
+		}
+	}
+}
+
+func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
+	payload := []byte{1, 0}
+	payload = append(payload, "player"...)
+	payload = append(payload, 0)
+	score := int32(-1)
+	payload = binary.LittleEndian.AppendUint32(payload, uint32(score))
+	payload = binary.LittleEndian.AppendUint32(payload, math.Float32bits(1))
+	payload = binary.LittleEndian.AppendUint32(payload, 2)
+	payload = binary.LittleEndian.AppendUint32(payload, 3)
+
+	fixture := newUDPPacketFixture(t, singlePacketFixture(playerResponse, payload))
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	players, err := client.GetTheShipPlayers()
+	if err != nil {
+		t.Fatalf("GetTheShipPlayers returned error: %v", err)
+	}
+	if got, want := (*players)[0].Score, int32(-1); got != want {
+		t.Fatalf("The Ship player score = %d, want %d", got, want)
 	}
 }

@@ -18,7 +18,7 @@ type TheShip struct {
 type TheShipPlayer struct {
 	Name     string        `json:"name,omitempty"`
 	Duration time.Duration `json:"duration,omitempty"`
-	Score    uint32        `json:"score,omitempty"`
+	Score    int32         `json:"score,omitempty"`
 	Deaths   uint32        `json:"deaths,omitempty"`
 	Money    uint32        `json:"money,omitempty"`
 	Index    byte          `json:"index,omitempty"`
@@ -77,7 +77,7 @@ func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
 			return nil, errors.Join(ErrPlayerName, err)
 		}
 
-		if player.Score, err = reader.Uint32(); err != nil {
+		if player.Score, err = reader.Int32(); err != nil {
 			return nil, errors.Join(ErrPlayerScore, err)
 		}
 
