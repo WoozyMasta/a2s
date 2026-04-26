@@ -69,9 +69,9 @@ func TestSourceInfoJSONContract(t *testing.T) {
 		"players":        float64(1),
 		"max_players":    float64(16),
 		"bots":           float64(2),
-		"type":           "Dedicated",
+		"server_type":    "Dedicated",
 		"environment":    "Windows",
-		"public":         true,
+		"visibility":     true,
 		"vac":            false,
 		"EDF":            float64(241),
 	}

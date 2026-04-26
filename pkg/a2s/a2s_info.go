@@ -30,9 +30,9 @@ type Info struct {
 	Players      byte          `json:"players"`                  // Number of players on the server
 	MaxPlayers   byte          `json:"max_players"`              // Maximum number of players the server reports it can hold
 	Bots         byte          `json:"bots,omitempty"`           // Number of bots on the server
-	ServerType   ServerType    `json:"type"`                     // Indicates the type of server
+	ServerType   ServerType    `json:"server_type"`              // Indicates the type of server
 	Environment  Environment   `json:"environment"`              // Indicates the operating system of the server
-	Visibility   bool          `json:"public"`                   // Indicates whether the server requires a password
+	Visibility   bool          `json:"visibility"`               // Indicates whether the server requires a password
 	VAC          bool          `json:"vac"`                      // Specifies whether the server uses VAC
 	EDF          EDF           `json:"EDF,omitempty"`            // If present, specifies additional data fields
 
