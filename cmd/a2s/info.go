@@ -172,6 +172,7 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 	case appid.Arma3.Uint64():
 		armaData := keywords.ParseArma3(info.Keywords)
 		jsonMap["keywords"] = armaData
+
 	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
 		dayZData := keywords.ParseDayZ(info.Keywords)
 		jsonMap["keywords"] = dayZData

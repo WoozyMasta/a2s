@@ -37,6 +37,9 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInfo returned error: %v", err)
 	}
+	if info.ID != 107410 {
+		t.Fatalf("parsed ID = %d, want 107410", info.ID)
+	}
 
 	jsonData, err := json.Marshal(info)
 	if err != nil {

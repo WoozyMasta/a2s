@@ -7,36 +7,92 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Info contains A2S_INFO response data.
+// Info contains parsed A2S_INFO response data.
+//
+// A2S_INFO has a legacy 16-bit AppID and an optional EDF GameID.
+// This type intentionally exposes one effective ID:
+// EDF GameID takes precedence because the legacy value may be truncated
+// Callers use ID for game detection and output;
+// the raw wire identifiers are not exposed separately.
+//
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format
 type Info struct {
-	TheShip      *TheShip      `json:"the_ship,omitempty"`       // These fields only exist if server is The Ship
-	Mod          *ModInfo      `json:"mod,omitempty"`            // Mod info, present if field Mod is 0x01 [Additional for GoldSource]
-	Name         string        `json:"name"`                     // Name of the server
-	Map          string        `json:"map"`                      // Map the server has currently loaded
-	Folder       string        `json:"folder"`                   // Name of the folder containing the game files
-	Game         string        `json:"game,omitempty"`           // Full name of the game
-	Version      string        `json:"version"`                  // Version of the game installed on the server
-	SourceTVName string        `json:"source_tv_name,omitempty"` // Name of the spectator server for SourceTV (EDF 0x40)
-	Address      string        `json:"address,omitempty"`        // IP address and port of the server. [Additional for GoldSource]
-	Keywords     []string      `json:"keywords,omitempty"`       // Tags that describe the game according to the server (EDF 0x20)
-	Ping         time.Duration `json:"ping"`                     // Server response time (custom)
-	ID           uint64        `json:"id"`                       // Steam Application ID of game (Reuse EDF 0x01)
-	SteamID      uint64        `json:"steam_id,omitempty"`       // Server SteamID (EDF 0x10)
-	Port         uint16        `json:"port,omitempty"`           // Game port number (EDF 0x80)
-	SourceTVPort uint16        `json:"source_tv_port,omitempty"` // Spectator port number for SourceTV (EDF 0x40 )
-	Format       InfoFormat    `json:"format"`                   // Response format (Source or obsolete GoldSource)
-	Protocol     byte          `json:"protocol"`                 // Protocol version used by the server
-	Players      byte          `json:"players"`                  // Number of players on the server
-	MaxPlayers   byte          `json:"max_players"`              // Maximum number of players the server reports it can hold
-	Bots         byte          `json:"bots,omitempty"`           // Number of bots on the server
-	ServerType   ServerType    `json:"server_type"`              // Indicates the type of server
-	Environment  Environment   `json:"environment"`              // Indicates the operating system of the server
-	Visibility   bool          `json:"visibility"`               // Indicates whether the server requires a password
-	VAC          bool          `json:"vac"`                      // Specifies whether the server uses VAC
-	EDF          EDF           `json:"EDF,omitempty"`            // If present, specifies additional data fields
+	// The Ship-specific fields, present only for The Ship servers.
+	TheShip *TheShip `json:"the_ship,omitempty"`
 
-	// GameID       uint64        `json:"game_id,omitempty"`        // GameID, already set in ID (EDF 0x01)
+	// GoldSource mod information, present when the Mod field is 0x01.
+	Mod *ModInfo `json:"mod,omitempty"`
+
+	// Server name.
+	Name string `json:"name"`
+
+	// Map currently loaded by the server.
+	Map string `json:"map"`
+
+	// Folder containing the game files.
+	Folder string `json:"folder"`
+
+	// Full game name.
+	Game string `json:"game,omitempty"`
+
+	// Installed game version.
+	Version string `json:"version"`
+
+	// SourceTV spectator server name (EDF 0x40).
+	SourceTVName string `json:"source_tv_name,omitempty"`
+
+	// Server IP address and port from the GoldSource response.
+	Address string `json:"address,omitempty"`
+
+	// Server tags from EDF 0x20.
+	Keywords []string `json:"keywords,omitempty"`
+
+	// Complete query round-trip time;
+	// this field is not sent by the server.
+	Ping time.Duration `json:"ping"`
+
+	// Effective game identifier;
+	// EDF GameID replaces the legacy AppID when present.
+	ID uint64 `json:"id"`
+
+	// Server SteamID (EDF 0x10).
+	SteamID uint64 `json:"steam_id,omitempty"`
+
+	// Game port number (EDF 0x80).
+	Port uint16 `json:"port,omitempty"`
+
+	// SourceTV spectator port (EDF 0x40).
+	SourceTVPort uint16 `json:"source_tv_port,omitempty"`
+
+	// Response format: Source or obsolete GoldSource.
+	Format InfoFormat `json:"format"`
+
+	// Protocol version used by the server.
+	Protocol byte `json:"protocol"`
+
+	// Current player count.
+	Players byte `json:"players"`
+
+	// Maximum player count reported by the server.
+	MaxPlayers byte `json:"max_players"`
+
+	// Current bot count.
+	Bots byte `json:"bots,omitempty"`
+
+	// Server type.
+	ServerType ServerType `json:"server_type"`
+
+	// Server operating system.
+	Environment Environment `json:"environment"`
+
+	// Whether the server requires a password.
+	Visibility bool `json:"visibility"`
+
+	// Whether Valve Anti-Cheat is enabled.
+	VAC bool `json:"vac"`
+
+	// Extra Data Flags indicating which optional fields are present.
+	EDF EDF `json:"EDF,omitempty"`
 }
 
 // GetInfo queries server information (A2S_INFO).
