@@ -1,6 +1,7 @@
 /*
-Package a3sb an extension for the A2S client that overrides the standard GetRules() method
-to work with the Arma 3 Server Browser Protocol (A3SBP), built on top of A2S_RULES
+Package a3sb extends the A2S client
+with Arma 3 Server Browser Protocol (A3SB)
+support built on top of A2S_RULES.
 
 https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 

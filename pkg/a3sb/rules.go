@@ -24,14 +24,14 @@ type Rules struct {
 	CreatorDLC      []DLCInfo         `json:"creator_dlc,omitempty"`      // List of information about Creator DLC (Arma 3 only)
 	Mods            []Mod             `json:"mods,omitempty"`             // List of information about modifications
 	Signatures      []string          `json:"signatures,omitempty"`       // List of signatures
-	id              uint64            ``                                  // Steam AppID
+	id              uint64            ``                                  // Steam AppID used to select protocol variants.
 	Language        types.ServerLang  `json:"language,omitempty"`         // DayZ Server Language [DayZ]
 	AllowedBuild    uint16            `json:"allowed_build,omitempty"`    // Allowed client build for connect [DayZ]
 	ClientPort      uint16            `json:"client_port,omitempty"`      // Client port [DayZ]
 	RequiredBuild   uint16            `json:"required_build,omitempty"`   // Required client build for connect [DayZ]
 	RequiredVersion uint16            `json:"required_version,omitempty"` // Required client version for connect [DayZ]
 	TimeLeft        uint16            `json:"time_left,omitempty"`        // Time for respawn [DayZ]
-	stats           [4]byte           ``                                  // a3sb pages count raw/pager/blank/overflow
+	stats           [4]byte           ``                                  // A3SB page counts: raw, paged, blank, overflow.
 	Version         byte              `json:"version"`                    // Protocol version
 	Dedicated       bool              `json:"dedicated,omitempty"`        // Dedicated [DayZ]
 }
@@ -64,6 +64,8 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data)
 	}
 
+	// A3SB pages and ordinary key/value rules share one A2S_RULES response.
+	// Keep them separate until the page stream can be decoded as a whole.
 	var a3sb []byte
 	var rawRules map[string]string
 	rules := &Rules{id: game, stats: [4]byte{data[1], 0, 0, 0}}
@@ -87,7 +89,8 @@ func (c *Client) GetRules(game uint64) (*Rules, error) {
 			rules.stats[3]++
 		}
 
-		// A3SBP pages have 2-byte keys: [page_number, page_count]
+		// A3SB pages have 2-byte keys: [page_number, page_count].
+		// Other pairs are ordinary rules and must remain available to the DayZ parser.
 		if len(key) == 2 && key[0] <= key[1] {
 			if a3sb == nil {
 				remainingPages := int(count) - i
@@ -160,7 +163,7 @@ func (r *Rules) readA3SB(data []byte) error {
 		return fmt.Errorf("%w: %w", ErrSignature, err)
 	}
 
-	// Stop here for arma3
+	// Arma 3 ends after signatures; remaining bytes identify the DayZ suffix.
 	if reader.Len() == 0 {
 		return nil
 	}

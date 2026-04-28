@@ -8,14 +8,14 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// DLC 3rd and 4th bytes of the server browser protocol store the DLC bitmask flags
+// DLC identifies a bit in the server browser protocol DLC mask.
 type DLC uint16
 
-// DLCInfo store information about DLC
+// DLCInfo stores information about one DLC entry.
 type DLCInfo struct {
-	Name string `json:"name,omitempty"` // DLC name from predefined maps
-	ID   uint64 `json:"id,omitempty"`   // DCL Steam AppID
-	Hash uint32 `json:"hash,omitempty"` // DLC short hash
+	Name string `json:"name,omitempty"` // DLC name from predefined maps.
+	ID   uint64 `json:"id,omitempty"`   // DLC Steam AppID.
+	Hash uint32 `json:"hash,omitempty"` // DLC short hash.
 }
 
 // DayZ DLC Map for DLC byte blocks

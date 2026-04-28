@@ -1,6 +1,6 @@
 // Package vars provides build-time metadata about the application.
-// Values are typically injected at build time via ldflags and reflect
-// the state of the git repository and the build moment.
+// Values are typically injected at build time via ldflags
+// and reflect the state of the git repository and the build moment.
 package vars
 
 import (
@@ -27,8 +27,8 @@ var (
 	_buildTime string
 )
 
-// BuildInfo is a safe container for build metadata that can be
-// exposed externally (e.g. via an API or CLI command).
+// BuildInfo is a safe container for build metadata
+// that can be exposed externally (e.g. via an API or CLI command).
 type BuildInfo struct {
 	// Version is the application version (usually a git tag or semver).
 	Version string `json:"version"`
@@ -43,6 +43,7 @@ type BuildInfo struct {
 	URL string `json:"url,omitempty"`
 }
 
+// init applies the optional build-time timestamp passed through ldflags.
 func init() {
 	if _buildTime != "" {
 		if t, err := time.Parse(time.RFC3339, _buildTime); err == nil {

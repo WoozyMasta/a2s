@@ -7,7 +7,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Difficulty represents Arma 3 server difficulty settings as bits:
+// Difficulty represents Arma 3 server difficulty settings decoded from two bytes:
 //   - 0 - newbie
 //   - 1 - normal
 //   - 2 - expert
@@ -20,7 +20,9 @@ type Difficulty struct {
 	Crosshair     bool `json:"crosshair"`      // Second byte, bit 0
 }
 
-// readDifficulty parses difficulty settings (Arma 3 only).
+// readDifficulty parses difficulty settings for Arma 3.
+// It still consumes both protocol bytes
+// before checking whether the first byte contains settings.
 func (r *Rules) readDifficulty(reader *bread.Reader) error {
 	if r.id != appid.Arma3.Uint64() {
 		return nil

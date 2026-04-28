@@ -11,6 +11,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
+// executeInfo queries A2S_INFO and renders the result in the requested format.
 func executeInfo(cmd *InfoCommand) {
 	if cmd.Args.Host == "" {
 		fatal("Host must be provided")
@@ -31,7 +32,8 @@ func executeInfo(cmd *InfoCommand) {
 		return
 	}
 
-	// Table output
+	// JSON output uses Info's own schema and does not need table-specific fields.
+	// All other formats share the table assembly below.
 	t := table.NewWriter()
 	if formatter.IsTableFormat() {
 		t.SetOutputMirror(os.Stdout)
@@ -56,7 +58,7 @@ func executeInfo(cmd *InfoCommand) {
 		{"Game version:", info.Version},
 	})
 
-	// GoldSource specific fields
+	// GoldSource fields are only meaningful for the obsolete GoldSource layout.
 	if info.Format == 0x6D {
 		if info.Address != "" {
 			t.AppendRow(table.Row{"Server address:", info.Address})
@@ -74,7 +76,7 @@ func executeInfo(cmd *InfoCommand) {
 		}
 	}
 
-	// EDF fields
+	// Render only optional fields advertised by EDF.
 	if info.EDF != 0 {
 		if info.Port != 0 {
 			t.AppendRow(table.Row{"Port:", fmt.Sprintf("%d", info.Port)})
@@ -92,7 +94,9 @@ func executeInfo(cmd *InfoCommand) {
 		}
 
 		if len(info.Keywords) > 0 {
-			// Parse keywords for Arma3/DayZ
+			// Keywords have game-specific structure only
+			// for the supported Arma 3 and DayZ AppIDs;
+			// other games keep the raw list above.
 			switch info.ID {
 			case appid.Arma3.Uint64():
 				arma := keywords.ParseArma3(info.Keywords)
@@ -150,6 +154,8 @@ func executeInfo(cmd *InfoCommand) {
 	}
 }
 
+// printInfoJSON preserves the generic Info JSON and replaces keywords
+// with a typed representation for the supported Arma 3 and DayZ formats.
 func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 	// Create a map to hold the JSON structure
 	jsonMap := make(map[string]any)

@@ -10,13 +10,13 @@ import (
 
 // Client handles UDP connection and A2S protocol queries.
 type Client struct {
-	Conn       *net.UDPConn
-	Address    *net.UDPAddr
-	packetsBuf map[int][]byte
-	parseData  []byte
-	readBuf    []byte
-	Timeout    time.Duration
-	BufferSize uint16
+	Conn       *net.UDPConn   // UDP connection to the server.
+	Address    *net.UDPAddr   // Server network address.
+	packetsBuf map[int][]byte // Collected multi-packet response parts.
+	parseData  []byte         // Reusable parser buffer.
+	readBuf    []byte         // Reusable UDP read buffer.
+	Timeout    time.Duration  // UDP read deadline.
+	BufferSize uint16         // Maximum UDP datagram size to read.
 }
 
 // New creates a new client with IP and port and opens UDP connection.
@@ -91,7 +91,8 @@ func (c *Client) Close() error {
 	return c.Conn.Close()
 }
 
-// Get sends request and returns response data (without header), response type, ping duration and error.
+// Get sends request and returns response data (without header),
+// response type, ping duration and error.
 // Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	var (
@@ -101,6 +102,8 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	)
 
 	for attempt := 0; attempt < 3; attempt++ {
+		// Retry the complete request when a server returns an unsupported response
+		// or repeatedly fails the challenge exchange.
 		resp, duration, err := c.request(requestType, singlePacket)
 		if err != nil {
 			if lastUnexpectedErr != nil {
@@ -153,7 +156,10 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 				classified = errors.Join(err, ErrQueryUnsupported)
 			}
 
-			if requestType != InfoRequest && (flag == challengeResponse || flag == infoResponseSource || flag == infoResponseGoldSource) {
+			if requestType != InfoRequest &&
+				(flag == challengeResponse ||
+					flag == infoResponseSource ||
+					flag == infoResponseGoldSource) {
 				lastUnexpectedErr = classified
 				lastUnexpectedFlag = flag
 				lastDuration = duration
@@ -231,7 +237,9 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 
 		_, packetErr = isMultiPacket(resp[:n])
 		if packetErr != nil {
-			if errors.Is(packetErr, ErrMultiPacket) || errors.Is(packetErr, ErrSinglePacket) || errors.Is(packetErr, ErrValidatorHeader) {
+			if errors.Is(packetErr, ErrMultiPacket) ||
+				errors.Is(packetErr, ErrSinglePacket) ||
+				errors.Is(packetErr, ErrValidatorHeader) {
 				continue // Ignore truncated or unrelated datagrams and keep reading.
 			}
 			break
@@ -265,7 +273,8 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return result, duration, nil
 	}
 
-	// Multi-packet response: extract metadata from first packet
+	// Multi-packet response: extract metadata from the first packet,
+	// then collect the remaining packets with the same response identifier.
 	info, err := parseSplitHeader(resp[:n])
 	if err != nil {
 		return nil, 0, err
@@ -286,7 +295,9 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	copy(firstPacketData, resp[info.dataOff:n])
 	packets[info.index] = firstPacketData
 
-	// Collect remaining packets
+	// Collect remaining packets.
+	// Unrelated datagrams are ignored because UDP does not guarantee
+	// that the next datagram belongs to this request.
 	for len(packets) < info.count {
 		if cap(c.readBuf) < int(c.BufferSize) {
 			c.readBuf = make([]byte, c.BufferSize)

@@ -6,14 +6,14 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// Mod contains mod information from A3SBP.
+// Mod contains mod information from an A3SB response.
 type Mod struct {
 	Name string `json:"name,omitempty"` // Mod name from response
 	ID   uint64 `json:"id,omitempty"`   // Mod ID in SteamWorkshop
 	Hash uint32 `json:"hash,omitempty"` // Mod short hash
 }
 
-// arma3CreatorDLC is a map of Arma 3 creator DLC stored in mods byte block
+// arma3CreatorDLC maps creator DLC AppIDs found in the mods block to names.
 var arma3CreatorDLC = map[uint64]string{
 	1042220: "Creator DLC: Global Mobilization - Cold War Germany",
 	1175380: "Creator DLC: Spearhead 1944",
@@ -24,7 +24,7 @@ var arma3CreatorDLC = map[uint64]string{
 	2647830: "Creator DLC: Expeditionary Forces",
 }
 
-// readMods parses mods and creator DLC from A3SBP.
+// readMods parses mods and creator DLC from an A3SB response.
 func (r *Rules) readMods(reader *bread.Reader) error {
 	modCount, err := reader.Byte()
 	if err != nil {

@@ -30,6 +30,7 @@ func isA3SBGame(id uint64) bool {
 	return id == appid.Arma3.Uint64() || id == appid.DayZ.Uint64() || id == appid.DayZExp.Uint64()
 }
 
+// executeRules selects the standard or A3SB rules parser and renders its output.
 func executeRules(cmd *RulesCommand) {
 	if cmd.Args.Host == "" {
 		fatal("Host must be provided")
@@ -40,7 +41,9 @@ func executeRules(cmd *RulesCommand) {
 
 	formatter := NewFormatter(cmd.Format)
 
-	// Determine if we should use a3sb parser
+	// An explicit game selects A3SB immediately;
+	// otherwise A2S_INFO may identify Arma 3 or DayZ
+	// unless the caller requested raw/skip-info behavior.
 	useA3SB := false
 	var appID uint64
 
@@ -69,6 +72,7 @@ func executeRules(cmd *RulesCommand) {
 	}
 }
 
+// executeRulesStandard retrieves and renders ordinary A2S_RULES values.
 func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 	var rules map[string]string
 	var err error
@@ -103,7 +107,7 @@ func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Rule", "Value"})
 
-	// Sort keys for better output
+	// Sort keys so table and text output is deterministic.
 	keys := make([]string, 0, len(rules))
 	for k := range rules {
 		keys = append(keys, k)
@@ -119,6 +123,7 @@ func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 	}
 }
 
+// executeRulesA3SB retrieves and renders Arma 3/DayZ server-browser rules.
 func executeRulesA3SB(client *a2s.Client, appID uint64, formatter *Formatter) {
 	a3sbClient := &a3sb.Client{Client: client}
 

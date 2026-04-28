@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// DayZ keywords
+// DayZ contains parsed DayZ server keywords.
 type DayZ struct {
 	Shard          string        `json:"shard,omitempty"`         // Shard name 000/001 for official
 	Unknowns       []string      `json:"unknowns,omitempty"`      // Unparsed keywords
@@ -23,7 +23,7 @@ type DayZ struct {
 	DLC            bool          `json:"dlc,omitempty"`           // Require DLC
 }
 
-// ParseDayZ for DayZ keywords
+// ParseDayZ parses DayZ server keywords.
 func ParseDayZ(keywords []string) *DayZ {
 	data := &DayZ{}
 	data.Parse(keywords)
@@ -31,7 +31,7 @@ func ParseDayZ(keywords []string) *DayZ {
 	return data
 }
 
-// Parse A2S INFO gametype data for DayZ
+// Parse fills the DayZ fields from A2S_INFO keywords and preserves unknowns.
 func (d *DayZ) Parse(keywords []string) {
 	for _, tag := range keywords {
 		if len(tag) == 0 {

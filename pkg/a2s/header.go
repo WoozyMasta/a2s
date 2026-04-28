@@ -5,6 +5,7 @@ import (
 )
 
 // createHeader builds A2S protocol request header.
+//
 // InfoRequest includes "Source Engine Query" payload, other requests include challenge value.
 //   - InfoRequest      = 0x54
 //   - PlayerRequest    = 0x55
@@ -17,7 +18,10 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 
 	switch requestType {
 	case InfoRequest:
-		// Pre-allocate with exact capacity: 4 (header) + 1 (type) + payload + 1 (null) + 4 (challenge, optional)
+		// A2S_INFO normally carries its textual payload
+		// and may append a challenge when retrying a server response.
+		// Pre-allocate with exact capacity:
+		// 4 (header) + 1 (type) + payload + 1 (null) + 4 (challenge, optional)
 		capacity := 4 + 1 + payloadLen + 1
 		if challenge != singlePacket {
 			capacity += 4
@@ -33,6 +37,7 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		return req, nil
 
 	case PlayerRequest, RulesRequest:
+		// Player and rules requests always carry the challenge value.
 		req = make([]byte, 0, 9)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))
@@ -40,6 +45,7 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		return req, nil
 
 	case PingRequest, ChallengeRequest:
+		// Legacy ping and challenge requests have no request-specific payload.
 		req = make([]byte, 0, 5)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))

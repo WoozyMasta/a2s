@@ -3,13 +3,26 @@ package a2s
 import "encoding/binary"
 
 const (
-	splitMin       = 9                // Minimum size of a split header.
-	srcSplitHeader = 12               // Size of a Source split header.
-	srcSplitNoSize = 10               // Size of a Source split header without split size.
-	goldSrcHeader  = 9                // Size of a GoldSource split header.
-	splitSizeOff   = 10               // Offset of the split size in a Source split header.
-	splitSizeMax   = 4096             // Max allowed split size.
-	unpackProbeMax = 32 * 1024 * 1024 // Max allowed decompressed size for probe.
+	// splitMin is the minimum size needed to inspect a split header.
+	splitMin = 9
+
+	// srcSplitHeader is the size of a standard Source split header.
+	srcSplitHeader = 12
+
+	// srcSplitNoSize is the size of a Source split header without split size.
+	srcSplitNoSize = 10
+
+	// goldSrcHeader is the size of a GoldSource split header.
+	goldSrcHeader = 9
+
+	// splitSizeOff is the offset of the Source split size field.
+	splitSizeOff = 10
+
+	// splitSizeMax limits the advertised Source split size.
+	splitSizeMax = 4096
+
+	// unpackProbeMax limits decompression probing for ambiguous headers.
+	unpackProbeMax = 32 * 1024 * 1024
 )
 
 // splitHeaderInfo contains metadata about a split packet.
@@ -89,7 +102,8 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 		info.crc = binary.LittleEndian.Uint32(data[baseHeaderSize+4 : baseHeaderSize+8])
 		info.dataOff = baseHeaderSize + 8
 
-		// Some servers omit the split-size field (base header 10 instead of 12).
+		// Some servers omit the split-size field,
+		// producing a 10-byte header where the standard Source header is 12 bytes.
 		if !useGold && baseHeaderSize == srcSplitHeader && info.unpackedSize > unpackProbeMax && len(data) >= 18 {
 			altSize := binary.LittleEndian.Uint32(data[splitSizeOff : splitSizeOff+4])
 			altCRC := binary.LittleEndian.Uint32(data[splitSizeOff+4 : splitSizeOff+8])

@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// executeAll runs the info, rules, and players commands for one server.
 func executeAll(cmd *AllCommand) {
 	if cmd.Args.Host == "" {
 		fatal("Host must be provided")

@@ -81,15 +81,17 @@ func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 
 	if i.VAC, err = r.Bool(); err != nil {
 		if errors.Is(err, bread.ErrUnderflow) {
-			return nil
+			return nil // Older GoldSource servers may end after the mod block.
 		}
+
 		return errors.Join(ErrInfoVAC, err)
 	}
 
 	if i.Bots, err = r.Byte(); err != nil {
 		if errors.Is(err, bread.ErrUnderflow) {
-			return nil
+			return nil // Bot count was added after the original GoldSource response.
 		}
+
 		return errors.Join(ErrInfoBotsCount, err)
 	}
 

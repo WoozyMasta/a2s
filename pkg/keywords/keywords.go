@@ -1,4 +1,4 @@
-// Package keywords provide additional parsers for tags (sv_tag) from the A2S_INFO response
+// Package keywords provides parsers for sv_tag values from A2S_INFO responses.
 package keywords
 
 import (
@@ -8,8 +8,7 @@ import (
 	"github.com/woozymasta/steam/utils/appid"
 )
 
-// Parse universal function for outputting result depending on application ID,
-// if parser exists it will return updated structure, otherwise it will return error
+// Parse selects the keyword parser for the supplied Steam application ID.
 func Parse(id uint64, keywords []string) (any, error) {
 	switch id {
 	case appid.Arma3.Uint64():
@@ -52,7 +51,7 @@ func ParseUint16(val string) uint16 {
 	return uint16(num) // #nosec G115
 }
 
-// parseUint32 parses a string into a uint16 with overflow checking.
+// parseUint32 parses a string into a uint32 with overflow checking.
 func parseUint32(val string) uint32 {
 	num, err := strconv.ParseUint(val, 10, 32)
 	if err != nil || num > 4294967295 {
@@ -73,8 +72,9 @@ func parseFloat64(val string) float64 {
 }
 
 // parseCoordinates parses a coordinate string formatted as "lon-lat",
-// where lon and lat can be negative. Examples:
-// "-21--52", "11--22", "-15-32", "7-32"
+// where lon and lat can be negative.
+//
+// Examples: "-21--52", "11--22", "-15-32", "7-32"
 //
 // Returns:
 //   - longitude as int32

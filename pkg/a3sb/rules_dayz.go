@@ -89,6 +89,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 	return nil
 }
 
+// strToUint16 parses a decimal DayZ rule value as a uint16.
 func strToUint16(str string) (uint16, error) {
 	number, err := strconv.ParseUint(str, 10, 16)
 	if err != nil {

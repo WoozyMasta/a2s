@@ -8,12 +8,13 @@ import (
 )
 
 // Player contains player information from A2S_PLAYER query.
+//
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_2
 type Player struct {
-	Name     string        `json:"name,omitempty"`
-	Duration time.Duration `json:"duration,omitempty"`
-	Score    int32         `json:"score,omitempty"`
-	Index    byte          `json:"index,omitempty"`
+	Name     string        `json:"name,omitempty"`     // Player name.
+	Duration time.Duration `json:"duration,omitempty"` // Session duration.
+	Score    int32         `json:"score,omitempty"`    // Signed game score.
+	Index    byte          `json:"index,omitempty"`    // Index in the response.
 }
 
 // GetPlayers queries player list (A2S_PLAYER).

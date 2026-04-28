@@ -8,8 +8,10 @@ import (
 	"io"
 )
 
+// maxDecompressedSize bounds memory allocation for a compressed response.
 const maxDecompressedSize = 16 * 1024 * 1024
 
+// decompressBzip2 decompresses a response and verifies its size and CRC.
 func decompressBzip2(compressed []byte, size uint32, crc uint32) ([]byte, error) {
 	if size > maxDecompressedSize {
 		return nil, fmt.Errorf("%w: %d > %d", ErrDecompressSize, size, maxDecompressedSize)

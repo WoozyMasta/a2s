@@ -1,5 +1,6 @@
-// Package ping helps to run a cyclic A2S_INFO request and accumulate statistics on the response time in a cyclic buffer,
-// upon completion of the work it outputs a report on all pings in the buffer
+// Package ping runs cyclic A2S_INFO requests,
+// accumulates response-time statistics,
+// and prints a report when the run completes.
 package ping
 
 import (
@@ -13,7 +14,8 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-// Start processing A2S_INFO request as a source to create a cyclic ping to the server
+// Start sends A2S_INFO requests until count is reached or a termination signal is received,
+// then prints statistics for successful responses.
 func Start(client *a2s.Client, count, period int) {
 	var errorCount int
 
@@ -45,7 +47,10 @@ func Start(client *a2s.Client, count, period int) {
 			pingDuration := info.Ping
 			buffer.Add(pingDuration)
 
-			fmt.Printf("A2S_INFO response server=%s folder=\"%s\" name=\"%s\" time=%s\n", client.Address, info.Folder, info.Name, pingDuration)
+			fmt.Printf(
+				"A2S_INFO response server=%s folder=\"%s\" name=\"%s\" time=%s\n",
+				client.Address, info.Folder, info.Name, pingDuration)
+
 			time.Sleep(time.Duration(period) * time.Second)
 		}
 		done <- true
@@ -62,9 +67,13 @@ func Start(client *a2s.Client, count, period int) {
 	stats := CalculateStats(buffer)
 
 	// Display statistics
-	fmt.Printf("\nTransmitted %d request, received %d response, failed %d\n", buffer.count+errorCount, buffer.count, errorCount)
+	fmt.Printf(
+		"\nTransmitted %d request, received %d response, failed %d\n",
+		buffer.count+errorCount, buffer.count, errorCount)
+
 	if buffer.count >= pingBuffSize {
 		fmt.Printf("Requests counter truncated to %d\n", pingBuffSize)
 	}
+
 	fmt.Printf("Min=%s Max=%s Avg=%s\n", stats.Min, stats.Max, stats.Avg)
 }

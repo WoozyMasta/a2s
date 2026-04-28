@@ -70,6 +70,8 @@ func (i *Info) readSourceInfo(r *bread.Reader) error {
 	}
 
 	if i.ID == appid.TheShip.Uint64() {
+		// The Ship inserts its game-specific block
+		// before the common version and EDF fields.
 		if i.TheShip, err = readTheShipInfo(r); err != nil {
 			return errors.Join(ErrInfoTheShip, err)
 		}
@@ -82,6 +84,7 @@ func (i *Info) readSourceInfo(r *bread.Reader) error {
 	edf, err := r.Byte()
 	if err != nil {
 		if errors.Is(err, bread.ErrUnderflow) {
+			// EDF was added after the base response and may be absent.
 			return nil
 		}
 		return errors.Join(ErrInfoEDF, err)

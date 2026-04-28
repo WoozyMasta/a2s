@@ -6,22 +6,22 @@ import (
 	"encoding/json"
 )
 
-// MarshalJSON for GameType
+// MarshalJSON encodes GameType using its human-readable string.
 func (gt GameType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(gt.String())
 }
 
-// MarshalJSON for ServerLang
+// MarshalJSON encodes ServerLang using its human-readable string.
 func (sl ServerLang) MarshalJSON() ([]byte, error) {
 	return json.Marshal(sl.String())
 }
 
-// MarshalJSON for Platform
+// MarshalJSON encodes Platform using its human-readable string.
 func (p Platform) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
 
-// MarshalJSON for ServerState
+// MarshalJSON encodes ServerState using its human-readable string.
 func (ss ServerState) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ss.String())
 }

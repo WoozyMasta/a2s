@@ -13,6 +13,7 @@ type EDF byte
 // InfoFormat represents engine type (Source or GoldSource) in A2S_INFO response.
 type InfoFormat byte
 
+// String returns the human-readable engine name.
 func (i InfoFormat) String() string {
 	switch Flag(i) {
 	case infoResponseSource:
@@ -29,9 +30,10 @@ func (i InfoFormat) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.String())
 }
 
-// ServerType represents the bytes for server type: Dedicated, Local or Proxy (SteamTV/HLTV) in A2S_INFO response
+// ServerType represents the server type byte in an A2S_INFO response.
 type ServerType byte
 
+// String returns the human-readable server type.
 func (s ServerType) String() string {
 	switch s {
 	case 0x64, 0x44: // d D
@@ -53,6 +55,7 @@ func (s ServerType) MarshalJSON() ([]byte, error) {
 // Environment represents server operating system in A2S_INFO response.
 type Environment byte
 
+// String returns the human-readable operating system name.
 func (e Environment) String() string {
 	switch e {
 	case 0x6c, 0x4c: // l L
@@ -76,6 +79,7 @@ func (e Environment) MarshalJSON() ([]byte, error) {
 // TheShipMode represents game mode for The Ship game in A2S_INFO response.
 type TheShipMode byte
 
+// String returns the human-readable The Ship game mode.
 func (m TheShipMode) String() string {
 	switch m {
 	case 0:

@@ -7,6 +7,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
+// executePlayers queries A2S_PLAYER and renders the available player fields.
 func executePlayers(cmd *PlayersCommand) {
 	if cmd.Args.Host == "" {
 		fatal("Host must be provided")
@@ -32,7 +33,8 @@ func executePlayers(cmd *PlayersCommand) {
 		return
 	}
 
-	// Determine which columns to show
+	// Show only columns containing at least one non-zero value
+	// so sparse server responses do not produce empty table columns.
 	counter := [4]byte{}
 	for _, player := range *players {
 		if player.Duration != 0 {

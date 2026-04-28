@@ -9,19 +9,19 @@ import (
 
 // TheShip contains additional game-specific data for The Ship game.
 type TheShip struct {
-	Mode      TheShipMode `json:"mode"`
-	Witnesses byte        `json:"witnesses"`
-	Duration  byte        `json:"duration"`
+	Mode      TheShipMode `json:"mode"`      // Current game mode.
+	Witnesses byte        `json:"witnesses"` // Number of witnesses.
+	Duration  byte        `json:"duration"`  // Remaining game duration.
 }
 
 // TheShipPlayer contains player data with additional fields for The Ship game.
 type TheShipPlayer struct {
-	Name     string        `json:"name,omitempty"`
-	Duration time.Duration `json:"duration,omitempty"`
-	Score    int32         `json:"score,omitempty"`
-	Deaths   uint32        `json:"deaths,omitempty"`
-	Money    uint32        `json:"money,omitempty"`
-	Index    byte          `json:"index,omitempty"`
+	Name     string        `json:"name,omitempty"`     // Player name.
+	Duration time.Duration `json:"duration,omitempty"` // Session duration.
+	Score    int32         `json:"score,omitempty"`    // Signed game score.
+	Deaths   uint32        `json:"deaths,omitempty"`   // Number of deaths.
+	Money    uint32        `json:"money,omitempty"`    // In-game money.
+	Index    byte          `json:"index,omitempty"`    // Index in the response.
 }
 
 // readTheShipInfo parses The Ship game-specific data from A2S_INFO response.

@@ -1,3 +1,4 @@
+// Package main implements the a2s command-line client.
 package main
 
 import (
@@ -12,12 +13,12 @@ import (
 
 // Options defines the root command structure.
 type Options struct {
-	Info    InfoCommand    `command:"info" description:"Retrieve server information A2S_INFO"`
-	Players PlayersCommand `command:"players" description:"Retrieve player list A2S_PLAYERS"`
-	Rules   RulesCommand   `command:"rules" description:"Retrieve server rules A2S_RULES"`
-	All     AllCommand     `command:"all" description:"Retrieve all available server information"`
-	Ping    PingCommand    `command:"ping" description:"Ping the server with A2S_INFO"`
-	Version bool           `short:"v" long:"version" description:"Show version, commit, and build time"`
+	Info    InfoCommand    `description:"Retrieve server information A2S_INFO"      command:"info"`
+	Players PlayersCommand `description:"Retrieve player list A2S_PLAYERS"          command:"players"`
+	Rules   RulesCommand   `description:"Retrieve server rules A2S_RULES"           command:"rules"`
+	All     AllCommand     `description:"Retrieve all available server information" command:"all"`
+	Ping    PingCommand    `description:"Ping the server with A2S_INFO"             command:"ping"`
+	Version bool           `description:"Show version, commit, and build time" short:"v" long:"version"`
 }
 
 // InfoCommand handles the 'info' subcommand.
@@ -50,15 +51,15 @@ type AllCommand struct {
 type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 	GlobalOptions
-	PingCount  int `short:"c" long:"ping-count" default:"0" description:"Set the number of ping requests to send (0 = infinite)"`
-	PingPeriod int `short:"p" long:"ping-period" default:"1" description:"Set the period between pings in seconds"`
+	PingCount  int `short:"c" default:"0" long:"ping-count"  description:"Set the number of ping requests to send (0 = infinite)"`
+	PingPeriod int `short:"p" default:"1" long:"ping-period" description:"Set the period between pings in seconds"`
 }
 
 // GlobalOptions defines global CLI options applicable to all commands.
 type GlobalOptions struct {
-	Format  string `short:"f" long:"format" default:"table" description:"Output format" choice:"json" choice:"table" choice:"raw" choice:"md" choice:"html"`
-	Timeout int    `short:"t" long:"timeout" default:"3" description:"Set connection timeout in seconds"`
-	Buffer  uint16 `short:"b" long:"buffer-size" default:"8096" description:"Set connection buffer size"`
+	Format  string `short:"f" default:"table" long:"format"      description:"Output format" choice:"json" choice:"table" choice:"raw" choice:"md" choice:"html"`
+	Timeout int    `short:"t" default:"3"     long:"timeout"     description:"Set connection timeout in seconds"`
+	Buffer  uint16 `short:"b" default:"8096"  long:"buffer-size" description:"Set connection buffer size"`
 }
 
 // ServerArgs defines positional arguments for server connection.
@@ -69,11 +70,12 @@ type ServerArgs struct {
 
 // RulesOptions defines options specific to rules command.
 type RulesOptions struct {
-	Game     string `short:"g" long:"game" description:"Game type for more accurate results" choice:"dayz" choice:"arma3"`
-	Raw      bool   `short:"r" long:"raw" description:"Disable parse A2S_RULES values to types"`
+	Game     string `short:"g" long:"game"      description:"Game type for more accurate results" choice:"dayz" choice:"arma3"`
+	Raw      bool   `short:"r" long:"raw"       description:"Disable parse A2S_RULES values to types"`
 	SkipInfo bool   `short:"s" long:"skip-info" description:"Skip automatic AppID detection via A2S_INFO"`
 }
 
+// main parses command-line options and dispatches the selected subcommand.
 func main() {
 	opts := &Options{}
 	p := flags.NewParser(opts, flags.Default)
@@ -115,6 +117,7 @@ func main() {
 	}
 }
 
+// createClient builds and configures a client from CLI connection options.
 func createClient(host, port string, timeout int, buffer uint16) *a2s.Client {
 	address := host
 	if port != "" {
@@ -141,11 +144,13 @@ func closeClient(client *a2s.Client) {
 	}
 }
 
+// fatal writes an error message and terminates the CLI with a failure status.
 func fatal(a ...any) {
 	fmt.Fprintln(os.Stderr, a...)
 	os.Exit(1)
 }
 
+// fatalf formats an error message and terminates the CLI with a failure status.
 func fatalf(format string, a ...any) {
 	fmt.Fprintf(os.Stderr, format, a...)
 	fmt.Fprintln(os.Stderr)

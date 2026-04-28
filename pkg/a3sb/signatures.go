@@ -6,7 +6,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// readSignatures parses signature list from A3SBP.
+// readSignatures parses the signature list from an A3SB response.
 func (r *Rules) readSignatures(reader *bread.Reader) error {
 	signCount, err := reader.Byte()
 	if err != nil {

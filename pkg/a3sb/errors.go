@@ -2,37 +2,38 @@ package a3sb
 
 import "errors"
 
+// errorPrefix prefixes errors raised while decoding A3SB fields.
 const errorPrefix string = "fail read Arma 3 server browser protocol "
 
 var (
-	// error read A2S_RULES
+	// ErrRules indicates a failure while reading the A2S_RULES payload.
 	ErrRules = errors.New("A2S_RULES: fail read rules")
-	// error parse A2S_RULES
+	// ErrRulesDayZ indicates a failure while parsing DayZ rules.
 	ErrRulesDayZ = errors.New("A2S_RULES: fail parse DayZ rules")
-	// error read A2S_RULES, not all data was read
+	// ErrRulesDataRemains indicates that unconsumed rule data remains.
 	ErrRulesDataRemains = errors.New("A2S_RULES: not all data was read from the buffer")
-	// error parse DayZ dedicated rule
+	// ErrRulesDayZDedicated indicates an invalid DayZ dedicated value.
 	ErrRulesDayZDedicated = errors.New("A2S_RULES: invalid DayZ dedicated rule value")
 
-	// error old unsupported protocol v1
+	// ErrProtoV1 indicates the unsupported legacy protocol version 1.
 	ErrProtoV1 = errors.New("got protocol version v1, this is the oldest version and it is not supported")
-	// error v3 proto returned for expected v2 in DayZ
+	// ErrProtoV3 indicates a v3 response where DayZ v2 was expected.
 	ErrProtoV3 = errors.New("got v3 protocol for DayZ, contact the author on the project issues page to update the library")
-	// error new unsupported protocol v4 or newest
+	// ErrProtoNewest indicates an unknown newer protocol version.
 	ErrProtoNewest = errors.New("got the latest version of the protocol, contact the author on the project issues page")
 
-	// error in read a3sb version
+	// ErrVersion indicates a failure while reading the A3SB version.
 	ErrVersion = errors.New(errorPrefix + "version")
-	// error in read a3sb flags
+	// ErrFlags indicates a failure while reading A3SB flags.
 	ErrFlags = errors.New(errorPrefix + "flags")
-	// error in read a3sb difficulty
+	// ErrDifficulty indicates a failure while reading A3SB difficulty.
 	ErrDifficulty = errors.New(errorPrefix + "difficulty")
-	// error in read a3sb DLC
+	// ErrDLC indicates a failure while reading A3SB DLC data.
 	ErrDLC = errors.New(errorPrefix + "DLC")
-	// error in read a3sb mod
+	// ErrMod indicates a failure while reading A3SB mod data.
 	ErrMod = errors.New(errorPrefix + "mod")
-	// error in read a3sb signature
+	// ErrSignature indicates a failure while reading A3SB signatures.
 	ErrSignature = errors.New(errorPrefix + "signature")
-	// error in read a3sb description
+	// ErrDescription indicates a failure while reading the DayZ description.
 	ErrDescription = errors.New(errorPrefix + "description")
 )

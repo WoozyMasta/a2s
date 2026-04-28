@@ -1,6 +1,6 @@
 package types
 
-// GameType represent game-server type (Arma3)
+// GameType represents an Arma 3 game mode keyword.
 type GameType string
 
 const (
@@ -26,7 +26,7 @@ const (
 	GameTZeus    GameType = "zeus"    // Zeus: Zeus
 )
 
-// String return string represent of GameType short value in:
+// String returns the human-readable name for the GameType keyword.
 func (gt GameType) String() string {
 	switch gt {
 	case GameTApex:

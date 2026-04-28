@@ -1,6 +1,6 @@
 package types
 
-// ServerLang represent game-server language
+// ServerLang represents a game-server language keyword.
 type ServerLang uint32
 
 const (
@@ -18,9 +18,8 @@ const (
 	LangPortuguese ServerLang = 65558 // Portuguese
 )
 
-// String return string represent of uint32 value in:
-//   - language keyword in A2S_RULES for DayZ
-//   - g* GameTags in A2S_INFO for Arma3
+// String returns the human-readable language name
+// used by DayZ A2S_RULES and Arma 3 A2S_INFO keywords.
 func (sl ServerLang) String() string {
 	switch sl {
 	case LangEnglish:
