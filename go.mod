@@ -5,7 +5,6 @@ go 1.23.1
 require (
 	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/woozymasta/steam v0.1.3
 )
 
 require (

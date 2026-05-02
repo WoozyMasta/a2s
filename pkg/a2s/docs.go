@@ -8,7 +8,7 @@ Package a2s reads Steam A2S server query responses:
     A2S_RULES The rules the server is using;
   - [github.com/woozymasta/a2s/pkg/a2s.GetChallenge]
     A2S_SERVERQUERY_GETCHALLENGE Returns a challenge number
-		for use in the player and rules query;
+    for use in the player and rules query;
   - [github.com/woozymasta/a2s/pkg/a2s.GetPing]
     A2A_PING Ping the server.
 

@@ -3,8 +3,8 @@ package a2s
 import (
 	"errors"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // readSourceInfo parses Source protocol A2S_INFO response.
@@ -69,7 +69,7 @@ func (i *Info) readSourceInfo(r *bread.Reader) error {
 		return errors.Join(ErrInfoVAC, err)
 	}
 
-	if i.ID == appid.TheShip.Uint64() {
+	if i.ID == appid.TheShip {
 		// The Ship inserts its game-specific block
 		// before the common version and EDF fields.
 		if i.TheShip, err = readTheShipInfo(r); err != nil {

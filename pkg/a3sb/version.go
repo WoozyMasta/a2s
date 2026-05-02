@@ -3,8 +3,8 @@ package a3sb
 import (
 	"fmt"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 /*
@@ -36,15 +36,15 @@ func (r *Rules) readVersion(reader *bread.Reader) error {
 
 	case 3:
 		if r.id == 0 {
-			r.id = appid.Arma3.Uint64()
+			r.id = appid.Arma3
 		}
-		if r.id == appid.DayZ.Uint64() {
+		if r.id == appid.DayZ {
 			return ErrProtoV3
 		}
 
 	case 2:
 		if r.id == 0 {
-			r.id = appid.DayZ.Uint64()
+			r.id = appid.DayZ
 		}
 
 	default:

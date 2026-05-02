@@ -3,10 +3,10 @@ package a3sb
 import (
 	"fmt"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // DefaultRulesBufferSize is default buffer size for A3SB rules responses.
@@ -38,12 +38,12 @@ type Rules struct {
 
 // GetRulesArma3 returns A2S_RULES for Arma 3.
 func (c *Client) GetRulesArma3() (*Rules, error) {
-	return c.GetRules(appid.Arma3.Uint64())
+	return c.GetRules(appid.Arma3)
 }
 
 // GetRulesDayZ returns A2S_RULES for DayZ.
 func (c *Client) GetRulesDayZ() (*Rules, error) {
-	return c.GetRules(appid.DayZ.Uint64())
+	return c.GetRules(appid.DayZ)
 }
 
 // GetRules parses A2S_RULES response using A3SB for Arma 3 and DayZ.

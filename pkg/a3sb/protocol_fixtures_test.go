@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 type rulesUDPFixture struct {
@@ -93,7 +93,7 @@ func rulesResponsePayload(entries ...rulesFixtureEntry) []byte {
 func TestMinimalDayZProtocolFixture(t *testing.T) {
 	// v2, zero flags, no DLC, no mods, and no signatures.
 	data := []byte{2, 0, 0, 0, 0, 0}
-	rules := &Rules{id: appid.DayZ.Uint64()}
+	rules := &Rules{id: appid.DayZ}
 
 	if err := rules.readA3SB(data); err != nil {
 		t.Fatalf("readA3SB returned error: %v", err)
@@ -115,7 +115,7 @@ func TestGetRulesRejectsTruncatedCountFixtures(t *testing.T) {
 			defer baseClient.Close()
 
 			client := &Client{Client: baseClient}
-			_, err = client.GetRules(appid.DayZ.Uint64())
+			_, err = client.GetRules(appid.DayZ)
 			if err == nil {
 				t.Fatal("GetRules returned nil error for truncated count")
 			}
@@ -145,7 +145,7 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	defer baseClient.Close()
 
 	client := &Client{Client: baseClient}
-	rules, err := client.GetRules(appid.DayZ.Uint64())
+	rules, err := client.GetRules(appid.DayZ)
 	if err != nil {
 		t.Fatalf("GetRules returned error: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rules := &Rules{id: appid.Arma3.Uint64()}
+			rules := &Rules{id: appid.Arma3}
 			reader := bread.NewReader(test.data)
 
 			err := rules.readDifficulty(reader)
@@ -249,7 +249,7 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 	binary.LittleEndian.PutUint32(hashData[8:12], 0x33333333)
 
 	for iteration := 0; iteration < 100; iteration++ {
-		rules := &Rules{id: appid.Arma3.Uint64()}
+		rules := &Rules{id: appid.Arma3}
 		if err := rules.readDLC(bread.NewReader(hashData), mask); err != nil {
 			t.Fatalf("readDLC returned error: %v", err)
 		}
@@ -304,7 +304,7 @@ func TestGetRulesParsesDayZDedicatedRule(t *testing.T) {
 			defer baseClient.Close()
 
 			client := &Client{Client: baseClient}
-			rules, err := client.GetRules(appid.DayZ.Uint64())
+			rules, err := client.GetRules(appid.DayZ)
 			if test.wantError {
 				if err == nil {
 					t.Fatal("GetRules returned nil error for unexpected dedicated value")

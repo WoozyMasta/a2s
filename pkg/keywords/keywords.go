@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/internal/appid"
 )
 
 // Parse selects the keyword parser for the supplied Steam application ID.
 func Parse(id uint64, keywords []string) (any, error) {
 	switch id {
-	case appid.Arma3.Uint64():
+	case appid.Arma3:
 		data := &Arma3{}
 		data.Parse(keywords)
 		return data, nil
 
-	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+	case appid.DayZ, appid.DayZExperimental:
 		data := &DayZ{}
 		data.Parse(keywords)
 		return data, nil

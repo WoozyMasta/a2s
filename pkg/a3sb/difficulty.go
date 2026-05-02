@@ -3,8 +3,8 @@ package a3sb
 import (
 	"fmt"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // Difficulty represents Arma 3 server difficulty settings decoded from two bytes:
@@ -24,7 +24,7 @@ type Difficulty struct {
 // It still consumes both protocol bytes
 // before checking whether the first byte contains settings.
 func (r *Rules) readDifficulty(reader *bread.Reader) error {
-	if r.id != appid.Arma3.Uint64() {
+	if r.id != appid.Arma3 {
 		return nil
 	}
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/bits"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // DLC identifies a bit in the server browser protocol DLC mask.
@@ -49,10 +49,12 @@ var arma3DLC = map[DLC]DLCInfo{
 // readDLC parses DLC information from bitmask and reads hashes.
 func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 	switch r.id {
-	case appid.Arma3.Uint64():
+	case appid.Arma3:
 		r.DLC = parseDLC(dlcMask, arma3DLC)
-	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+
+	case appid.DayZ, appid.DayZExperimental:
 		r.DLC = parseDLC(dlcMask, dayzDLC)
+
 	default:
 		r.DLC = parseDLC(dlcMask, map[DLC]DLCInfo{})
 	}

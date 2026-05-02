@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // executeInfo queries A2S_INFO and renders the result in the requested format.
@@ -48,7 +48,7 @@ func executeInfo(cmd *InfoCommand) {
 		{"Map on server:", info.Map},
 		{"Game folder:", info.Folder},
 		{"Game name:", info.Game},
-		{"Steam AppID:", fmt.Sprintf("%d", info.ID)},
+		{"Steam AppID:", formatAppID(info.ID)},
 		{"Players/Slots:", fmt.Sprintf("%d/%d", info.Players, info.MaxPlayers)},
 		{"Bots count:", fmt.Sprintf("%d", info.Bots)},
 		{"Server type:", info.ServerType.String()},
@@ -98,7 +98,7 @@ func executeInfo(cmd *InfoCommand) {
 			// for the supported Arma 3 and DayZ AppIDs;
 			// other games keep the raw list above.
 			switch info.ID {
-			case appid.Arma3.Uint64():
+			case appid.Arma3:
 				arma := keywords.ParseArma3(info.Keywords)
 				t.AppendRows([]table.Row{
 					{"Type of game:", arma.GameType.String()},
@@ -122,7 +122,7 @@ func executeInfo(cmd *InfoCommand) {
 					{"Enabled file patching:", fmt.Sprintf("%t", arma.AllowedFilePatching)},
 				})
 
-			case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+			case appid.DayZ, appid.DayZExperimental:
 				dayz := keywords.ParseDayZ(info.Keywords)
 				t.AppendRows([]table.Row{
 					{"Shard:", dayz.Shard},
@@ -154,6 +154,21 @@ func executeInfo(cmd *InfoCommand) {
 	}
 }
 
+// formatAppID returns a known game name with its numeric AppID,
+// or only the original numeric value when the ID is unknown or does not fit AppID.
+func formatAppID(id uint64) string {
+	if id > uint64(^uint32(0)) {
+		return fmt.Sprintf("%d", id)
+	}
+
+	steamID := appid.AppID(id)
+	if name, ok := steamID.Name(); ok {
+		return fmt.Sprintf("%s (%d)", name, id)
+	}
+
+	return steamID.String()
+}
+
 // printInfoJSON preserves the generic Info JSON and replaces keywords
 // with a typed representation for the supported Arma 3 and DayZ formats.
 func printInfoJSON(info *a2s.Info, formatter *Formatter) {
@@ -175,11 +190,11 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 	delete(jsonMap, "keywords")
 
 	switch info.ID {
-	case appid.Arma3.Uint64():
+	case appid.Arma3:
 		armaData := keywords.ParseArma3(info.Keywords)
 		jsonMap["keywords"] = armaData
 
-	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+	case appid.DayZ, appid.DayZExperimental:
 		dayZData := keywords.ParseDayZ(info.Keywords)
 		jsonMap["keywords"] = dayZData
 	}

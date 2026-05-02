@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a3sb"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // gameToAppID converts a game name string to AppID.
@@ -17,9 +17,11 @@ import (
 func gameToAppID(game string) uint64 {
 	switch strings.ToLower(game) {
 	case "arma3", "arma":
-		return appid.Arma3.Uint64()
+		return appid.Arma3
+
 	case "dayz":
-		return appid.DayZ.Uint64()
+		return appid.DayZ
+
 	default:
 		return 0
 	}
@@ -27,7 +29,7 @@ func gameToAppID(game string) uint64 {
 
 // isA3SBGame checks if the given AppID corresponds to Arma3 or DayZ.
 func isA3SBGame(id uint64) bool {
-	return id == appid.Arma3.Uint64() || id == appid.DayZ.Uint64() || id == appid.DayZExp.Uint64()
+	return id == appid.Arma3 || id == appid.DayZ || id == appid.DayZExperimental
 }
 
 // executeRules selects the standard or A3SB rules parser and renders its output.

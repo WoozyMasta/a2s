@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // testServersConfig represents the structure of test_servers.json
@@ -416,7 +416,7 @@ func BenchmarkRulesArma3(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.Arma3.Uint64())
+		_, err := client.GetRules(appid.Arma3)
 		if err != nil {
 			b.Fatalf("GetRules failed for Arma 3: %v", err)
 		}
@@ -438,7 +438,7 @@ func BenchmarkRulesDayZ(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.DayZ.Uint64())
+		_, err := client.GetRules(appid.DayZ)
 		if err != nil {
 			b.Fatalf("GetRules failed for DayZ: %v", err)
 		}
