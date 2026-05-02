@@ -28,7 +28,7 @@ func executePlayers(cmd *PlayersCommand) {
 		return
 	}
 
-	if len(*players) == 0 {
+	if len(players) == 0 {
 		fmt.Println("The server is empty and there are no players to print ...")
 		return
 	}
@@ -36,7 +36,7 @@ func executePlayers(cmd *PlayersCommand) {
 	// Show only columns containing at least one non-zero value
 	// so sparse server responses do not produce empty table columns.
 	counter := [4]byte{}
-	for _, player := range *players {
+	for _, player := range players {
 		if player.Duration != 0 {
 			counter[0]++
 		}
@@ -72,7 +72,7 @@ func executePlayers(cmd *PlayersCommand) {
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row(columns))
 
-	for i, player := range *players {
+	for i, player := range players {
 		row := []interface{}{fmt.Sprintf("%d", i+1)}
 
 		if counter[0] > 0 {

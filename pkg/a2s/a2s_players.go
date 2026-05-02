@@ -17,8 +17,9 @@ type Player struct {
 	Index    byte          `json:"index,omitempty"`    // Index in the response.
 }
 
-// GetPlayers queries player list (A2S_PLAYER).
-func (c *Client) GetPlayers() (*[]Player, error) {
+// GetPlayers queries the player list (A2S_PLAYER).
+// It returns a non-nil empty slice when the server reports no players.
+func (c *Client) GetPlayers() ([]Player, error) {
 	data, _, _, err := c.Get(PlayerRequest)
 	if err != nil {
 		return nil, err
@@ -60,5 +61,5 @@ func (c *Client) GetPlayers() (*[]Player, error) {
 		players = append(players, player)
 	}
 
-	return &players, nil
+	return players, nil
 }

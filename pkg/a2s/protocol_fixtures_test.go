@@ -270,12 +270,12 @@ func TestGetPlayersParsesSignedScores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetPlayers returned error: %v", err)
 	}
-	if got, want := len(*players), 3; got != want {
+	if got, want := len(players), 3; got != want {
 		t.Fatalf("player count = %d, want %d", got, want)
 	}
 
 	want := []int32{-1, 0, math.MaxInt32}
-	for index, player := range *players {
+	for index, player := range players {
 		if player.Score != want[index] {
 			t.Errorf("player %d score = %d, want %d", index, player.Score, want[index])
 		}
@@ -303,7 +303,7 @@ func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTheShipPlayers returned error: %v", err)
 	}
-	if got, want := (*players)[0].Score, int32(-1); got != want {
+	if got, want := players[0].Score, int32(-1); got != want {
 		t.Fatalf("The Ship player score = %d, want %d", got, want)
 	}
 }

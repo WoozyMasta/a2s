@@ -179,12 +179,8 @@ func TestPlayersSingle(t *testing.T) {
 		t.Fatalf("GetPlayers failed: %v", err)
 	}
 
-	if players == nil {
-		t.Fatal("GetPlayers returned nil")
-	}
-
-	t.Logf("Retrieved %d players", len(*players))
-	for i, player := range *players {
+	t.Logf("Retrieved %d players", len(players))
+	for i, player := range players {
 		t.Logf("  Player %d: %s (Score: %d, Duration: %v)",
 			i+1, player.Name, player.Score, player.Duration)
 	}
@@ -287,10 +283,8 @@ func TestPlayersMultiple(t *testing.T) {
 			continue
 		}
 
-		if players != nil {
-			successCount++
-			t.Logf("✓ %s: Retrieved %d players", serverAddr, len(*players))
-		}
+		successCount++
+		t.Logf("✓ %s: Retrieved %d players", serverAddr, len(players))
 	}
 
 	t.Logf("Successfully queried %d/%d servers", successCount, len(servers))

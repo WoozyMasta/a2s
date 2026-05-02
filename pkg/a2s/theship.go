@@ -45,8 +45,9 @@ func readTheShipInfo(r *bread.Reader) (*TheShip, error) {
 	return theShip, nil
 }
 
-// GetTheShipPlayers queries player list with The Ship game-specific fields (A2S_PLAYER).
-func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
+// GetTheShipPlayers queries the player list with The Ship game-specific fields.
+// It returns a non-nil empty slice when the server reports no players.
+func (c *Client) GetTheShipPlayers() ([]TheShipPlayer, error) {
 	data, _, _, err := c.Get(PlayerRequest)
 	if err != nil {
 		return nil, err
@@ -96,5 +97,5 @@ func (c *Client) GetTheShipPlayers() (*[]TheShipPlayer, error) {
 		players = append(players, player)
 	}
 
-	return &players, nil
+	return players, nil
 }
