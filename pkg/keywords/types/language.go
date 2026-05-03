@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // ServerLang represents a game-server language keyword.
 type ServerLang uint32
 
@@ -47,6 +49,6 @@ func (sl ServerLang) String() string {
 	case LangPortuguese:
 		return "Portuguese"
 	default:
-		return "English"
+		return fmt.Sprintf("Unknown(%d)", uint32(sl))
 	}
 }

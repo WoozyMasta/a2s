@@ -70,6 +70,6 @@ func (gt GameType) String() string {
 	case GameTZeus:
 		return "Zeus"
 	default:
-		return "None"
+		return string(gt)
 	}
 }

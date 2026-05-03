@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // ServerState represents an Arma 3 game-server state.
 type ServerState byte
 
@@ -41,6 +43,6 @@ func (ss ServerState) String() string {
 	case ServerState9:
 		return "MISSION ABORTED"
 	default:
-		return "NONE"
+		return fmt.Sprintf("Unknown(%d)", uint8(ss))
 	}
 }
