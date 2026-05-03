@@ -87,7 +87,7 @@ func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 			fatalf("Failed to get rules: %s", err2)
 		}
 
-		rules = make(map[string]string)
+		rules = make(map[string]string, len(parsedRules))
 		for k, v := range parsedRules {
 			rules[k] = fmt.Sprint(v)
 		}

@@ -177,6 +177,69 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	}
 }
 
+func TestRulesPreserveRawAndParsedValues(t *testing.T) {
+	payload := []byte{3, 0}
+	for _, entry := range [][2]string{
+		{"number", "00123"},
+		{"boolean", "true"},
+		{"encoded", "c2VydmVyIHRleHQ="},
+	} {
+		payload = append(payload, entry[0]...)
+		payload = append(payload, 0)
+		payload = append(payload, entry[1]...)
+		payload = append(payload, 0)
+	}
+
+	t.Run("raw", func(t *testing.T) {
+		fixture := newUDPPacketFixture(t, singlePacketFixture(rulesResponse, payload))
+		client, err := NewWithAddr(fixture.Addr())
+		if err != nil {
+			t.Fatalf("create client: %v", err)
+		}
+		defer client.Close()
+
+		rules, err := client.GetRules()
+		if err != nil {
+			t.Fatalf("GetRules returned error: %v", err)
+		}
+
+		want := map[string]string{
+			"number":  "00123",
+			"boolean": "true",
+			"encoded": "c2VydmVyIHRleHQ=",
+		}
+		for key, value := range want {
+			if rules[key] != value {
+				t.Errorf("raw rule %q = %q, want %q", key, rules[key], value)
+			}
+		}
+	})
+
+	t.Run("parsed", func(t *testing.T) {
+		fixture := newUDPPacketFixture(t, singlePacketFixture(rulesResponse, payload))
+		client, err := NewWithAddr(fixture.Addr())
+		if err != nil {
+			t.Fatalf("create client: %v", err)
+		}
+		defer client.Close()
+
+		rules, err := client.GetParsedRules()
+		if err != nil {
+			t.Fatalf("GetParsedRules returned error: %v", err)
+		}
+
+		if got, want := rules["number"], int64(123); got != want {
+			t.Errorf("parsed number = %#v, want %#v", got, want)
+		}
+		if got, want := rules["boolean"], true; got != want {
+			t.Errorf("parsed boolean = %#v, want %#v", got, want)
+		}
+		if got, want := rules["encoded"], "server text"; got != want {
+			t.Errorf("parsed Base64 value = %#v, want %#v", got, want)
+		}
+	})
+}
+
 func TestMalformedPacketFixtures(t *testing.T) {
 	tests := []struct {
 		name string

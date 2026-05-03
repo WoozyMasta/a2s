@@ -56,58 +56,31 @@ func (c *Client) GetRules() (map[string]string, error) {
 	return rules, nil
 }
 
-// GetParsedRules queries server rules and parses values into appropriate types.
-// Attempts to parse as int64, float64, bool, or base64-encoded string. Falls back to string if parsing fails.
+// GetParsedRules queries server rules and converts values into convenient Go types.
+// Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
+// Use GetRules when the original wire strings must be preserved.
 func (c *Client) GetParsedRules() (map[string]any, error) {
-	data, _, _, err := c.Get(RulesRequest)
+	data, err := c.GetRules()
 	if err != nil {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
-
-	reader := bread.NewReader(c.parseData)
-	count, err := reader.Uint16()
-	if err != nil {
-		return nil, errors.Join(ErrRuleCount, err)
-	}
-
-	if count == 0 {
+	if data == nil {
 		return nil, nil
 	}
 
-	rules := make(map[string]any, int(count))
-
+	rules := make(map[string]any, len(data))
 	var base64Buf []byte
-
-	for i := 0; i < int(count); i++ {
-		if reader.Len() < 4 {
-			return nil, ErrInsufficientData
-		}
-
-		key, err := reader.String()
-		if err != nil {
-			return nil, errors.Join(ErrRuleKey, err)
-		}
-
-		value, err := reader.String()
-		if err != nil {
-			return nil, errors.Join(ErrRuleValue, err)
-		}
-
-		parsed := parseRuleValue(value, &base64Buf)
-		rules[key] = parsed
+	for key, value := range data {
+		rules[key] = parseRuleValue(value, &base64Buf)
 	}
 
 	return rules, nil
 }
 
-// parseRuleValue attempts to parse value string into int64, float64, bool, or base64-decoded string.
-// Uses reusable base64Buf to minimize allocations.
+// parseRuleValue attempts to parse a rule value
+// as an integer, float, boolean, or UTF-8 Base64 string.
+// It returns the original value when no conversion fits.
 func parseRuleValue(v string, base64Buf *[]byte) any {
 	vLen := len(v)
 	if vLen == 0 {
@@ -132,11 +105,9 @@ func parseRuleValue(v string, base64Buf *[]byte) any {
 		}
 	}
 
-	var floatStr string
+	floatStr := v
 	if vLen > 1 && v[vLen-1] == 'f' {
 		floatStr = v[:vLen-1]
-	} else {
-		floatStr = v
 	}
 	if num, err := strconv.ParseFloat(floatStr, 64); err == nil {
 		return num
