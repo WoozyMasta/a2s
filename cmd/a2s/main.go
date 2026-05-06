@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/woozymasta/a2s/internal/vars"
@@ -124,15 +125,15 @@ func createClient(host, port string, timeout int, buffer uint16) *a2s.Client {
 		address = host + ":" + port
 	}
 
-	client, err := a2s.NewWithString(address)
+	options := []a2s.Option{a2s.WithBufferSize(buffer)}
+	if timeout > 0 {
+		options = append(options, a2s.WithTimeout(time.Duration(timeout)*time.Second))
+	}
+
+	client, err := a2s.NewWithString(address, options...)
 	if err != nil {
 		fatalf("Failed to create client: %s", err)
 	}
-
-	if timeout > 0 {
-		client.SetDeadlineTimeout(timeout)
-	}
-	client.SetBufferSize(buffer)
 
 	return client
 }

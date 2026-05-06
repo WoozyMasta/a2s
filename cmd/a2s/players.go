@@ -95,6 +95,6 @@ func executePlayers(cmd *PlayersCommand) {
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_PLAYERS response for %s\n", client.Address)
+		fmt.Printf("A2S_PLAYERS response for %s\n", client.Addr())
 	}
 }

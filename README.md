@@ -69,14 +69,14 @@ For detailed information about available options and flags, run `a2s --help`.
 Example of use:
 
 ```go
-client, err := a2s.New("127.0.0.1", 27016)
+client, err := a2s.New("127.0.0.1", 27016,
+  a2s.WithBufferSize(2048),
+  a2s.WithTimeout(3*time.Second),
+)
 if err != nil {
   panic(err)
 }
 defer client.Close()
-
-client.SetBufferSize(2048)
-client.SetDeadlineTimeout(3)
 
 info, err := client.GetInfo()
 if err != nil {

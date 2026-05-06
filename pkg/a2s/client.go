@@ -5,96 +5,189 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 )
 
 // Client handles UDP connection and A2S protocol queries.
 type Client struct {
-	Conn       *net.UDPConn   // UDP connection to the server.
-	Address    *net.UDPAddr   // Server network address.
+	conn       *net.UDPConn   // UDP connection to the server.
+	address    *net.UDPAddr   // Server network address.
 	packetsBuf map[int][]byte // Collected multi-packet response parts.
 	parseData  []byte         // Reusable parser buffer.
 	readBuf    []byte         // Reusable UDP read buffer.
-	Timeout    time.Duration  // UDP read deadline.
-	BufferSize uint16         // Maximum UDP datagram size to read.
+	timeout    time.Duration  // UDP read deadline.
+	bufferSize uint16         // Maximum UDP datagram size to read.
 }
 
-// New creates a new client with IP and port and opens UDP connection.
-func New(ip string, port int) (*Client, error) {
-	return NewWithAddr(&net.UDPAddr{IP: net.ParseIP(ip), Port: port})
+// Option configures a Client before its UDP connection is opened.
+type Option func(*Client) error
+
+// New creates a client for a host and port and opens its UDP connection.
+func New(host string, port int, opts ...Option) (*Client, error) {
+	if host == "" || port < 1 || port > 65535 {
+		return nil, ErrInvalidAddress
+	}
+
+	return NewWithString(net.JoinHostPort(host, strconv.Itoa(port)), opts...)
 }
 
-// NewWithString creates a new client from "ip:port" string and opens UDP connection.
-func NewWithString(addr string) (*Client, error) {
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+// NewWithString creates a client from a host:port address and opens its UDP connection.
+func NewWithString(address string, opts ...Option) (*Client, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w %q: %v", ErrInvalidAddress, address, err)
 	}
 
-	return NewWithAddr(udpAddr)
+	return NewWithAddr(udpAddr, opts...)
 }
 
-// NewWithAddr creates a new client with address and opens UDP connection.
-func NewWithAddr(addr *net.UDPAddr) (*Client, error) {
-	client, err := Create(addr)
-	if err != nil {
+// NewWithAddr creates a client for a resolved address and opens its UDP connection.
+func NewWithAddr(addr *net.UDPAddr, opts ...Option) (*Client, error) {
+	if err := validateAddress(addr); err != nil {
 		return nil, err
 	}
 
-	if err := client.Dial(); err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
-// Create creates a client without opening connection. Use Dial() to establish connection.
-func Create(addr *net.UDPAddr) (*Client, error) {
-	return &Client{
-		Address:    addr,
-		Timeout:    DefaultDeadlineTimeout * time.Second,
-		BufferSize: DefaultBufferSize,
+	client := &Client{
+		address:    cloneAddress(addr),
+		timeout:    DefaultDeadlineTimeout,
+		bufferSize: DefaultBufferSize,
 		readBuf:    make([]byte, DefaultBufferSize),
 		packetsBuf: make(map[int][]byte, 8),
 		parseData:  make([]byte, 0, 4096),
-	}, nil
-}
-
-// Dial establishes UDP connection to the server.
-func (c *Client) Dial() error {
-	conn, err := net.DialUDP("udp", nil, c.Address)
-	if err != nil {
-		return err
 	}
 
-	c.Conn = conn
-	return nil
+	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+		if err := opt(client); err != nil {
+			return nil, err
+		}
+	}
+
+	conn, err := net.DialUDP("udp", nil, client.address)
+	if err != nil {
+		return nil, fmt.Errorf("dial %s: %w", client.address, err)
+	}
+
+	client.conn = conn
+	return client, nil
 }
 
-// SetBufferSize sets read buffer size. Default is 4096 bytes.
-func (c *Client) SetBufferSize(size uint16) {
-	c.BufferSize = size
+// WithTimeout sets the UDP read deadline used by the client.
+func WithTimeout(timeout time.Duration) Option {
+	return func(client *Client) error {
+		if timeout <= 0 {
+			return ErrInvalidTimeout
+		}
+
+		client.timeout = timeout
+		return nil
+	}
+}
+
+// WithBufferSize sets the maximum UDP datagram size read by the client.
+func WithBufferSize(size uint16) Option {
+	return func(client *Client) error {
+		return client.setBufferSize(size)
+	}
+}
+
+// Addr returns a copy of the server network address.
+func (c *Client) Addr() *net.UDPAddr {
+	if c == nil {
+		return nil
+	}
+
+	return cloneAddress(c.address)
+}
+
+// BufferSize returns the maximum UDP datagram size read by the client.
+func (c *Client) BufferSize() uint16 {
+	if c == nil {
+		return 0
+	}
+
+	return c.bufferSize
+}
+
+// Timeout returns the UDP read deadline.
+func (c *Client) Timeout() time.Duration {
+	if c == nil {
+		return 0
+	}
+
+	return c.timeout
+}
+
+// SetBufferSize sets the maximum UDP datagram size read by the client.
+func (c *Client) SetBufferSize(size uint16) error {
+	return c.setBufferSize(size)
+}
+
+func (c *Client) setBufferSize(size uint16) error {
+	if size == 0 {
+		return ErrInvalidBufferSize
+	}
+
+	c.bufferSize = size
 	if cap(c.readBuf) < int(size) {
 		c.readBuf = make([]byte, size)
 	} else {
 		c.readBuf = c.readBuf[:size]
 	}
+
+	return nil
 }
 
-// SetDeadlineTimeout sets read deadline timeout. Default is 5 seconds.
-func (c *Client) SetDeadlineTimeout(seconds int) {
-	c.Timeout = time.Duration(seconds) * time.Second
+// SetTimeout sets the UDP read deadline.
+func (c *Client) SetTimeout(timeout time.Duration) error {
+	if timeout <= 0 {
+		return ErrInvalidTimeout
+	}
+
+	c.timeout = timeout
+	return nil
 }
 
-// Close closes UDP connection.
+// Close closes the UDP connection. It is safe to call multiple times.
 func (c *Client) Close() error {
-	return c.Conn.Close()
+	if c == nil || c.conn == nil {
+		return nil
+	}
+
+	err := c.conn.Close()
+	c.conn = nil
+	return err
+}
+
+func validateAddress(addr *net.UDPAddr) error {
+	if addr == nil || addr.IP == nil || addr.IP.IsUnspecified() || addr.Port == 0 {
+		return ErrInvalidAddress
+	}
+
+	return nil
+}
+
+func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
+	if addr == nil {
+		return nil
+	}
+
+	clone := *addr
+	clone.IP = append(net.IP(nil), addr.IP...)
+	return &clone
 }
 
 // Get sends request and returns response data (without header),
 // response type, ping duration and error.
 // Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
+	if c == nil || c.conn == nil {
+		return nil, 0, 0, ErrClientClosed
+	}
+
 	var (
 		lastUnexpectedErr  error
 		lastUnexpectedFlag Flag
@@ -212,25 +305,26 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 
 	start := time.Now()
 
-	if _, err := c.Conn.Write(req); err != nil {
+	if _, err := c.conn.Write(req); err != nil {
 		return nil, 0, err
 	}
-	if err := c.Conn.SetReadDeadline(time.Now().Add(c.Timeout)); err != nil {
+	if err := c.conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
 		return nil, 0, err
 	}
 
 	var (
-		resp []byte
-		n    int
+		resp      []byte
+		n         int
+		packetErr error
 	)
-	var packetErr error
 	readOK := false
+
 	for attempt := 0; attempt < 6; attempt++ {
-		if cap(c.readBuf) < int(c.BufferSize) {
-			c.readBuf = make([]byte, c.BufferSize)
+		if cap(c.readBuf) < int(c.bufferSize) {
+			c.readBuf = make([]byte, c.bufferSize)
 		}
-		resp = c.readBuf[:c.BufferSize]
-		n, err = c.Conn.Read(resp)
+		resp = c.readBuf[:c.bufferSize]
+		n, err = c.conn.Read(resp)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -299,12 +393,12 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	// Unrelated datagrams are ignored because UDP does not guarantee
 	// that the next datagram belongs to this request.
 	for len(packets) < info.count {
-		if cap(c.readBuf) < int(c.BufferSize) {
-			c.readBuf = make([]byte, c.BufferSize)
+		if cap(c.readBuf) < int(c.bufferSize) {
+			c.readBuf = make([]byte, c.bufferSize)
 		}
 
-		resp = c.readBuf[:c.BufferSize]
-		n, err := c.Conn.Read(resp)
+		resp = c.readBuf[:c.bufferSize]
+		n, err := c.conn.Read(resp)
 		if err != nil {
 			return nil, 0, err
 		}

@@ -16,14 +16,14 @@ More details in the official Steam documentation for the protocol [Server querie
 
 # Usage:
 
-	client, err := a2s.New("127.0.0.1", 27016)
+	client, err := New("127.0.0.1", 27016,
+		WithBufferSize(2048),
+		WithTimeout(3*time.Second),
+	)
 	if err != nil {
 		panic(err)
 	}
 	defer client.Close()
-
-	client.SetBufferSize(2048)
-	client.SetDeadlineTimeout(3)
 
 	info, err := client.GetInfo()
 	if err != nil {

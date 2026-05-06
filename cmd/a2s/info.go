@@ -150,7 +150,7 @@ func executeInfo(cmd *InfoCommand) {
 
 	// Only print footer message for table format
 	if cmd.Format == "table" || cmd.Format == "" {
-		fmt.Printf("A2S_INFO response for %s\n", client.Address)
+		fmt.Printf("A2S_INFO response for %s\n", client.Addr())
 	}
 }
 

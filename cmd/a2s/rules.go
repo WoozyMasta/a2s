@@ -121,7 +121,7 @@ func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 
 	formatter.PrintTable(t)
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Address)
+		fmt.Printf("A2S_RULES response for %s\n", client.Addr())
 	}
 }
 
@@ -252,6 +252,6 @@ func executeRulesA3SB(client *a2s.Client, appID uint64, formatter *Formatter) {
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Address)
+		fmt.Printf("A2S_RULES response for %s\n", client.Addr())
 	}
 }

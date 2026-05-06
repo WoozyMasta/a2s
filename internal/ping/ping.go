@@ -28,9 +28,9 @@ func Start(client *a2s.Client, count, period int) {
 	done := make(chan bool)
 
 	if count != 0 {
-		fmt.Printf("Start %d times ping %s with %ds period\n\n", count, client.Address, period)
+		fmt.Printf("Start %d times ping %s with %ds period\n\n", count, client.Addr(), period)
 	} else {
-		fmt.Printf("Start infinity ping %s with %ds period\n\n", client.Address, period)
+		fmt.Printf("Start infinity ping %s with %ds period\n\n", client.Addr(), period)
 	}
 
 	// Starting the main ping loop in a goroutine
@@ -49,7 +49,7 @@ func Start(client *a2s.Client, count, period int) {
 
 			fmt.Printf(
 				"A2S_INFO response server=%s folder=\"%s\" name=\"%s\" time=%s\n",
-				client.Address, info.Folder, info.Name, pingDuration)
+				client.Addr(), info.Folder, info.Name, pingDuration)
 
 			time.Sleep(time.Duration(period) * time.Second)
 		}

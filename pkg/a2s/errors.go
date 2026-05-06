@@ -3,6 +3,11 @@ package a2s
 import "errors"
 
 var (
+	ErrInvalidAddress    = errors.New("a2s: invalid server address")
+	ErrInvalidTimeout    = errors.New("a2s: timeout must be positive")
+	ErrInvalidBufferSize = errors.New("a2s: buffer size must be positive")
+	ErrClientClosed      = errors.New("a2s: client connection is closed")
+
 	// A2S_INFO errors
 
 	ErrInfoRead               = errors.New("A2S_INFO: failed to read")

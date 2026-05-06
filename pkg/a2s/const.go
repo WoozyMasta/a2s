@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	// DefaultDeadlineTimeout is the default UDP deadline in seconds.
-	DefaultDeadlineTimeout time.Duration = 5
+	// DefaultDeadlineTimeout is the default UDP read deadline.
+	DefaultDeadlineTimeout time.Duration = 5 * time.Second
 	// DefaultBufferSize is the default UDP receive buffer size.
 	DefaultBufferSize uint16 = 4096
 
