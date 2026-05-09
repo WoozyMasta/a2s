@@ -23,6 +23,9 @@ const (
 
 	// unpackProbeMax limits decompression probing for ambiguous headers.
 	unpackProbeMax = 32 * 1024 * 1024
+
+	// splitPacketCountMax is the largest count representable by split headers.
+	splitPacketCountMax = 255
 )
 
 // splitHeaderInfo contains metadata about a split packet.

@@ -11,12 +11,11 @@ import (
 
 // Client handles UDP connection and A2S protocol queries.
 type Client struct {
-	conn       *net.UDPConn   // UDP connection to the server.
-	address    *net.UDPAddr   // Server network address.
-	packetsBuf map[int][]byte // Collected multi-packet response parts.
-	readBuf    []byte         // Reusable UDP read buffer.
-	timeout    time.Duration  // UDP read deadline.
-	bufferSize uint16         // Maximum UDP datagram size to read.
+	conn       *net.UDPConn  // UDP connection to the server.
+	address    *net.UDPAddr  // Server network address.
+	readBuf    []byte        // Reusable UDP read buffer.
+	timeout    time.Duration // UDP read deadline.
+	bufferSize uint16        // Maximum UDP datagram size to read.
 }
 
 // Option configures a Client before its UDP connection is opened.
@@ -52,7 +51,6 @@ func NewWithAddr(addr *net.UDPAddr, opts ...Option) (*Client, error) {
 		timeout:    DefaultDeadlineTimeout,
 		bufferSize: DefaultBufferSize,
 		readBuf:    make([]byte, DefaultBufferSize),
-		packetsBuf: make(map[int][]byte, 8),
 	}
 
 	for _, opt := range opts {
@@ -372,14 +370,12 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return nil, 0, err
 	}
 
-	for k := range c.packetsBuf {
-		delete(c.packetsBuf, k)
-	}
-	if info.count > 8 && len(c.packetsBuf) == 0 {
-		c.packetsBuf = make(map[int][]byte, info.count)
+	if info.count > splitPacketCountMax || info.index < 0 || info.index >= info.count {
+		return nil, 0, ErrMultiPacket
 	}
 
-	packets := c.packetsBuf
+	packets := make([][]byte, info.count)
+	received := 1
 	if n < info.dataOff {
 		return nil, 0, ErrMultiPacket
 	}
@@ -390,7 +386,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	// Collect remaining packets.
 	// Unrelated datagrams are ignored because UDP does not guarantee
 	// that the next datagram belongs to this request.
-	for len(packets) < info.count {
+	for received < info.count {
 		if cap(c.readBuf) < int(c.bufferSize) {
 			c.readBuf = make([]byte, c.bufferSize)
 		}
@@ -421,34 +417,30 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		}
 
 		currentPacket := info.readPacketNumber(resp[:n])
-		if currentPacket >= info.count {
+		if currentPacket < 0 || currentPacket >= info.count {
 			continue
 		}
 
-		if _, exists := packets[currentPacket]; !exists {
+		if packets[currentPacket] == nil {
 			packetData := make([]byte, n-info.headerSize)
 			copy(packetData, resp[info.headerSize:n])
 			packets[currentPacket] = packetData
+			received++
 		}
 	}
 
 	// Calculate total size and assemble packets in order
 	totalSize := 0
 	for i := 0; i < info.count; i++ {
-		if data, exists := packets[i]; exists {
-			totalSize += len(data)
-		} else {
+		if packets[i] == nil {
 			return nil, 0, ErrMultiPacketMismatch
 		}
+		totalSize += len(packets[i])
 	}
 
 	assembledResp := make([]byte, 0, totalSize)
-	for i := 0; i < info.count; i++ {
-		if data, exists := packets[i]; exists {
-			assembledResp = append(assembledResp, data...)
-		} else {
-			return nil, 0, ErrMultiPacketMismatch
-		}
+	for _, data := range packets {
+		assembledResp = append(assembledResp, data...)
 	}
 
 	if info.compressed {
