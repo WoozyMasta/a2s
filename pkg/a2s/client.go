@@ -6,15 +6,18 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 )
 
 // Client handles UDP connection and A2S protocol queries.
+// Queries on one Client are serialized for the lifetime of each transaction.
 type Client struct {
 	conn       *net.UDPConn  // UDP connection to the server.
 	address    *net.UDPAddr  // Server network address.
 	readBuf    []byte        // Reusable UDP read buffer.
 	timeout    time.Duration // UDP read deadline.
+	queryMu    sync.Mutex    // Serializes queries and lifecycle changes.
 	bufferSize uint16        // Maximum UDP datagram size to read.
 }
 
@@ -104,6 +107,8 @@ func (c *Client) BufferSize() uint16 {
 	if c == nil {
 		return 0
 	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
 
 	return c.bufferSize
 }
@@ -113,12 +118,20 @@ func (c *Client) Timeout() time.Duration {
 	if c == nil {
 		return 0
 	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
 
 	return c.timeout
 }
 
 // SetBufferSize sets the maximum UDP datagram size read by the client.
 func (c *Client) SetBufferSize(size uint16) error {
+	if c == nil {
+		return ErrClientClosed
+	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
+
 	return c.setBufferSize(size)
 }
 
@@ -139,6 +152,12 @@ func (c *Client) setBufferSize(size uint16) error {
 
 // SetTimeout sets the UDP read deadline.
 func (c *Client) SetTimeout(timeout time.Duration) error {
+	if c == nil {
+		return ErrClientClosed
+	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
+
 	if timeout <= 0 {
 		return ErrInvalidTimeout
 	}
@@ -149,7 +168,13 @@ func (c *Client) SetTimeout(timeout time.Duration) error {
 
 // Close closes the UDP connection. It is safe to call multiple times.
 func (c *Client) Close() error {
-	if c == nil || c.conn == nil {
+	if c == nil {
+		return nil
+	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
+
+	if c.conn == nil {
 		return nil
 	}
 
@@ -180,7 +205,13 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 // response type, ping duration and error.
 // Automatically handles challenge-response if server requires it.
 func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
-	if c == nil || c.conn == nil {
+	if c == nil {
+		return nil, 0, 0, ErrClientClosed
+	}
+	c.queryMu.Lock()
+	defer c.queryMu.Unlock()
+
+	if c.conn == nil {
 		return nil, 0, 0, ErrClientClosed
 	}
 
