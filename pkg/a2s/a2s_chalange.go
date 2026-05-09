@@ -14,13 +14,12 @@ func (c *Client) GetChallenge() (uint32, error) {
 		return 0, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parseChallenge(data)
+}
 
-	reader := bread.NewReader(c.parseData)
+// parseChallenge parses the four-byte challenge payload.
+func parseChallenge(data []byte) (uint32, error) {
+	reader := bread.NewReader(data)
 	challenge, err := reader.Uint32()
 	if err != nil {
 		return 0, errors.Join(ErrChallengeValue, err)

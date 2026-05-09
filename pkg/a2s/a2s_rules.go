@@ -17,13 +17,12 @@ func (c *Client) GetRules() (map[string]string, error) {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parseRules(data)
+}
 
-	reader := bread.NewReader(c.parseData)
+// parseRules parses an A2S_RULES payload without copying its buffer.
+func parseRules(data []byte) (map[string]string, error) {
+	reader := bread.NewReader(data)
 	count, err := reader.Uint16()
 	if err != nil {
 		return nil, errors.Join(ErrRuleCount, err)

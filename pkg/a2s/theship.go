@@ -53,13 +53,12 @@ func (c *Client) GetTheShipPlayers() ([]TheShipPlayer, error) {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parseTheShipPlayers(data)
+}
 
-	reader := bread.NewReader(c.parseData)
+// parseTheShipPlayers parses The Ship's extended A2S_PLAYER payload.
+func parseTheShipPlayers(data []byte) ([]TheShipPlayer, error) {
+	reader := bread.NewReader(data)
 	count, err := reader.Byte()
 	if err != nil {
 		return nil, errors.Join(ErrPlayerCount, err)

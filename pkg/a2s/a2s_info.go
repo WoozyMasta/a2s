@@ -102,13 +102,12 @@ func (c *Client) GetInfo() (*Info, error) {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parseInfo(data, format, duration)
+}
 
-	reader := bread.NewReader(c.parseData)
+// parseInfo parses an A2S_INFO payload without taking ownership of its buffer.
+func parseInfo(data []byte, format Flag, duration time.Duration) (*Info, error) {
+	reader := bread.NewReader(data)
 	info := &Info{Ping: duration, Format: InfoFormat(format)}
 
 	switch format {

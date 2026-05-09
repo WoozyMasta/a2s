@@ -25,13 +25,12 @@ func (c *Client) GetPlayers() ([]Player, error) {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parsePlayers(data)
+}
 
-	reader := bread.NewReader(c.parseData)
+// parsePlayers parses a standard A2S_PLAYER payload without copying its buffer.
+func parsePlayers(data []byte) ([]Player, error) {
+	reader := bread.NewReader(data)
 	count, err := reader.Byte()
 	if err != nil {
 		return nil, errors.Join(ErrPlayerCount, err)

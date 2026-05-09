@@ -14,7 +14,6 @@ type Client struct {
 	conn       *net.UDPConn   // UDP connection to the server.
 	address    *net.UDPAddr   // Server network address.
 	packetsBuf map[int][]byte // Collected multi-packet response parts.
-	parseData  []byte         // Reusable parser buffer.
 	readBuf    []byte         // Reusable UDP read buffer.
 	timeout    time.Duration  // UDP read deadline.
 	bufferSize uint16         // Maximum UDP datagram size to read.
@@ -54,7 +53,6 @@ func NewWithAddr(addr *net.UDPAddr, opts ...Option) (*Client, error) {
 		bufferSize: DefaultBufferSize,
 		readBuf:    make([]byte, DefaultBufferSize),
 		packetsBuf: make(map[int][]byte, 8),
-		parseData:  make([]byte, 0, 4096),
 	}
 
 	for _, opt := range opts {
