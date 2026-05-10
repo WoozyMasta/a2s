@@ -17,7 +17,7 @@ func (c *Client) GetChallenge() (uint32, error) {
 	return parseChallenge(data)
 }
 
-// parseChallenge parses the four-byte challenge payload.
+// parseChallenge parses the four-byte little-endian challenge payload.
 func parseChallenge(data []byte) (uint32, error) {
 	reader := bread.NewReader(data)
 	challenge, err := reader.Uint32()

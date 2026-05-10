@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+const (
+	// maxUnsupportedResponses bounds retries after an unexpected response type.
+	maxUnsupportedResponses = 3
+
+	// maxChallengeResponses bounds challenge responses in one query transaction.
+	maxChallengeResponses = 4
+)
+
 // Client handles UDP connection and A2S protocol queries.
 // Queries on one Client are serialized for the lifetime of each transaction.
 type Client struct {
@@ -221,49 +229,14 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 		lastDuration       time.Duration
 	)
 
-	for attempt := 0; attempt < 3; attempt++ {
-		// Retry the complete request when a server returns an unsupported response
-		// or repeatedly fails the challenge exchange.
-		resp, duration, err := c.request(requestType, singlePacket)
+	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
+		resp, flag, duration, err := c.requestWithChallenge(requestType)
 		if err != nil {
 			if lastUnexpectedErr != nil {
 				return nil, lastUnexpectedFlag, lastDuration, errors.Join(lastUnexpectedErr, err)
 			}
-			return nil, 0, 0, err
-		}
 
-		flag := Flag(resp[4])
-		retryAfterChallengeError := false
-
-		for challengeAttempt := 0; challengeAttempt < 4 && flag == challengeResponse; challengeAttempt++ {
-			if len(resp) < 9 {
-				return nil, challengeResponse, duration, fmt.Errorf(
-					"%w: %w (got %d bytes, want at least 9)",
-					ErrChallengeRead,
-					ErrInsufficientData,
-					len(resp),
-				)
-			}
-
-			challenge := binary.BigEndian.Uint32(resp[5:9])
-			resp, _, err = c.request(requestType, challenge)
-			if err != nil {
-				challengeErr := errors.Join(validationErrForRequest(requestType), ErrChallengeLoop, err)
-				if requestType == RulesRequest || requestType == PlayerRequest {
-					lastUnexpectedErr = challengeErr
-					lastUnexpectedFlag = challengeResponse
-					lastDuration = duration
-					retryAfterChallengeError = true
-					break
-				}
-
-				return nil, challengeResponse, duration, challengeErr
-			}
-			flag = Flag(resp[4])
-		}
-
-		if retryAfterChallengeError {
-			continue
+			return nil, flag, duration, err
 		}
 
 		// If response type is not valid, classify error as ErrQueryUnsupported and continue.
@@ -272,6 +245,7 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 			switch {
 			case flag == challengeResponse:
 				classified = errors.Join(err, ErrChallengeLoop)
+
 			case requestType != InfoRequest && (flag == infoResponseSource || flag == infoResponseGoldSource):
 				classified = errors.Join(err, ErrQueryUnsupported)
 			}
@@ -297,6 +271,51 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	}
 
 	return nil, 0, 0, validationErrForRequest(requestType)
+}
+
+// requestWithChallenge executes one request transaction,
+// including its bounded challenge exchange.
+// ChallengeRequest returns its challenge
+// as the final response and must never enter this exchange.
+func (c *Client) requestWithChallenge(requestType Flag) ([]byte, Flag, time.Duration, error) {
+	challenge := singlePacket
+
+	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
+		resp, duration, err := c.request(requestType, challenge)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+
+		flag := Flag(resp[4])
+		if flag != challengeResponse || requestType == ChallengeRequest || requestType == PingRequest {
+			return resp, flag, duration, nil
+		}
+
+		if attempt == maxChallengeResponses-1 {
+			return resp, challengeResponse, duration, ErrChallengeLoop
+		}
+
+		challenge, err = parseChallengeResponse(resp)
+		if err != nil {
+			return resp, challengeResponse, duration, err
+		}
+	}
+
+	return nil, challengeResponse, 0, ErrChallengeLoop
+}
+
+// parseChallengeResponse reads a challenge from a complete A2S response.
+func parseChallengeResponse(data []byte) (uint32, error) {
+	if len(data) < 9 {
+		return 0, fmt.Errorf(
+			"%w: %w (got %d bytes, want at least 9)",
+			ErrChallengeRead,
+			ErrInsufficientData,
+			len(data),
+		)
+	}
+
+	return binary.LittleEndian.Uint32(data[5:9]), nil
 }
 
 // validationErrForRequest returns an error for an unsupported request type.

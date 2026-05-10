@@ -32,7 +32,7 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		req = append(req, []byte(infoPayload)...)
 		req = append(req, 0x00)
 		if challenge != singlePacket {
-			req = binary.BigEndian.AppendUint32(req, challenge)
+			req = binary.LittleEndian.AppendUint32(req, challenge)
 		}
 		return req, nil
 
@@ -41,7 +41,7 @@ func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
 		req = make([]byte, 0, 9)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))
-		req = binary.BigEndian.AppendUint32(req, challenge)
+		req = binary.LittleEndian.AppendUint32(req, challenge)
 		return req, nil
 
 	case PingRequest, ChallengeRequest:
