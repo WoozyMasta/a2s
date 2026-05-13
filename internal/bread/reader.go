@@ -94,7 +94,8 @@ func (r *Reader) Int32() (int32, error) {
 		return 0, ErrUnderflow
 	}
 
-	value := int32(binary.LittleEndian.Uint32(r.data[r.pos:]))
+	// A2S long is a signed 32-bit wire value; preserve its two's-complement bits.
+	value := int32(binary.LittleEndian.Uint32(r.data[r.pos:])) // #nosec G115 -- intentional signed wire conversion
 	r.pos += 4
 
 	return value, nil
