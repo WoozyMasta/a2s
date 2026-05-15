@@ -32,8 +32,8 @@ const (
 type splitHeaderInfo struct {
 	count        int    // Total number of packets in the response.
 	index        int    // Current packet number.
-	headerSize   int    // Size of the base header.
-	dataOff      int    // Offset of the data in the packet.
+	headerSize   int    // Size of the base header without compression metadata.
+	dataOff      int    // Offset of the data in this packet.
 	id           uint32 // ID of the packet.
 	unpackedSize uint32 // Size of the decompressed data.
 	crc          uint32 // CRC of the decompressed data.
@@ -94,27 +94,34 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 		goldSrc:    useGold,
 	}
 
-	// Check if packet is compressed and set decompressed size and CRC.
+	// Compression metadata belongs to fragment zero.
+	// Other fragments carry only the base split header and must be retained from that offset.
 	if (packetID & 0x80000000) != 0 {
-		if len(data) < baseHeaderSize+8 {
-			return splitHeaderInfo{}, ErrMultiPacket
-		}
-
 		info.compressed = true
-		info.unpackedSize = binary.LittleEndian.Uint32(data[baseHeaderSize : baseHeaderSize+4])
-		info.crc = binary.LittleEndian.Uint32(data[baseHeaderSize+4 : baseHeaderSize+8])
-		info.dataOff = baseHeaderSize + 8
+		if info.index == 0 {
+			if len(data) < baseHeaderSize+8 {
+				return splitHeaderInfo{}, ErrMultiPacket
+			}
 
-		// Some servers omit the split-size field,
-		// producing a 10-byte header where the standard Source header is 12 bytes.
-		if !useGold && baseHeaderSize == srcSplitHeader && info.unpackedSize > unpackProbeMax && len(data) >= 18 {
-			altSize := binary.LittleEndian.Uint32(data[splitSizeOff : splitSizeOff+4])
-			altCRC := binary.LittleEndian.Uint32(data[splitSizeOff+4 : splitSizeOff+8])
-			if altSize > 0 && altSize <= unpackProbeMax {
-				info.unpackedSize = altSize
-				info.crc = altCRC
-				info.headerSize = srcSplitNoSize
-				info.dataOff = splitSizeOff + 8
+			info.unpackedSize = binary.LittleEndian.Uint32(data[baseHeaderSize : baseHeaderSize+4])
+			info.crc = binary.LittleEndian.Uint32(data[baseHeaderSize+4 : baseHeaderSize+8])
+			info.dataOff = baseHeaderSize + 8
+
+			// Some servers omit the split-size field,
+			// producing a 10-byte header where the standard Source header is 12 bytes.
+			if !useGold &&
+				baseHeaderSize == srcSplitHeader &&
+				info.unpackedSize > unpackProbeMax &&
+				len(data) >= 18 {
+				altSize := binary.LittleEndian.Uint32(data[splitSizeOff : splitSizeOff+4])
+				altCRC := binary.LittleEndian.Uint32(data[splitSizeOff+4 : splitSizeOff+8])
+
+				if altSize > 0 && altSize <= unpackProbeMax {
+					info.unpackedSize = altSize
+					info.crc = altCRC
+					info.headerSize = srcSplitNoSize
+					info.dataOff = splitSizeOff + 8
+				}
 			}
 		}
 	}
@@ -124,14 +131,4 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 	}
 
 	return info, nil
-}
-
-// readPacketNumber reads the packet number from a packet.
-// Returns the packet number.
-func (s splitHeaderInfo) readPacketNumber(data []byte) int {
-	if s.goldSrc {
-		return int((data[8] & 0xF0) >> 4)
-	}
-
-	return int(data[9])
 }

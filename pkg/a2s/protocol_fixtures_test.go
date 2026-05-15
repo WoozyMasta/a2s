@@ -1,8 +1,10 @@
 package a2s
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"math"
 	"net"
 	"strconv"
@@ -175,6 +177,111 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	if string(data) != "split fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "split fixture")
 	}
+}
+
+func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
+	assembled := singlePacketFixture(rulesResponse, []byte("reordered split fixture"))
+	packets := sourceSplitPacketSequence(0x1AFEBABE, assembled, 3)
+	reordered := append(append([][]byte{}, packets[1:]...), packets[0])
+	fixture := newUDPPacketFixture(t, reordered...)
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	data, flag, _, err := client.Get(RulesRequest)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if flag != rulesResponse {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	}
+	if string(data) != "reordered split fixture" {
+		t.Fatalf("response payload = %q, want %q", data, "reordered split fixture")
+	}
+}
+
+func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
+	assembled := append(singlePacketFixture(rulesResponse, []byte("compressed split fixture:")),
+		bytes.Repeat([]byte("0123456789abcdef"), 20)...)
+	compressed := []byte{
+		0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53, 0x59, 0xf3, 0x7d, 0x36, 0x5d,
+		0x00, 0x00, 0xaf, 0x5d, 0x80, 0xc0, 0x00, 0x40, 0x00, 0x7f, 0xf0, 0x02, 0x00, 0x3f, 0x26,
+		0xde, 0x40, 0x00, 0x00, 0xa0, 0x00, 0x72, 0x29, 0x30, 0x1a, 0x09, 0x84, 0x19, 0x31, 0x94,
+		0x0a, 0x95, 0x40, 0x1e, 0xa1, 0xa7, 0xa8, 0x6c, 0xa0, 0x3d, 0x43, 0xf6, 0x33, 0xad,
+		0xe4, 0x37, 0x11, 0xbc, 0x8a, 0x11, 0xc0, 0x8e, 0x24, 0x72, 0x23, 0x22, 0x39, 0x91,
+		0x52, 0x2f, 0x5e, 0xa4, 0x66, 0x45, 0x88, 0xb6, 0xcb, 0x91, 0xf3, 0x16, 0x23, 0x4e,
+		0xb9, 0x0f, 0x1a, 0x3d, 0x5f, 0x18, 0xa5, 0x30, 0x2b, 0x48, 0x00, 0x90, 0xa0, 0x8f,
+		0x1f, 0xc5, 0xdc, 0x91, 0x4e, 0x14, 0x24, 0x3c, 0xdf, 0x4d, 0x97, 0x40,
+	}
+	if _, err := decompressBzip2(compressed, uint32(len(assembled)), crc32.ChecksumIEEE(assembled)); err != nil {
+		t.Fatalf("invalid compressed fixture: %v", err)
+	}
+
+	packets := compressedSourceSplitPacketSequence(
+		0x81234567,
+		compressed,
+		uint32(len(assembled)),
+		crc32.ChecksumIEEE(assembled),
+		9,
+	)
+	reordered := append(append([][]byte{}, packets[2:]...), packets[:2]...)
+	fixture := newUDPPacketFixture(t, reordered...)
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	data, flag, _, err := client.Get(RulesRequest)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if flag != rulesResponse {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	}
+	if !bytes.Equal(data, assembled[5:]) {
+		t.Fatalf("response payload = %q, want %q", data, assembled[5:])
+	}
+}
+
+func compressedSourceSplitPacketSequence(id uint32, compressed []byte, unpackedSize uint32, crc uint32, chunkSize int) [][]byte {
+	if len(compressed) == 0 || chunkSize <= 0 {
+		return nil
+	}
+
+	count := (len(compressed) + chunkSize - 1) / chunkSize
+	packets := make([][]byte, 0, count)
+	for index := 0; index < count; index++ {
+		start := index * chunkSize
+		end := start + chunkSize
+		if end > len(compressed) {
+			end = len(compressed)
+		}
+
+		headerSize := srcSplitHeader
+		metadataSize := 0
+		if index == 0 {
+			metadataSize = 8
+		}
+		packet := make([]byte, headerSize+metadataSize+end-start)
+		binary.LittleEndian.PutUint32(packet[:4], multiPacket)
+		binary.LittleEndian.PutUint32(packet[4:8], id)
+		packet[8] = byte(count)
+		packet[9] = byte(index)
+		binary.LittleEndian.PutUint16(packet[10:12], uint16(len(compressed)))
+		if index == 0 {
+			binary.LittleEndian.PutUint32(packet[12:16], unpackedSize)
+			binary.LittleEndian.PutUint32(packet[16:20], crc)
+		}
+		copy(packet[headerSize+metadataSize:], compressed[start:end])
+		packets = append(packets, packet)
+	}
+
+	return packets
 }
 
 func TestRulesPreserveRawAndParsedValues(t *testing.T) {

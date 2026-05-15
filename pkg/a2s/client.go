@@ -413,8 +413,9 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		return result, duration, nil
 	}
 
-	// Multi-packet response: extract metadata from the first packet,
-	// then collect the remaining packets with the same response identifier.
+	// Multi-packet response: classify the first datagram, then collect raw/ fragments.
+	// Compression metadata is parsed from fragment zero
+	// after all fragments have been identified, because UDP may reorder their arrival.
 	info, err := parseSplitHeader(resp[:n])
 	if err != nil {
 		return nil, 0, err
@@ -426,12 +427,9 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 
 	packets := make([][]byte, info.count)
 	received := 1
-	if n < info.dataOff {
-		return nil, 0, ErrMultiPacket
-	}
-	firstPacketData := make([]byte, n-info.dataOff)
-	copy(firstPacketData, resp[info.dataOff:n])
-	packets[info.index] = firstPacketData
+	firstPacket := make([]byte, n)
+	copy(firstPacket, resp[:n])
+	packets[info.index] = firstPacket
 
 	// Collect remaining packets.
 	// Unrelated datagrams are ignored because UDP does not guarantee
@@ -451,46 +449,60 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			continue
 		}
 
-		header := binary.LittleEndian.Uint32(resp[:4])
-		if header != multiPacket {
+		packetInfo, err := parseSplitHeader(resp[:n])
+		if err != nil || packetInfo.id != info.id {
+			continue
+		}
+		if packetInfo.count != info.count || packetInfo.goldSrc != info.goldSrc {
 			continue
 		}
 
-		if binary.LittleEndian.Uint32(resp[4:8]) != info.id {
-			continue
-		}
-
-		// Packet belongs to current split response but is too short for its header.
-		// Treat as malformed response instead of waiting for read timeout.
-		if n < info.headerSize {
-			return nil, 0, ErrMultiPacket
-		}
-
-		currentPacket := info.readPacketNumber(resp[:n])
+		currentPacket := packetInfo.index
 		if currentPacket < 0 || currentPacket >= info.count {
 			continue
 		}
 
 		if packets[currentPacket] == nil {
-			packetData := make([]byte, n-info.headerSize)
-			copy(packetData, resp[info.headerSize:n])
-			packets[currentPacket] = packetData
+			packet := make([]byte, n)
+			copy(packet, resp[:n])
+			packets[currentPacket] = packet
 			received++
 		}
 	}
 
-	// Calculate total size and assemble packets in order
+	// Fragment zero owns compression metadata
+	// and determines the payload offset for the complete response.
+	// Parse it only after reassembly has all indexes.
+	firstInfo, err := parseSplitHeader(packets[0])
+	if err != nil || firstInfo.index != 0 {
+		return nil, 0, ErrMultiPacket
+	}
+	info = firstInfo
+
+	// Calculate total size and assemble packets in protocol order.
 	totalSize := 0
 	for i := 0; i < info.count; i++ {
 		if packets[i] == nil {
 			return nil, 0, ErrMultiPacketMismatch
 		}
-		totalSize += len(packets[i])
+
+		dataOff := info.headerSize
+		if i == 0 {
+			dataOff = info.dataOff
+		}
+		if len(packets[i]) < dataOff {
+			return nil, 0, ErrMultiPacket
+		}
+		totalSize += len(packets[i]) - dataOff
 	}
 
 	assembledResp := make([]byte, 0, totalSize)
-	for _, data := range packets {
-		assembledResp = append(assembledResp, data...)
+	for i, packet := range packets {
+		dataOff := info.headerSize
+		if i == 0 {
+			dataOff = info.dataOff
+		}
+		assembledResp = append(assembledResp, packet[dataOff:]...)
 	}
 
 	if info.compressed {
