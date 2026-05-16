@@ -13,6 +13,35 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## Unreleased
+
+### Changed
+
+* `a2s` player query methods return slices directly
+  instead of pointers to slices
+* `a2s` expose raw and parsed A2S_RULES views
+* `a2s` replace legacy client construction with address-aware constructors,
+  options, accessors, and idempotent lifecycle management
+
+### Fixed
+
+* `a2s` and `a3sb` reject malformed and truncated UDP responses without panics
+* `a2s` assemble reordered split responses using metadata from fragment zero
+* `a2s` handle challenge responses through bounded transactions
+  and keep deprecated `GetChallenge` path from retrying its final response
+* `a2s` serialize concurrent query transactions on one client
+* `a3sb` preserve deterministic DLC bit and hash ordering
+* `a3sb` parse the DayZ `dedicated` rule according to its wire value
+* `a2s` align response models with A2S wire and JSON contracts,
+  including SourceTV fields, server type/visibility keys, and signed scores
+* `keywords` preserve unknown enum values
+  instead of mapping them to known defaults
+
+### Removed
+
+* remove the `github.com/woozymasta/steam` dependency
+  in favor of a curated local A2S AppID registry
+
 ## [0.3.2][] - 2026-03-07
 
 ### Added
@@ -135,7 +164,8 @@ Refactoring and Simplification
 ### Removed
 
 * heavy and unnecessary logging packages and CLI parameter parsing
-* appid package migrated to [woozymasta/steam](https://github.com/WoozyMasta/steam/tree/master/utils/appid)
+* appid package migrated to
+  [woozymasta/steam](https://github.com/WoozyMasta/steam/tree/master/utils/appid)
 
 [0.2.0]: https://github.com/WoozyMasta/a2s/compare/v0.1.0...v0.2.0
 
