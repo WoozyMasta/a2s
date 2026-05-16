@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -424,9 +425,13 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	if info.count > splitPacketCountMax || info.index < 0 || info.index >= info.count {
 		return nil, 0, ErrMultiPacket
 	}
+	if n > splitResponseSizeMax {
+		return nil, 0, ErrMultiPacketSize
+	}
 
 	packets := make([][]byte, info.count)
 	received := 1
+	receivedSize := n
 	firstPacket := make([]byte, n)
 	copy(firstPacket, resp[:n])
 	packets[info.index] = firstPacket
@@ -449,12 +454,16 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			continue
 		}
 
-		packetInfo, err := parseSplitHeader(resp[:n])
-		if err != nil || packetInfo.id != info.id {
+		if binary.LittleEndian.Uint32(resp[4:8]) != info.id {
 			continue
 		}
-		if packetInfo.count != info.count || packetInfo.goldSrc != info.goldSrc {
-			continue
+
+		packetInfo, err := parseSplitHeader(resp[:n])
+		if err != nil {
+			return nil, 0, errors.Join(ErrMultiPacketInconsistent, err)
+		}
+		if err := validateSplitFragment(info, packetInfo); err != nil {
+			return nil, 0, err
 		}
 
 		currentPacket := packetInfo.index
@@ -463,10 +472,17 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		}
 
 		if packets[currentPacket] == nil {
+			if n > splitResponseSizeMax-receivedSize {
+				return nil, 0, ErrMultiPacketSize
+			}
+
 			packet := make([]byte, n)
 			copy(packet, resp[:n])
 			packets[currentPacket] = packet
+			receivedSize += n
 			received++
+		} else if !bytes.Equal(packets[currentPacket], resp[:n]) {
+			return nil, 0, ErrMultiPacketConflict
 		}
 	}
 
@@ -486,6 +502,14 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 			return nil, 0, ErrMultiPacketMismatch
 		}
 
+		packetInfo, err := parseSplitHeader(packets[i])
+		if err != nil {
+			return nil, 0, errors.Join(ErrMultiPacketInconsistent, err)
+		}
+		if err := validateSplitFragment(info, packetInfo); err != nil || packetInfo.index != i {
+			return nil, 0, ErrMultiPacketInconsistent
+		}
+
 		dataOff := info.headerSize
 		if i == 0 {
 			dataOff = info.dataOff
@@ -493,7 +517,13 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		if len(packets[i]) < dataOff {
 			return nil, 0, ErrMultiPacket
 		}
-		totalSize += len(packets[i]) - dataOff
+
+		packetSize := len(packets[i]) - dataOff
+		if packetSize > splitResponseSizeMax-totalSize {
+			return nil, 0, ErrMultiPacketSize
+		}
+
+		totalSize += packetSize
 	}
 
 	assembledResp := make([]byte, 0, totalSize)

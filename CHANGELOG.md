@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning][].
 
 * `a2s` and `a3sb` reject malformed and truncated UDP responses without panics
 * `a2s` assemble reordered split responses using metadata from fragment zero
+* `a2s` reject inconsistent split fragments and bound response allocations
 * `a2s` handle challenge responses through bounded transactions
   and keep deprecated `GetChallenge` path from retrying its final response
 * `a2s` serialize concurrent query transactions on one client

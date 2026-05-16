@@ -248,6 +248,64 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	}
 }
 
+func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
+	packets := sourceSplitPacketSequence(
+		0x12345678,
+		singlePacketFixture(rulesResponse, []byte("invalid index")),
+		3,
+	)
+	packets[0][9] = packets[0][8]
+	fixture := newUDPPacketFixture(t, packets[0])
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacket) {
+		t.Fatalf("Get error = %v, want ErrMultiPacket", err)
+	}
+}
+
+func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
+	assembled := singlePacketFixture(rulesResponse, []byte("inconsistent split fixture"))
+	first := sourceSplitPacketSequence(0x12345678, assembled, 8)
+	second := sourceSplitPacketSequence(0x12345678, assembled, 3)
+	fixture := newUDPPacketFixture(t, first[0], second[1])
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacketInconsistent) {
+		t.Fatalf("Get error = %v, want ErrMultiPacketInconsistent", err)
+	}
+}
+
+func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
+	packets := sourceSplitPacketSequence(
+		0x12345678,
+		singlePacketFixture(rulesResponse, []byte("duplicate split fixture")),
+		3,
+	)
+	duplicate := append([]byte(nil), packets[0]...)
+	duplicate[len(duplicate)-1] ^= 0x01
+	fixture := newUDPPacketFixture(t, packets[0], duplicate)
+
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacketConflict) {
+		t.Fatalf("Get error = %v, want ErrMultiPacketConflict", err)
+	}
+}
+
 func compressedSourceSplitPacketSequence(id uint32, compressed []byte, unpackedSize uint32, crc uint32, chunkSize int) [][]byte {
 	if len(compressed) == 0 || chunkSize <= 0 {
 		return nil

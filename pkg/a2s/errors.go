@@ -76,16 +76,19 @@ var (
 
 	// Multi-packet errors
 
-	ErrSinglePacket        = errors.New("received single packet data is too short")
-	ErrMultiPacket         = errors.New("received multi packet data is too short")
-	ErrWrongByte           = errors.New("unexpected response byte")
-	ErrWrongRequest        = errors.New("unsupported request type")
-	ErrHeaderWrongRequest  = errors.New("unsupported request type in header")
-	ErrInsufficientData    = errors.New("insufficient data length")
-	ErrMultiPacketInvalid  = errors.New("received invalid packet identifier in response")
-	ErrMultiPacketMismatch = errors.New("mismatched number of packets received")
-	ErrChallengeLoop       = errors.New("server keeps returning challenge response")
-	ErrQueryUnsupported    = errors.New("server does not support requested query")
+	ErrSinglePacket            = errors.New("received single packet data is too short")
+	ErrMultiPacket             = errors.New("received multi packet data is too short")
+	ErrWrongByte               = errors.New("unexpected response byte")
+	ErrWrongRequest            = errors.New("unsupported request type")
+	ErrHeaderWrongRequest      = errors.New("unsupported request type in header")
+	ErrInsufficientData        = errors.New("insufficient data length")
+	ErrMultiPacketInvalid      = errors.New("received invalid packet identifier in response")
+	ErrMultiPacketMismatch     = errors.New("mismatched number of packets received")
+	ErrMultiPacketSize         = errors.New("multi packet response exceeds size limit")
+	ErrMultiPacketConflict     = errors.New("conflicting duplicate multi packet fragment")
+	ErrMultiPacketInconsistent = errors.New("inconsistent multi packet fragment metadata")
+	ErrChallengeLoop           = errors.New("server keeps returning challenge response")
+	ErrQueryUnsupported        = errors.New("server does not support requested query")
 
 	// Validator errors
 

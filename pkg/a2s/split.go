@@ -26,6 +26,9 @@ const (
 
 	// splitPacketCountMax is the largest count representable by split headers.
 	splitPacketCountMax = 255
+
+	// splitResponseSizeMax bounds raw and assembled split response data.
+	splitResponseSizeMax = 16 * 1024 * 1024
 )
 
 // splitHeaderInfo contains metadata about a split packet.
@@ -126,9 +129,22 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 		}
 	}
 
-	if info.count <= 0 {
+	if info.count <= 0 || info.count > splitPacketCountMax || info.index < 0 || info.index >= info.count {
 		return splitHeaderInfo{}, ErrMultiPacket
 	}
 
 	return info, nil
+}
+
+// validateSplitFragment checks metadata shared by every fragment in a response.
+func validateSplitFragment(expected, actual splitHeaderInfo) error {
+	if actual.id != expected.id ||
+		actual.count != expected.count ||
+		actual.compressed != expected.compressed ||
+		actual.goldSrc != expected.goldSrc ||
+		actual.index < 0 || actual.index >= expected.count {
+		return ErrMultiPacketInconsistent
+	}
+
+	return nil
 }
