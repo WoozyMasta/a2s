@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -20,7 +21,7 @@ func executeInfo(cmd *InfoCommand) {
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	defer closeClient(client)
 
-	info, err := client.GetInfo()
+	info, err := client.GetInfo(context.Background())
 	if err != nil {
 		fatalf("Failed to get server info: %s", err)
 	}

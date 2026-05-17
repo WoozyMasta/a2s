@@ -1,6 +1,7 @@
 package a3sb
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -115,7 +116,7 @@ func TestGetRulesRejectsTruncatedCountFixtures(t *testing.T) {
 			defer baseClient.Close()
 
 			client := &Client{Client: baseClient}
-			_, err = client.GetRules(appid.DayZ)
+			_, err = client.GetRules(context.Background(), appid.DayZ)
 			if err == nil {
 				t.Fatal("GetRules returned nil error for truncated count")
 			}
@@ -145,7 +146,7 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	defer baseClient.Close()
 
 	client := &Client{Client: baseClient}
-	rules, err := client.GetRules(appid.DayZ)
+	rules, err := client.GetRules(context.Background(), appid.DayZ)
 	if err != nil {
 		t.Fatalf("GetRules returned error: %v", err)
 	}
@@ -304,7 +305,7 @@ func TestGetRulesParsesDayZDedicatedRule(t *testing.T) {
 			defer baseClient.Close()
 
 			client := &Client{Client: baseClient}
-			rules, err := client.GetRules(appid.DayZ)
+			rules, err := client.GetRules(context.Background(), appid.DayZ)
 			if test.wantError {
 				if err == nil {
 					t.Fatal("GetRules returned nil error for unexpected dedicated value")

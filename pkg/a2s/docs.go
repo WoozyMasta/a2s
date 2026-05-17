@@ -24,13 +24,14 @@ More details in the official Steam documentation for the protocol [Server querie
 		panic(err)
 	}
 	defer client.Close()
+	ctx := context.Background()
 
-	info, err := client.GetInfo()
+	info, err := client.GetInfo(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	rules, err := client.GetRules()
+	rules, err := client.GetRules(ctx)
 	if err != nil {
 		panic(err)
 	}

@@ -7,6 +7,7 @@ var (
 	ErrInvalidTimeout    = errors.New("a2s: timeout must be positive")
 	ErrInvalidBufferSize = errors.New("a2s: buffer size must be positive")
 	ErrClientClosed      = errors.New("a2s: client connection is closed")
+	ErrNilContext        = errors.New("a2s: nil context")
 
 	// A2S_INFO errors
 

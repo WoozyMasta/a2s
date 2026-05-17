@@ -2,6 +2,7 @@ package a2s
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"hash/crc32"
@@ -145,7 +146,7 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(InfoRequest)
+	data, flag, _, err := client.Get(context.Background(), InfoRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -167,7 +168,7 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -191,7 +192,7 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -236,7 +237,7 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -263,7 +264,7 @@ func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacket) {
+	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacket) {
 		t.Fatalf("Get error = %v, want ErrMultiPacket", err)
 	}
 }
@@ -280,7 +281,7 @@ func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacketInconsistent) {
+	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacketInconsistent) {
 		t.Fatalf("Get error = %v, want ErrMultiPacketInconsistent", err)
 	}
 }
@@ -301,7 +302,7 @@ func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(RulesRequest); !errors.Is(err, ErrMultiPacketConflict) {
+	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacketConflict) {
 		t.Fatalf("Get error = %v, want ErrMultiPacketConflict", err)
 	}
 }
@@ -363,7 +364,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 		}
 		defer client.Close()
 
-		rules, err := client.GetRules()
+		rules, err := client.GetRules(context.Background())
 		if err != nil {
 			t.Fatalf("GetRules returned error: %v", err)
 		}
@@ -388,7 +389,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 		}
 		defer client.Close()
 
-		rules, err := client.GetParsedRules()
+		rules, err := client.GetParsedRules(context.Background())
 		if err != nil {
 			t.Fatalf("GetParsedRules returned error: %v", err)
 		}
@@ -440,7 +441,7 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 			}
 			defer client.Close()
 
-			_, _, _, err = client.Get(RulesRequest)
+			_, _, _, err = client.Get(context.Background(), RulesRequest)
 			if err == nil {
 				t.Fatal("Get returned nil error for truncated challenge")
 			}
@@ -465,7 +466,7 @@ func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -494,7 +495,7 @@ func TestGetPlayersParsesSignedScores(t *testing.T) {
 	}
 	defer client.Close()
 
-	players, err := client.GetPlayers()
+	players, err := client.GetPlayers(context.Background())
 	if err != nil {
 		t.Fatalf("GetPlayers returned error: %v", err)
 	}
@@ -527,7 +528,7 @@ func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
 	}
 	defer client.Close()
 
-	players, err := client.GetTheShipPlayers()
+	players, err := client.GetTheShipPlayers(context.Background())
 	if err != nil {
 		t.Fatalf("GetTheShipPlayers returned error: %v", err)
 	}

@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,8 +10,8 @@ import (
 
 // GetPing queries server ping (A2A_PING).
 // Deprecated: ping is included in all query responses.
-func (c *Client) GetPing() (time.Duration, error) {
-	data, _, duration, err := c.Get(PingRequest)
+func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
+	data, _, duration, err := c.Get(ctx, PingRequest)
 	if err != nil {
 		return 0, err
 	}

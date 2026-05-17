@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -19,8 +20,8 @@ type Player struct {
 
 // GetPlayers queries the player list (A2S_PLAYER).
 // It returns a non-nil empty slice when the server reports no players.
-func (c *Client) GetPlayers() ([]Player, error) {
-	data, _, _, err := c.Get(PlayerRequest)
+func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
+	data, _, _, err := c.Get(ctx, PlayerRequest)
 	if err != nil {
 		return nil, err
 	}

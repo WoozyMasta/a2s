@@ -1,6 +1,7 @@
 package a3sb
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -109,10 +110,10 @@ func TestRulesSingle(t *testing.T) {
 	defer client.Close()
 
 	// Try to get rules with Arma 3 AppID first, then DayZ
-	rules, err := client.GetRulesArma3()
+	rules, err := client.GetRulesArma3(context.Background())
 	if err != nil {
 		// If Arma 3 fails, try DayZ
-		rules, err = client.GetRulesDayZ()
+		rules, err = client.GetRulesDayZ(context.Background())
 		if err != nil {
 			t.Fatalf("GetRules failed for both Arma 3 and DayZ: %v", err)
 		}
@@ -152,7 +153,7 @@ func TestRulesArma3Single(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRulesArma3()
+	rules, err := client.GetRulesArma3(context.Background())
 	if err != nil {
 		t.Skipf("GetRulesArma3 failed (server might not be Arma 3): %v", err)
 	}
@@ -191,7 +192,7 @@ func TestRulesDayZSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRulesDayZ()
+	rules, err := client.GetRulesDayZ(context.Background())
 	if err != nil {
 		t.Skipf("GetRulesDayZ failed (server might not be DayZ): %v", err)
 	}
@@ -245,7 +246,7 @@ func TestRulesMultiple(t *testing.T) {
 		}
 
 		// Try Arma 3 first
-		rules, err := client.GetRulesArma3()
+		rules, err := client.GetRulesArma3(context.Background())
 		if err == nil && rules != nil {
 			successCount++
 			arma3Count++
@@ -256,7 +257,7 @@ func TestRulesMultiple(t *testing.T) {
 		}
 
 		// Try DayZ
-		rules, err = client.GetRulesDayZ()
+		rules, err = client.GetRulesDayZ(context.Background())
 		client.Close()
 
 		if err == nil && rules != nil {
@@ -291,7 +292,7 @@ func TestRulesArma3Multiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRulesArma3()
+		rules, err := client.GetRulesArma3(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -327,7 +328,7 @@ func TestRulesDayZMultiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRulesDayZ()
+		rules, err := client.GetRulesDayZ(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -360,7 +361,7 @@ func BenchmarkRules(b *testing.B) {
 
 	// Try Arma 3 first, then DayZ
 	var gameID uint64
-	_, err = client.GetRulesArma3()
+	_, err = client.GetRulesArma3(context.Background())
 	if err != nil {
 		// If Arma 3 fails, use DayZ
 		gameID = 221100 // DayZ AppID
@@ -370,7 +371,7 @@ func BenchmarkRules(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(gameID)
+		_, err := client.GetRules(context.Background(), gameID)
 		if err != nil {
 			b.Fatalf("GetRules failed: %v", err)
 		}
@@ -416,7 +417,7 @@ func BenchmarkRulesArma3(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.Arma3)
+		_, err := client.GetRules(context.Background(), appid.Arma3)
 		if err != nil {
 			b.Fatalf("GetRules failed for Arma 3: %v", err)
 		}
@@ -438,7 +439,7 @@ func BenchmarkRulesDayZ(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.DayZ)
+		_, err := client.GetRules(context.Background(), appid.DayZ)
 		if err != nil {
 			b.Fatalf("GetRules failed for DayZ: %v", err)
 		}

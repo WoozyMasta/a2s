@@ -12,18 +12,19 @@ https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 		panic(err)
 	}
 	defer client.Close()
+	ctx := context.Background()
 
 	// Wrap client
 	a3Client := &a3sb.Client{Client: client}
 
 	// Game id must be passed as the second argument to properly read the Arma 3 or Dayz rules
-	rules, err := a3Client.GetRules(221100)
+	rules, err := a3Client.GetRules(ctx, 221100)
 	if err != nil {
 		panic(err)
 	}
 
 	// Can also perform standard a2s methods
-	info, err := a3Client.GetInfo()
+	info, err := a3Client.GetInfo(ctx)
 	if err != nil {
 		panic(err)
 	}

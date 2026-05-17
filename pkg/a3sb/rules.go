@@ -1,6 +1,7 @@
 package a3sb
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/appid"
@@ -37,24 +38,24 @@ type Rules struct {
 }
 
 // GetRulesArma3 returns A2S_RULES for Arma 3.
-func (c *Client) GetRulesArma3() (*Rules, error) {
-	return c.GetRules(appid.Arma3)
+func (c *Client) GetRulesArma3(ctx context.Context) (*Rules, error) {
+	return c.GetRules(ctx, appid.Arma3)
 }
 
 // GetRulesDayZ returns A2S_RULES for DayZ.
-func (c *Client) GetRulesDayZ() (*Rules, error) {
-	return c.GetRules(appid.DayZ)
+func (c *Client) GetRulesDayZ(ctx context.Context) (*Rules, error) {
+	return c.GetRules(ctx, appid.DayZ)
 }
 
 // GetRules parses A2S_RULES response using A3SB for Arma 3 and DayZ.
-func (c *Client) GetRules(game uint64) (*Rules, error) {
+func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 	if c.BufferSize() == a2s.DefaultBufferSize {
 		if err := c.SetBufferSize(DefaultRulesBufferSize); err != nil {
 			return nil, fmt.Errorf("set rules buffer size: %w", err)
 		}
 	}
 
-	data, _, _, err := c.Get(a2s.RulesRequest)
+	data, _, _, err := c.Get(ctx, a2s.RulesRequest)
 	if err != nil {
 		return nil, err
 	}

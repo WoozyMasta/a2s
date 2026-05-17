@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"strconv"
@@ -11,8 +12,8 @@ import (
 
 // GetRules queries server rules (A2S_RULES).
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
-func (c *Client) GetRules() (map[string]string, error) {
-	data, _, _, err := c.Get(RulesRequest)
+func (c *Client) GetRules(ctx context.Context) (map[string]string, error) {
+	data, _, _, err := c.Get(ctx, RulesRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +59,8 @@ func parseRules(data []byte) (map[string]string, error) {
 // GetParsedRules queries server rules and converts values into convenient Go types.
 // Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
 // Use GetRules when the original wire strings must be preserved.
-func (c *Client) GetParsedRules() (map[string]any, error) {
-	data, err := c.GetRules()
+func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
+	data, err := c.GetRules(ctx)
 	if err != nil {
 		return nil, err
 	}

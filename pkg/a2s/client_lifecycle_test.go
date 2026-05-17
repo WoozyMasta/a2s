@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"errors"
 	"net"
 	"testing"
@@ -41,7 +42,7 @@ func TestClientLifecycle(t *testing.T) {
 	if err := client.Close(); err != nil {
 		t.Fatalf("second Close returned error: %v", err)
 	}
-	if _, _, _, err := client.Get(InfoRequest); !errors.Is(err, ErrClientClosed) {
+	if _, _, _, err := client.Get(context.Background(), InfoRequest); !errors.Is(err, ErrClientClosed) {
 		t.Fatalf("Get after Close error = %v, want ErrClientClosed", err)
 	}
 }

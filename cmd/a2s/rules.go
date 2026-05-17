@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -42,6 +43,7 @@ func executeRules(cmd *RulesCommand) {
 	defer closeClient(client)
 
 	formatter := NewFormatter(cmd.Format)
+	ctx := context.Background()
 
 	// An explicit game selects A3SB immediately;
 	// otherwise A2S_INFO may identify Arma 3 or DayZ
@@ -58,7 +60,7 @@ func executeRules(cmd *RulesCommand) {
 		useA3SB = true
 	} else if !cmd.SkipInfo && !cmd.Raw {
 		// If game not specified and skip-info is not set, try to detect from server info
-		info, err := client.GetInfo()
+		info, err := client.GetInfo(ctx)
 		if err == nil {
 			appID = info.ID
 			if isA3SBGame(appID) {
@@ -68,21 +70,21 @@ func executeRules(cmd *RulesCommand) {
 	}
 
 	if useA3SB && !cmd.Raw {
-		executeRulesA3SB(client, appID, formatter)
+		executeRulesA3SB(ctx, client, appID, formatter)
 	} else {
-		executeRulesStandard(client, cmd.Raw, formatter)
+		executeRulesStandard(ctx, client, cmd.Raw, formatter)
 	}
 }
 
 // executeRulesStandard retrieves and renders ordinary A2S_RULES values.
-func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
+func executeRulesStandard(ctx context.Context, client *a2s.Client, raw bool, formatter *Formatter) {
 	var rules map[string]string
 	var err error
 
 	if raw {
-		rules, err = client.GetRules()
+		rules, err = client.GetRules(ctx)
 	} else {
-		parsedRules, err2 := client.GetParsedRules()
+		parsedRules, err2 := client.GetParsedRules(ctx)
 		if err2 != nil {
 			fatalf("Failed to get rules: %s", err2)
 		}
@@ -126,10 +128,10 @@ func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
 }
 
 // executeRulesA3SB retrieves and renders Arma 3/DayZ server-browser rules.
-func executeRulesA3SB(client *a2s.Client, appID uint64, formatter *Formatter) {
+func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, formatter *Formatter) {
 	a3sbClient := &a3sb.Client{Client: client}
 
-	rules, err := a3sbClient.GetRules(appID)
+	rules, err := a3sbClient.GetRules(ctx, appID)
 	if err != nil {
 		fatalf("Failed to get server rules: %s", err)
 	}

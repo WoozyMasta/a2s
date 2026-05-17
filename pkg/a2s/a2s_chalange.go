@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"errors"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -8,8 +9,8 @@ import (
 
 // GetChallenge queries challenge number (A2S_SERVERQUERY_GETCHALLENGE).
 // Deprecated: challenge is handled automatically by Get() method.
-func (c *Client) GetChallenge() (uint32, error) {
-	data, _, _, err := c.Get(ChallengeRequest)
+func (c *Client) GetChallenge(ctx context.Context) (uint32, error) {
+	data, _, _, err := c.Get(ctx, ChallengeRequest)
 	if err != nil {
 		return 0, err
 	}

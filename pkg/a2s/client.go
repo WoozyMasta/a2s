@@ -2,6 +2,7 @@ package a2s
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -26,7 +27,9 @@ type Client struct {
 	address    *net.UDPAddr  // Server network address.
 	readBuf    []byte        // Reusable UDP read buffer.
 	timeout    time.Duration // UDP read deadline.
+	timeoutMu  sync.RWMutex  // Protects timeout changes and reads.
 	queryMu    sync.Mutex    // Serializes queries and lifecycle changes.
+	querySem   chan struct{} // Context-aware query serialization.
 	bufferSize uint16        // Maximum UDP datagram size to read.
 }
 
@@ -63,6 +66,7 @@ func NewWithAddr(addr *net.UDPAddr, opts ...Option) (*Client, error) {
 		timeout:    DefaultDeadlineTimeout,
 		bufferSize: DefaultBufferSize,
 		readBuf:    make([]byte, DefaultBufferSize),
+		querySem:   make(chan struct{}, 1),
 	}
 
 	for _, opt := range opts {
@@ -127,8 +131,8 @@ func (c *Client) Timeout() time.Duration {
 	if c == nil {
 		return 0
 	}
-	c.queryMu.Lock()
-	defer c.queryMu.Unlock()
+	c.timeoutMu.RLock()
+	defer c.timeoutMu.RUnlock()
 
 	return c.timeout
 }
@@ -171,6 +175,9 @@ func (c *Client) SetTimeout(timeout time.Duration) error {
 		return ErrInvalidTimeout
 	}
 
+	c.timeoutMu.Lock()
+	defer c.timeoutMu.Unlock()
+
 	c.timeout = timeout
 	return nil
 }
@@ -212,11 +219,25 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 
 // Get sends request and returns response data (without header),
 // response type, ping duration and error.
+//
 // Automatically handles challenge-response if server requires it.
-func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
+// Context covers complete query transaction, including retries,
+// challenge exchange, and split-packet assembly.
+func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.Duration, error) {
 	if c == nil {
 		return nil, 0, 0, ErrClientClosed
 	}
+	if ctx == nil {
+		return nil, 0, 0, ErrNilContext
+	}
+
+	effectiveCtx, cancel := c.effectiveContext(ctx)
+	defer cancel()
+	if err := c.acquireQuery(effectiveCtx); err != nil {
+		return nil, 0, 0, err
+	}
+	defer c.releaseQuery()
+
 	c.queryMu.Lock()
 	defer c.queryMu.Unlock()
 
@@ -231,7 +252,7 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	)
 
 	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
-		resp, flag, duration, err := c.requestWithChallenge(requestType)
+		resp, flag, duration, err := c.requestWithChallenge(effectiveCtx, requestType)
 		if err != nil {
 			if lastUnexpectedErr != nil {
 				return nil, lastUnexpectedFlag, lastDuration, errors.Join(lastUnexpectedErr, err)
@@ -274,15 +295,48 @@ func (c *Client) Get(requestType Flag) ([]byte, Flag, time.Duration, error) {
 	return nil, 0, 0, validationErrForRequest(requestType)
 }
 
+// effectiveContext applies the client timeout
+// only when the caller did not provide a deadline of its own.
+func (c *Client) effectiveContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	c.timeoutMu.RLock()
+	timeout := c.timeout
+	c.timeoutMu.RUnlock()
+
+	if _, ok := ctx.Deadline(); ok {
+		return ctx, func() {}
+	}
+
+	return context.WithTimeout(ctx, timeout)
+}
+
+// acquireQuery reserves the client for one complete query transaction.
+func (c *Client) acquireQuery(ctx context.Context) error {
+	if c.querySem == nil {
+		return ErrClientClosed
+	}
+
+	select {
+	case c.querySem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// releaseQuery releases the client query reservation.
+func (c *Client) releaseQuery() {
+	<-c.querySem
+}
+
 // requestWithChallenge executes one request transaction,
 // including its bounded challenge exchange.
 // ChallengeRequest returns its challenge
 // as the final response and must never enter this exchange.
-func (c *Client) requestWithChallenge(requestType Flag) ([]byte, Flag, time.Duration, error) {
+func (c *Client) requestWithChallenge(ctx context.Context, requestType Flag) ([]byte, Flag, time.Duration, error) {
 	challenge := singlePacket
 
 	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
-		resp, duration, err := c.request(requestType, challenge)
+		resp, duration, err := c.request(ctx, requestType, challenge)
 		if err != nil {
 			return nil, 0, 0, err
 		}
@@ -344,7 +398,11 @@ func validationErrForRequest(requestType Flag) error {
 
 // request creates header, sends request and returns response with ping duration.
 // Handles multi-packet responses by collecting and assembling packets.
-func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Duration, error) {
+func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32) ([]byte, time.Duration, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, 0, err
+	}
+
 	req, err := createHeader(requestType, challenge)
 	if err != nil {
 		return nil, 0, err
@@ -353,9 +411,14 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	start := time.Now()
 
 	if _, err := c.conn.Write(req); err != nil {
-		return nil, 0, err
+		return nil, 0, contextError(ctx, err)
 	}
-	if err := c.conn.SetReadDeadline(time.Now().Add(c.timeout)); err != nil {
+
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(c.Timeout())
+	}
+	if err := c.conn.SetReadDeadline(deadline); err != nil {
 		return nil, 0, err
 	}
 
@@ -373,7 +436,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		resp = c.readBuf[:c.bufferSize]
 		n, err = c.conn.Read(resp)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, contextError(ctx, err)
 		}
 
 		_, packetErr = isMultiPacket(resp[:n])
@@ -447,7 +510,7 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 		resp = c.readBuf[:c.bufferSize]
 		n, err := c.conn.Read(resp)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, contextError(ctx, err)
 		}
 
 		if n < splitMin {
@@ -544,4 +607,14 @@ func (c *Client) request(requestType Flag, challenge uint32) ([]byte, time.Durat
 	}
 
 	return assembledResp, duration, nil
+}
+
+// contextError prefers cancellation or deadline errors over socket timeout errors
+// so callers can reliably use errors.Is with context errors.
+func contextError(ctx context.Context, err error) error {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+
+	return err
 }

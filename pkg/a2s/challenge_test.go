@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"net"
@@ -40,7 +41,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	}
 	defer client.Close()
 
-	got, err := client.GetChallenge()
+	got, err := client.GetChallenge(context.Background())
 	if err != nil {
 		t.Fatalf("GetChallenge returned error: %v", err)
 	}
@@ -105,7 +106,7 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	}
 	defer client.Close()
 
-	_, flag, _, err := client.Get(RulesRequest)
+	_, flag, _, err := client.Get(context.Background(), RulesRequest)
 	if !errors.Is(err, ErrChallengeLoop) {
 		t.Fatalf("Get error = %v, want ErrChallengeLoop", err)
 	}

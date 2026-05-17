@@ -4,6 +4,7 @@
 package ping
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -36,7 +37,7 @@ func Start(client *a2s.Client, count, period int) {
 	// Starting the main ping loop in a goroutine
 	go func() {
 		for i := 0; count == 0 || i < count; i++ {
-			info, err := client.GetInfo()
+			info, err := client.GetInfo(context.Background())
 			if err != nil {
 				log.Printf("Failed to get ping: %v", err)
 				errorCount++

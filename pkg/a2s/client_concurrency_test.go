@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -71,7 +72,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 		queries.Add(1)
 		go func() {
 			defer queries.Done()
-			if _, _, _, err := client.Get(PingRequest); err != nil {
+			if _, _, _, err := client.Get(context.Background(), PingRequest); err != nil {
 				queryErr <- err
 			}
 		}()

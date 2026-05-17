@@ -2,6 +2,7 @@ package a2s
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,19 +67,19 @@ func TestSimple(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, err := client.GetInfo(); err != nil {
+	if _, err := client.GetInfo(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetRules(); err != nil {
+	if _, err := client.GetRules(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetParsedRules(); err != nil {
+	if _, err := client.GetParsedRules(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetPlayers(); err != nil {
+	if _, err := client.GetPlayers(context.Background()); err != nil {
 		t.Error(err)
 	}
 }
@@ -93,7 +94,7 @@ func TestInfoSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	info, err := client.GetInfo()
+	info, err := client.GetInfo(context.Background())
 	if err != nil {
 		t.Fatalf("GetInfo failed: %v", err)
 	}
@@ -127,7 +128,7 @@ func TestRulesSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRules()
+	rules, err := client.GetRules(context.Background())
 	if err != nil {
 		t.Fatalf("GetRules failed: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestRulesParsedSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetParsedRules()
+	rules, err := client.GetParsedRules(context.Background())
 	if err != nil {
 		t.Fatalf("GetParsedRules failed: %v", err)
 	}
@@ -174,7 +175,7 @@ func TestPlayersSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	players, err := client.GetPlayers()
+	players, err := client.GetPlayers(context.Background())
 	if err != nil {
 		t.Fatalf("GetPlayers failed: %v", err)
 	}
@@ -204,7 +205,7 @@ func TestInfoMultiple(t *testing.T) {
 			continue
 		}
 
-		info, err := client.GetInfo()
+		info, err := client.GetInfo(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -240,7 +241,7 @@ func TestRulesMultiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRules()
+		rules, err := client.GetRules(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -275,7 +276,7 @@ func TestPlayersMultiple(t *testing.T) {
 			continue
 		}
 
-		players, err := client.GetPlayers()
+		players, err := client.GetPlayers(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -305,7 +306,7 @@ func BenchmarkInfo(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetInfo()
+		_, err := client.GetInfo(context.Background())
 		if err != nil {
 			b.Fatalf("GetInfo failed: %v", err)
 		}
@@ -327,7 +328,7 @@ func BenchmarkRules(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules()
+		_, err := client.GetRules(context.Background())
 		if err != nil {
 			b.Fatalf("GetRules failed: %v", err)
 		}
@@ -349,7 +350,7 @@ func BenchmarkRulesParsed(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetParsedRules()
+		_, err := client.GetParsedRules(context.Background())
 		if err != nil {
 			b.Fatalf("GetParsedRules failed: %v", err)
 		}
@@ -371,7 +372,7 @@ func BenchmarkPlayers(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := client.GetPlayers()
+		_, err := client.GetPlayers(context.Background())
 		if err != nil {
 			b.Fatalf("GetPlayers failed: %v", err)
 		}

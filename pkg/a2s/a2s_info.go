@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -96,8 +97,8 @@ type Info struct {
 }
 
 // GetInfo queries server information (A2S_INFO).
-func (c *Client) GetInfo() (*Info, error) {
-	data, format, duration, err := c.Get(InfoRequest)
+func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
+	data, format, duration, err := c.Get(ctx, InfoRequest)
 	if err != nil {
 		return nil, err
 	}

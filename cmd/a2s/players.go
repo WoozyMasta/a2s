@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -16,7 +17,7 @@ func executePlayers(cmd *PlayersCommand) {
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	defer closeClient(client)
 
-	players, err := client.GetPlayers()
+	players, err := client.GetPlayers(context.Background())
 	if err != nil {
 		fatalf("Failed to get players: %s", err)
 	}

@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"reflect"
@@ -33,7 +34,7 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	}
 	defer client.Close()
 
-	info, err := client.GetInfo()
+	info, err := client.GetInfo(context.Background())
 	if err != nil {
 		t.Fatalf("GetInfo returned error: %v", err)
 	}
