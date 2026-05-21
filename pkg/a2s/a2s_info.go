@@ -48,8 +48,9 @@ type Info struct {
 	// Server tags from EDF 0x20.
 	Keywords []string `json:"keywords,omitempty"`
 
-	// Complete query round-trip time;
-	// this field is not sent by the server.
+	// Complete logical query latency from the first request to the assembled response,
+	// including challenge exchange, retries, and split packets.
+	// This field is not sent by the server.
 	Ping time.Duration `json:"ping"`
 
 	// Effective game identifier;

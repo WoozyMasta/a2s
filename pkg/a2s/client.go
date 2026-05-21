@@ -218,7 +218,7 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 }
 
 // Get sends request and returns response data (without header),
-// response type, ping duration and error.
+// response type, complete query duration and error.
 //
 // Automatically handles challenge-response if server requires it.
 // Context covers complete query transaction, including retries,
@@ -245,17 +245,19 @@ func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.
 		return nil, 0, 0, ErrClientClosed
 	}
 
+	started := time.Now()
+
 	var (
 		lastUnexpectedErr  error
 		lastUnexpectedFlag Flag
-		lastDuration       time.Duration
 	)
 
 	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
-		resp, flag, duration, err := c.requestWithChallenge(effectiveCtx, requestType)
+		resp, flag, err := c.requestWithChallenge(effectiveCtx, requestType)
+		duration := time.Since(started)
 		if err != nil {
 			if lastUnexpectedErr != nil {
-				return nil, lastUnexpectedFlag, lastDuration, errors.Join(lastUnexpectedErr, err)
+				return nil, lastUnexpectedFlag, duration, errors.Join(lastUnexpectedErr, err)
 			}
 
 			return nil, flag, duration, err
@@ -278,7 +280,6 @@ func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.
 					flag == infoResponseGoldSource) {
 				lastUnexpectedErr = classified
 				lastUnexpectedFlag = flag
-				lastDuration = duration
 				continue
 			}
 
@@ -289,10 +290,10 @@ func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.
 	}
 
 	if lastUnexpectedErr != nil {
-		return nil, lastUnexpectedFlag, lastDuration, lastUnexpectedErr
+		return nil, lastUnexpectedFlag, time.Since(started), lastUnexpectedErr
 	}
 
-	return nil, 0, 0, validationErrForRequest(requestType)
+	return nil, 0, time.Since(started), validationErrForRequest(requestType)
 }
 
 // effectiveContext applies the client timeout
@@ -332,31 +333,31 @@ func (c *Client) releaseQuery() {
 // including its bounded challenge exchange.
 // ChallengeRequest returns its challenge
 // as the final response and must never enter this exchange.
-func (c *Client) requestWithChallenge(ctx context.Context, requestType Flag) ([]byte, Flag, time.Duration, error) {
+func (c *Client) requestWithChallenge(ctx context.Context, requestType Flag) ([]byte, Flag, error) {
 	challenge := singlePacket
 
 	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
-		resp, duration, err := c.request(ctx, requestType, challenge)
+		resp, err := c.request(ctx, requestType, challenge)
 		if err != nil {
-			return nil, 0, 0, err
+			return nil, 0, err
 		}
 
 		flag := Flag(resp[4])
 		if flag != challengeResponse || requestType == ChallengeRequest || requestType == PingRequest {
-			return resp, flag, duration, nil
+			return resp, flag, nil
 		}
 
 		if attempt == maxChallengeResponses-1 {
-			return resp, challengeResponse, duration, ErrChallengeLoop
+			return resp, challengeResponse, ErrChallengeLoop
 		}
 
 		challenge, err = parseChallengeResponse(resp)
 		if err != nil {
-			return resp, challengeResponse, duration, err
+			return resp, challengeResponse, err
 		}
 	}
 
-	return nil, challengeResponse, 0, ErrChallengeLoop
+	return nil, challengeResponse, ErrChallengeLoop
 }
 
 // parseChallengeResponse reads a challenge from a complete A2S response.
@@ -396,22 +397,20 @@ func validationErrForRequest(requestType Flag) error {
 	}
 }
 
-// request creates header, sends request and returns response with ping duration.
+// request creates header, sends request and returns a complete response.
 // Handles multi-packet responses by collecting and assembling packets.
-func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32) ([]byte, time.Duration, error) {
+func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	req, err := createHeader(requestType, challenge)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	start := time.Now()
-
 	if _, err := c.conn.Write(req); err != nil {
-		return nil, 0, contextError(ctx, err)
+		return nil, contextError(ctx, err)
 	}
 
 	deadline, ok := ctx.Deadline()
@@ -419,7 +418,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 		deadline = time.Now().Add(c.Timeout())
 	}
 	if err := c.conn.SetReadDeadline(deadline); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	var (
@@ -436,7 +435,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 		resp = c.readBuf[:c.bufferSize]
 		n, err = c.conn.Read(resp)
 		if err != nil {
-			return nil, 0, contextError(ctx, err)
+			return nil, contextError(ctx, err)
 		}
 
 		_, packetErr = isMultiPacket(resp[:n])
@@ -453,28 +452,26 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 		break
 	}
 
-	duration := time.Since(start)
-
 	if !readOK {
 		if packetErr != nil {
 			result := make([]byte, n)
 			copy(result, resp[:n])
-			return result, 0, packetErr
+			return result, packetErr
 		}
-		return nil, 0, ErrSinglePacket
+		return nil, ErrSinglePacket
 	}
 
 	multi, err := isMultiPacket(resp[:n])
 	if err != nil {
 		result := make([]byte, n)
 		copy(result, resp[:n])
-		return result, 0, err
+		return result, err
 	}
 
 	if !multi {
 		result := make([]byte, n)
 		copy(result, resp[:n])
-		return result, duration, nil
+		return result, nil
 	}
 
 	// Multi-packet response: classify the first datagram, then collect raw/ fragments.
@@ -482,14 +479,14 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 	// after all fragments have been identified, because UDP may reorder their arrival.
 	info, err := parseSplitHeader(resp[:n])
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if info.count > splitPacketCountMax || info.index < 0 || info.index >= info.count {
-		return nil, 0, ErrMultiPacket
+		return nil, ErrMultiPacket
 	}
 	if n > splitResponseSizeMax {
-		return nil, 0, ErrMultiPacketSize
+		return nil, ErrMultiPacketSize
 	}
 
 	packets := make([][]byte, info.count)
@@ -510,7 +507,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 		resp = c.readBuf[:c.bufferSize]
 		n, err := c.conn.Read(resp)
 		if err != nil {
-			return nil, 0, contextError(ctx, err)
+			return nil, contextError(ctx, err)
 		}
 
 		if n < splitMin {
@@ -523,10 +520,10 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 
 		packetInfo, err := parseSplitHeader(resp[:n])
 		if err != nil {
-			return nil, 0, errors.Join(ErrMultiPacketInconsistent, err)
+			return nil, errors.Join(ErrMultiPacketInconsistent, err)
 		}
 		if err := validateSplitFragment(info, packetInfo); err != nil {
-			return nil, 0, err
+			return nil, err
 		}
 
 		currentPacket := packetInfo.index
@@ -536,7 +533,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 
 		if packets[currentPacket] == nil {
 			if n > splitResponseSizeMax-receivedSize {
-				return nil, 0, ErrMultiPacketSize
+				return nil, ErrMultiPacketSize
 			}
 
 			packet := make([]byte, n)
@@ -545,7 +542,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 			receivedSize += n
 			received++
 		} else if !bytes.Equal(packets[currentPacket], resp[:n]) {
-			return nil, 0, ErrMultiPacketConflict
+			return nil, ErrMultiPacketConflict
 		}
 	}
 
@@ -554,7 +551,7 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 	// Parse it only after reassembly has all indexes.
 	firstInfo, err := parseSplitHeader(packets[0])
 	if err != nil || firstInfo.index != 0 {
-		return nil, 0, ErrMultiPacket
+		return nil, ErrMultiPacket
 	}
 	info = firstInfo
 
@@ -562,15 +559,15 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 	totalSize := 0
 	for i := 0; i < info.count; i++ {
 		if packets[i] == nil {
-			return nil, 0, ErrMultiPacketMismatch
+			return nil, ErrMultiPacketMismatch
 		}
 
 		packetInfo, err := parseSplitHeader(packets[i])
 		if err != nil {
-			return nil, 0, errors.Join(ErrMultiPacketInconsistent, err)
+			return nil, errors.Join(ErrMultiPacketInconsistent, err)
 		}
 		if err := validateSplitFragment(info, packetInfo); err != nil || packetInfo.index != i {
-			return nil, 0, ErrMultiPacketInconsistent
+			return nil, ErrMultiPacketInconsistent
 		}
 
 		dataOff := info.headerSize
@@ -578,12 +575,12 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 			dataOff = info.dataOff
 		}
 		if len(packets[i]) < dataOff {
-			return nil, 0, ErrMultiPacket
+			return nil, ErrMultiPacket
 		}
 
 		packetSize := len(packets[i]) - dataOff
 		if packetSize > splitResponseSizeMax-totalSize {
-			return nil, 0, ErrMultiPacketSize
+			return nil, ErrMultiPacketSize
 		}
 
 		totalSize += packetSize
@@ -601,12 +598,12 @@ func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32
 	if info.compressed {
 		decompressed, err := decompressBzip2(assembledResp, info.unpackedSize, info.crc)
 		if err != nil {
-			return nil, 0, err
+			return nil, err
 		}
-		return decompressed, duration, nil
+		return decompressed, nil
 	}
 
-	return assembledResp, duration, nil
+	return assembledResp, nil
 }
 
 // contextError prefers cancellation or deadline errors over socket timeout errors

@@ -8,7 +8,7 @@ import (
 	"github.com/woozymasta/a2s/internal/bread"
 )
 
-// GetPing queries server ping (A2A_PING).
+// GetPing queries server ping (A2A_PING) and returns complete query latency.
 // Deprecated: ping is included in all query responses.
 func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
 	data, _, duration, err := c.Get(ctx, PingRequest)

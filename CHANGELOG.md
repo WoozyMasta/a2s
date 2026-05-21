@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning][].
 
 * `a2s` query methods accept `context.Context` for cancellation
   and total query deadlines
+* `a2s` report complete logical query latency consistently
+  across challenge retries and split responses
 * `a2s` player query methods return slices directly
   instead of pointers to slices
 * `a2s` expose raw and parsed A2S_RULES views
