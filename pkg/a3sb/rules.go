@@ -1,6 +1,7 @@
 package a3sb
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -68,8 +69,9 @@ func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 	}
 
 	// A3SB pages and ordinary key/value rules share one A2S_RULES response.
-	// Keep them separate until the page stream can be decoded as a whole.
-	var a3sb []byte
+	// Keep raw pages separate until they can be ordered and decoded as a whole.
+	pageValues := make(map[byte][]byte)
+	var pageCount byte
 	var rawRules map[string]string
 	rules := &Rules{id: game, stats: [4]byte{data[1], 0, 0, 0}}
 
@@ -93,20 +95,40 @@ func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 		}
 
 		// A3SB pages have 2-byte keys: [page_number, page_count].
-		// Other pairs are ordinary rules and must remain available to the DayZ parser.
-		if len(key) == 2 && key[0] <= key[1] {
-			if a3sb == nil {
-				remainingPages := int(count) - i
-				estimatedSize := remainingPages * 64
-				if estimatedSize > len(data) {
-					estimatedSize = len(data)
+		// Ordinary rules use textual keys and remain available to the DayZ parser.
+		if len(key) == 2 {
+			pageNumber := key[0]
+			advertisedCount := key[1]
+			if pageNumber == 0 || advertisedCount == 0 || pageNumber > advertisedCount {
+				return nil, fmt.Errorf(
+					"%w: page %d of %d",
+					ErrRulesPageMetadata,
+					pageNumber,
+					advertisedCount,
+				)
+			}
+
+			if pageCount == 0 {
+				pageCount = advertisedCount
+			} else if pageCount != advertisedCount {
+				return nil, fmt.Errorf(
+					"%w: page %d advertises %d, want %d",
+					ErrRulesPageMetadata,
+					pageNumber,
+					advertisedCount,
+					pageCount,
+				)
+			}
+
+			if previous, ok := pageValues[pageNumber]; ok {
+				if !bytes.Equal(previous, value) {
+					return nil, fmt.Errorf("%w: page %d", ErrRulesPageConflict, pageNumber)
 				}
-				a3sb = make([]byte, 0, estimatedSize)
+
+				continue
 			}
-			a3sb = bread.AppendEscapeSequences(a3sb, value)
-			if rules.stats[1] == 0 {
-				rules.stats[1] = key[1]
-			}
+
+			pageValues[pageNumber] = append([]byte(nil), value...)
 		} else {
 			if rawRules == nil {
 				rawRules = make(map[string]string, 8)
@@ -119,6 +141,14 @@ func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 		return nil, ErrRulesDataRemains
 	}
 
+	encodedPages, err := assemblePages(pageValues, pageCount)
+	if err != nil {
+		return nil, err
+	}
+
+	rules.stats[1] = pageCount
+	a3sb := bread.AppendEscapeSequences(nil, encodedPages)
+
 	if err := rules.readA3SB(a3sb); err != nil {
 		return nil, err
 	}
@@ -128,6 +158,29 @@ func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 	}
 
 	return rules, nil
+}
+
+// assemblePages orders one-based A3SB pages and concatenates their raw values.
+func assemblePages(pages map[byte][]byte, pageCount byte) ([]byte, error) {
+	if pageCount == 0 {
+		return nil, fmt.Errorf("%w: no pages", ErrRulesPageMetadata)
+	}
+
+	totalSize := 0
+	for pageNumber := 1; pageNumber <= int(pageCount); pageNumber++ {
+		page, ok := pages[byte(pageNumber)]
+		if !ok {
+			return nil, fmt.Errorf("%w: page %d of %d", ErrRulesPageMissing, pageNumber, pageCount)
+		}
+		totalSize += len(page)
+	}
+
+	assembled := make([]byte, 0, totalSize)
+	for pageNumber := 1; pageNumber <= int(pageCount); pageNumber++ {
+		assembled = append(assembled, pages[byte(pageNumber)]...)
+	}
+
+	return assembled, nil
 }
 
 // readA3SB parses Arma 3 Server Browser Protocol data.

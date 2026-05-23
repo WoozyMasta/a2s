@@ -12,6 +12,12 @@ var (
 	ErrRulesDayZ = errors.New("A2S_RULES: fail parse DayZ rules")
 	// ErrRulesDataRemains indicates that unconsumed rule data remains.
 	ErrRulesDataRemains = errors.New("A2S_RULES: not all data was read from the buffer")
+	// ErrRulesPageMetadata indicates invalid or inconsistent A3SB page metadata.
+	ErrRulesPageMetadata = errors.New("A2S_RULES: invalid page metadata")
+	// ErrRulesPageConflict indicates different payloads for one A3SB page.
+	ErrRulesPageConflict = errors.New("A2S_RULES: conflicting page payload")
+	// ErrRulesPageMissing indicates that an advertised A3SB page was not received.
+	ErrRulesPageMissing = errors.New("A2S_RULES: missing page")
 	// ErrRulesDayZDedicated indicates an invalid DayZ dedicated value.
 	ErrRulesDayZDedicated = errors.New("A2S_RULES: invalid DayZ dedicated rule value")
 

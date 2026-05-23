@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning][].
 
 ### Fixed
 
+* `a3sb` assemble one-based rule pages by page number
+  and reject inconsistent, missing, or conflicting pages
 * `a2s` and `a3sb` reject malformed and truncated UDP responses without panics
 * `a2s` assemble reordered split responses using metadata from fragment zero
 * `a2s` reject inconsistent split fragments and bound response allocations

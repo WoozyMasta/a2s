@@ -91,6 +91,20 @@ func rulesResponsePayload(entries ...rulesFixtureEntry) []byte {
 	return payload
 }
 
+func getRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*Rules, error) {
+	t.Helper()
+
+	fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(rulesResponsePayload(entries...)))
+	baseClient, err := a2s.NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create a2s client: %v", err)
+	}
+	defer baseClient.Close()
+
+	client := &Client{Client: baseClient}
+	return client.GetRules(context.Background(), appid.DayZ)
+}
+
 func TestMinimalDayZProtocolFixture(t *testing.T) {
 	// v2, zero flags, no DLC, no mods, and no signatures.
 	data := []byte{2, 0, 0, 0, 0, 0}
@@ -162,6 +176,84 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	}
 	if stats := rules.GetReaderStats(); stats[1] != 1 {
 		t.Fatalf("page count stat = %d, want 1", stats[1])
+	}
+}
+
+func TestGetRulesAssemblesPagesByNumber(t *testing.T) {
+	// The decoded payload is the minimal valid A3SB v2 header:
+	// {version: 2, flags: 0, DLC: 0, difficulty: 0}.
+	pageOne := []byte{2, 0x01, 0x02}
+	pageTwo := []byte{0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
+
+	rules, err := getRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte{2, 2}, value: pageTwo},
+		rulesFixtureEntry{key: []byte{1, 2}, value: pageOne},
+	)
+	if err != nil {
+		t.Fatalf("GetRules returned error: %v", err)
+	}
+	if rules.Version != 2 {
+		t.Fatalf("protocol version = %d, want 2", rules.Version)
+	}
+	if stats := rules.GetReaderStats(); stats[1] != 2 {
+		t.Fatalf("page count stat = %d, want 2", stats[1])
+	}
+}
+
+func TestGetRulesRejectsInvalidPageSets(t *testing.T) {
+	page := []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
+	tests := []struct {
+		name    string
+		entries []rulesFixtureEntry
+		wantErr error
+	}{
+		{
+			name: "page number exceeds page count",
+			entries: []rulesFixtureEntry{
+				{key: []byte{2, 1}, value: page},
+			},
+			wantErr: ErrRulesPageMetadata,
+		},
+		{
+			name: "inconsistent page count",
+			entries: []rulesFixtureEntry{
+				{key: []byte{1, 2}, value: page},
+				{key: []byte{2, 3}, value: page},
+			},
+			wantErr: ErrRulesPageMetadata,
+		},
+		{
+			name: "missing page",
+			entries: []rulesFixtureEntry{
+				{key: []byte{1, 2}, value: page},
+			},
+			wantErr: ErrRulesPageMissing,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := getRulesFromFixture(t, test.entries...)
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("GetRules error = %v, want %v", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestGetRulesRejectsConflictingDuplicatePages(t *testing.T) {
+	page := []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
+	conflicting := append([]byte(nil), page...)
+	conflicting[len(conflicting)-1] = 0x03
+
+	_, err := getRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte{1, 1}, value: page},
+		rulesFixtureEntry{key: []byte{1, 1}, value: conflicting},
+	)
+	if !errors.Is(err, ErrRulesPageConflict) {
+		t.Fatalf("GetRules error = %v, want %v", err, ErrRulesPageConflict)
 	}
 }
 
