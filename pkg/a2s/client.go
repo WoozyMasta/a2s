@@ -25,11 +25,11 @@ const (
 type Client struct {
 	conn       *net.UDPConn  // UDP connection to the server.
 	address    *net.UDPAddr  // Server network address.
+	querySem   chan struct{} // Context-aware query serialization.
 	readBuf    []byte        // Reusable UDP read buffer.
 	timeout    time.Duration // UDP read deadline.
 	timeoutMu  sync.RWMutex  // Protects timeout changes and reads.
 	queryMu    sync.Mutex    // Serializes queries and lifecycle changes.
-	querySem   chan struct{} // Context-aware query serialization.
 	bufferSize uint16        // Maximum UDP datagram size to read.
 }
 

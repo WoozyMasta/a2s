@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // testServersConfig represents the structure of test_servers.json

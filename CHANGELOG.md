@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning][].
 
 ## Unreleased
 
+### Added
+
+* `appid` exposes the curated Steam AppID registry for A2S-compatible games
+
 ### Changed
 
 * `a2s` uses an 8192-byte default UDP receive buffer

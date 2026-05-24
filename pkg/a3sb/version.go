@@ -3,8 +3,8 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 /*

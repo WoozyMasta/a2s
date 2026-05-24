@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/woozymasta/a2s/internal/appid"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // Parse selects the keyword parser for the supplied Steam application ID.

@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a3sb"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // gameToAppID converts a game name string to AppID.

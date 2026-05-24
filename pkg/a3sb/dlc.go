@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/bits"
 
-	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // DLC identifies a bit in the server browser protocol DLC mask.

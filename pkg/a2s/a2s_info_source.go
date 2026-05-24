@@ -3,8 +3,8 @@ package a2s
 import (
 	"errors"
 
-	"github.com/woozymasta/a2s/internal/appid"
 	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // readSourceInfo parses Source protocol A2S_INFO response.
