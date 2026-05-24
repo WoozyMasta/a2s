@@ -8,7 +8,8 @@ const (
 	// DefaultDeadlineTimeout is the default UDP read deadline.
 	DefaultDeadlineTimeout time.Duration = 5 * time.Second
 	// DefaultBufferSize is the default UDP receive buffer size.
-	DefaultBufferSize uint16 = 4096
+	// It accommodates the largest supported single A2S/A3SB datagrams.
+	DefaultBufferSize uint16 = 8192
 
 	// singlePacket identifies a complete response in the A2S packet header.
 	singlePacket uint32 = 0xFFFFFFFF

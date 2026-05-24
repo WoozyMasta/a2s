@@ -60,7 +60,7 @@ type PingCommand struct {
 type GlobalOptions struct {
 	Format  string `short:"f" default:"table" long:"format"      description:"Output format" choice:"json" choice:"table" choice:"raw" choice:"md" choice:"html"`
 	Timeout int    `short:"t" default:"3"     long:"timeout"     description:"Set connection timeout in seconds"`
-	Buffer  uint16 `short:"b" default:"8096"  long:"buffer-size" description:"Set connection buffer size"`
+	Buffer  uint16 `short:"b" default:"8192"  long:"buffer-size" description:"Set connection buffer size"`
 }
 
 // ServerArgs defines positional arguments for server connection.

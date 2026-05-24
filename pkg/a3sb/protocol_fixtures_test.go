@@ -179,6 +179,35 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	}
 }
 
+func TestGetRulesDoesNotMutateBufferSize(t *testing.T) {
+	page := []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
+	for _, bufferSize := range []uint16{a2s.DefaultBufferSize, 2048} {
+		t.Run(strconv.Itoa(int(bufferSize)), func(t *testing.T) {
+			fixtureData := rulesResponsePayload(
+				rulesFixtureEntry{key: []byte{1, 1}, value: page},
+			)
+			fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(fixtureData))
+
+			baseClient, err := a2s.NewWithAddr(
+				fixture.Addr(),
+				a2s.WithBufferSize(bufferSize),
+			)
+			if err != nil {
+				t.Fatalf("create a2s client: %v", err)
+			}
+			defer baseClient.Close()
+
+			client := &Client{Client: baseClient}
+			if _, err := client.GetRules(context.Background(), appid.DayZ); err != nil {
+				t.Fatalf("GetRules returned error: %v", err)
+			}
+			if got := baseClient.BufferSize(); got != bufferSize {
+				t.Fatalf("buffer size after GetRules = %d, want %d", got, bufferSize)
+			}
+		})
+	}
+}
+
 func TestGetRulesAssemblesPagesByNumber(t *testing.T) {
 	// The decoded payload is the minimal valid A3SB v2 header:
 	// {version: 2, flags: 0, DLC: 0, difficulty: 0}.

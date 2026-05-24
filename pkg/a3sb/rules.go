@@ -11,8 +11,8 @@ import (
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
-// DefaultRulesBufferSize is default buffer size for A3SB rules responses.
-const DefaultRulesBufferSize uint16 = 8192
+// DefaultRulesBufferSize is the A3SB-compatible A2S receive buffer size.
+const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
 
 // Rules contains parsed A3SB rules response data.
 type Rules struct {
@@ -50,12 +50,6 @@ func (c *Client) GetRulesDayZ(ctx context.Context) (*Rules, error) {
 
 // GetRules parses A2S_RULES response using A3SB for Arma 3 and DayZ.
 func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
-	if c.BufferSize() == a2s.DefaultBufferSize {
-		if err := c.SetBufferSize(DefaultRulesBufferSize); err != nil {
-			return nil, fmt.Errorf("set rules buffer size: %w", err)
-		}
-	}
-
 	data, _, _, err := c.Get(ctx, a2s.RulesRequest)
 	if err != nil {
 		return nil, err
