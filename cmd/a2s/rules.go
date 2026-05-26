@@ -28,12 +28,8 @@ func gameToAppID(game string) uint64 {
 	}
 }
 
-// isA3SBGame checks if the given AppID corresponds to Arma3 or DayZ.
-func isA3SBGame(id uint64) bool {
-	return id == appid.Arma3 || id == appid.DayZ || id == appid.DayZExperimental
-}
-
-// executeRules selects the standard or A3SB rules parser and renders its output.
+// executeRules selects the standard or automatic A3SB rules parser and renders its output.
+// Automatic mode uses one A2S_RULES request and does not require A2S_INFO merely to choose a parser.
 func executeRules(cmd *RulesCommand) {
 	if cmd.Args.Host == "" {
 		fatal("Host must be provided")
@@ -45,60 +41,54 @@ func executeRules(cmd *RulesCommand) {
 	formatter := NewFormatter(cmd.Format)
 	ctx := context.Background()
 
-	// An explicit game selects A3SB immediately;
-	// otherwise A2S_INFO may identify Arma 3 or DayZ
-	// unless the caller requested raw/skip-info behavior.
-	useA3SB := false
-	var appID uint64
-
-	// Convert game string to AppID if specified
 	if cmd.Game != "" {
-		appID = gameToAppID(cmd.Game)
+		appID := gameToAppID(cmd.Game)
 		if appID == 0 {
 			fatalf("Unknown game: %s. Supported games: arma3, dayz", cmd.Game)
 		}
-		useA3SB = true
-	} else if !cmd.SkipInfo && !cmd.Raw {
-		// If game not specified and skip-info is not set, try to detect from server info
-		info, err := client.GetInfo(ctx)
-		if err == nil {
-			appID = info.ID
-			if isA3SBGame(appID) {
-				useA3SB = true
-			}
+		if cmd.Raw {
+			executeRulesStandard(ctx, client, true, formatter)
+			return
 		}
+
+		executeRulesA3SB(ctx, client, appID, formatter)
+		return
 	}
 
-	if useA3SB && !cmd.Raw {
-		executeRulesA3SB(ctx, client, appID, formatter)
-	} else {
+	if cmd.Raw {
 		executeRulesStandard(ctx, client, cmd.Raw, formatter)
+		return
 	}
+
+	executeRulesA3SB(ctx, client, 0, formatter)
 }
 
 // executeRulesStandard retrieves and renders ordinary A2S_RULES values.
 func executeRulesStandard(ctx context.Context, client *a2s.Client, raw bool, formatter *Formatter) {
-	var rules map[string]string
+	var rules map[string]any
 	var err error
 
 	if raw {
-		rules, err = client.GetRules(ctx)
+		rawRules, rawErr := client.GetRules(ctx)
+		err = rawErr
+		rules = make(map[string]any, len(rawRules))
+		for key, value := range rawRules {
+			rules[key] = value
+		}
 	} else {
-		parsedRules, err2 := client.GetParsedRules(ctx)
-		if err2 != nil {
-			fatalf("Failed to get rules: %s", err2)
-		}
-
-		rules = make(map[string]string, len(parsedRules))
-		for k, v := range parsedRules {
-			rules[k] = fmt.Sprint(v)
-		}
+		rules, err = client.GetParsedRules(ctx)
 	}
 
 	if err != nil {
 		fatalf("Failed to get rules: %s", err)
 	}
 
+	printRules(rules, client, formatter)
+}
+
+// printRules renders an already fetched rules map using the normal A2S output shape.
+// Values remain typed for JSON and are formatted as text in tables.
+func printRules(rules map[string]any, client *a2s.Client, formatter *Formatter) {
 	if formatter.ShouldUseJSON() {
 		formatter.PrintJSON(rules)
 		return
@@ -134,6 +124,12 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 	rules, err := a3sbClient.GetRules(ctx, appID)
 	if err != nil {
 		fatalf("Failed to get server rules: %s", err)
+	}
+
+	if rules.Version == 0 {
+		parsed := a2s.ParseRuleValues(rules.ExtraRules)
+		printRules(parsed, client, formatter)
+		return
 	}
 
 	if formatter.ShouldUseJSON() {

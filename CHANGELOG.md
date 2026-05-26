@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning][].
 * `a2s` expose raw and parsed A2S_RULES views
 * `a2s` replace legacy client construction with address-aware constructors,
   options, accessors, and idempotent lifecycle management
+* `a3sb` automatically detects native A2S rules and known A3SB versions
+  from one rules response without an additional A2S_INFO request
 
 ### Fixed
 
@@ -51,6 +53,9 @@ and this project adheres to [Semantic Versioning][].
   instead of mapping them to known defaults
 
 ### Removed
+
+* remove the redundant `--skip-info` rules option after rules detection
+  stopped requiring `A2S_INFO`
 
 * remove the `github.com/woozymasta/steam` dependency
   in favor of a curated local A2S AppID registry

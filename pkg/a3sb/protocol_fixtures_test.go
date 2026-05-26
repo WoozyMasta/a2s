@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/woozymasta/a2s/internal/bread"
@@ -92,6 +93,10 @@ func rulesResponsePayload(entries ...rulesFixtureEntry) []byte {
 }
 
 func getRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*Rules, error) {
+	return getRulesFromFixtureWithGame(t, appid.DayZ, entries...)
+}
+
+func getRulesFromFixtureWithGame(t *testing.T, game uint64, entries ...rulesFixtureEntry) (*Rules, error) {
 	t.Helper()
 
 	fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(rulesResponsePayload(entries...)))
@@ -102,7 +107,21 @@ func getRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*Rules, er
 	defer baseClient.Close()
 
 	client := &Client{Client: baseClient}
-	return client.GetRules(context.Background(), appid.DayZ)
+	return client.GetRules(context.Background(), game)
+}
+
+func getAutomaticRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*Rules, error) {
+	t.Helper()
+
+	fixture := newRulesUDPFixture(t, rulesSinglePacketFixture(rulesResponsePayload(entries...)))
+	baseClient, err := a2s.NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create a2s client: %v", err)
+	}
+	defer baseClient.Close()
+
+	client := &Client{Client: baseClient}
+	return client.GetRules(context.Background(), 0)
 }
 
 func TestMinimalDayZProtocolFixture(t *testing.T) {
@@ -268,6 +287,173 @@ func TestGetRulesRejectsInvalidPageSets(t *testing.T) {
 				t.Fatalf("GetRules error = %v, want %v", err, test.wantErr)
 			}
 		})
+	}
+}
+
+func TestGetRulesAutomaticReturnsNativeA2S(t *testing.T) {
+	rules, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte("hostname"), value: []byte("test server")},
+		rulesFixtureEntry{key: []byte("map"), value: []byte("de_dust2")},
+	)
+	if err != nil {
+		t.Fatalf("automatic GetRules returned error: %v", err)
+	}
+	if rules.Version != 0 {
+		t.Fatalf("native A2S version = %d, want 0", rules.Version)
+	}
+	if got := rules.ExtraRules["hostname"]; got != "test server" {
+		t.Fatalf("hostname = %q, want %q", got, "test server")
+	}
+	if got := rules.ExtraRules["map"]; got != "de_dust2" {
+		t.Fatalf("map = %q, want %q", got, "de_dust2")
+	}
+}
+
+func TestGetRulesAutomaticSelectsDayZForVersionTwo(t *testing.T) {
+	rules, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{
+			key:   []byte{1, 1},
+			value: []byte{2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+		},
+	)
+	if err != nil {
+		t.Fatalf("automatic GetRules returned error: %v", err)
+	}
+	if rules.Version != 2 {
+		t.Fatalf("protocol version = %d, want 2", rules.Version)
+	}
+	if got := rules.GetAppID(); got != appid.DayZ {
+		t.Fatalf("inferred AppID = %d, want %d", got, appid.DayZ)
+	}
+}
+
+func TestGetRulesAutomaticSelectsArma3ForVersionThree(t *testing.T) {
+	rules, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{
+			key:   []byte{1, 1},
+			value: []byte{3, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+		},
+	)
+	if err != nil {
+		t.Fatalf("automatic GetRules returned error: %v", err)
+	}
+	if rules.Version != 3 {
+		t.Fatalf("protocol version = %d, want 3", rules.Version)
+	}
+	if got := rules.GetAppID(); got != appid.Arma3 {
+		t.Fatalf("inferred AppID = %d, want %d", got, appid.Arma3)
+	}
+}
+
+func TestGetRulesAutomaticUsesOppositeParserAfterPreferredFailure(t *testing.T) {
+	// This is an Arma-compatible v2 payload:
+	// the first difficulty byte is interpreted as a DayZ mod count and makes the preferred parser fail.
+	rules, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{
+			key:   []byte{1, 1},
+			value: []byte{2, 1, 2, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 2},
+		},
+	)
+	if err != nil {
+		t.Fatalf("automatic GetRules returned error: %v", err)
+	}
+	if rules.Version != 2 {
+		t.Fatalf("protocol version = %d, want 2", rules.Version)
+	}
+	if got := rules.GetAppID(); got != appid.Arma3 {
+		t.Fatalf("fallback AppID = %d, want %d", got, appid.Arma3)
+	}
+}
+
+func TestGetRulesAutomaticDoesNotTreatPageTwoAsA3SB(t *testing.T) {
+	rules, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte{2, 2}, value: []byte{0x01, 0x02}},
+	)
+	if err != nil {
+		t.Fatalf("automatic GetRules returned error: %v", err)
+	}
+	if got := rules.ExtraRules[string([]byte{2, 2})]; got != string([]byte{0x01, 0x02}) {
+		t.Fatalf("page-like native value = %X, want 0102", []byte(got))
+	}
+}
+
+func TestGetRulesExplicitModeDoesNotFallbackToNativeA2S(t *testing.T) {
+	_, err := getRulesFromFixtureWithGame(
+		t,
+		appid.Arma3,
+		rulesFixtureEntry{key: []byte("hostname"), value: []byte("test server")},
+	)
+	if err == nil {
+		t.Fatal("explicit GetRules returned nil error for native A2S")
+	}
+	if !errors.Is(err, ErrRulesPageMetadata) {
+		t.Fatalf("error = %v, want ErrRulesPageMetadata", err)
+	}
+}
+
+func TestGetRulesAutomaticRejectsBrokenA3SBWithoutNativeFallback(t *testing.T) {
+	_, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte{1, 1}, value: []byte{2, 1, 2, 1, 2, 1, 2}},
+	)
+	if err == nil {
+		t.Fatal("automatic GetRules returned nil error for broken A3SB")
+	}
+	if !errors.Is(err, ErrMod) {
+		t.Fatalf("error = %v, want A3SB parser error", err)
+	}
+}
+
+func TestGetRulesAutomaticRejectsUnknownA3SBVersion(t *testing.T) {
+	_, err := getAutomaticRulesFromFixture(
+		t,
+		rulesFixtureEntry{key: []byte{1, 1}, value: []byte{4, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2}},
+	)
+	if err == nil {
+		t.Fatal("automatic GetRules returned nil error for unknown version")
+	}
+	if !errors.Is(err, ErrProtoNewest) {
+		t.Fatalf("error = %v, want ErrProtoNewest", err)
+	}
+	if !strings.Contains(err.Error(), "protocol version 4") {
+		t.Fatalf("error = %v, want raw version", err)
+	}
+}
+
+func TestGetRulesArma3KeepsOuterRules(t *testing.T) {
+	rules, err := getRulesFromFixtureWithGame(
+		t,
+		appid.Arma3,
+		rulesFixtureEntry{key: []byte{1, 1}, value: []byte{3, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2}},
+		rulesFixtureEntry{key: []byte("dedicated"), value: []byte("invalid")},
+	)
+	if err != nil {
+		t.Fatalf("GetRules returned error: %v", err)
+	}
+	if got := rules.ExtraRules["dedicated"]; got != "invalid" {
+		t.Fatalf("Arma 3 outer rule = %q, want %q", got, "invalid")
+	}
+}
+
+func TestGetRulesDayZExperimentalRejectsVersionThree(t *testing.T) {
+	_, err := getRulesFromFixtureWithGame(
+		t,
+		appid.DayZExperimental,
+		rulesFixtureEntry{
+			key:   []byte{1, 1},
+			value: []byte{3, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2},
+		},
+	)
+	if err == nil {
+		t.Fatal("GetRules returned nil error for DayZ Experimental v3")
+	}
+	if !errors.Is(err, ErrProtoV3) {
+		t.Fatalf("error = %v, want ErrProtoV3", err)
 	}
 }
 

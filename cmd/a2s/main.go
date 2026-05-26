@@ -71,9 +71,8 @@ type ServerArgs struct {
 
 // RulesOptions defines options specific to rules command.
 type RulesOptions struct {
-	Game     string `short:"g" long:"game"      description:"Game type for more accurate results" choice:"dayz" choice:"arma3"`
-	Raw      bool   `short:"r" long:"raw"       description:"Disable parse A2S_RULES values to types"`
-	SkipInfo bool   `short:"s" long:"skip-info" description:"Skip automatic AppID detection via A2S_INFO"`
+	Game string `short:"g" long:"game" description:"Game type for more accurate results" choice:"dayz" choice:"arma3"`
+	Raw  bool   `short:"r" long:"raw"  description:"Disable parse A2S_RULES values to types"`
 }
 
 // main parses command-line options and dispatches the selected subcommand.

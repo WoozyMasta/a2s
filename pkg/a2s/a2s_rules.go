@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/a2srules"
 )
 
 // GetRules queries server rules (A2S_RULES).
@@ -23,37 +23,27 @@ func (c *Client) GetRules(ctx context.Context) (map[string]string, error) {
 
 // parseRules parses an A2S_RULES payload without copying its buffer.
 func parseRules(data []byte) (map[string]string, error) {
-	reader := bread.NewReader(data)
-	count, err := reader.Uint16()
+	result, err := a2srules.Parse(data)
 	if err != nil {
-		return nil, errors.Join(ErrRuleCount, err)
-	}
+		switch {
+		case errors.Is(err, a2srules.ErrCount):
+			return nil, errors.Join(ErrRuleCount, err)
 
-	if count == 0 {
-		return nil, nil
-	}
+		case errors.Is(err, a2srules.ErrInsufficientData):
+			return nil, errors.Join(ErrInsufficientData, err)
 
-	rules := make(map[string]string, int(count))
-
-	for i := 0; i < int(count); i++ {
-		if reader.Len() < 4 {
-			return nil, ErrInsufficientData
-		}
-
-		key, err := reader.String()
-		if err != nil {
+		case errors.Is(err, a2srules.ErrKey):
 			return nil, errors.Join(ErrRuleKey, err)
-		}
 
-		value, err := reader.String()
-		if err != nil {
+		case errors.Is(err, a2srules.ErrValue):
 			return nil, errors.Join(ErrRuleValue, err)
-		}
 
-		rules[key] = value
+		default:
+			return nil, err
+		}
 	}
 
-	return rules, nil
+	return a2srules.Map(result.Entries), nil
 }
 
 // GetParsedRules queries server rules and converts values into convenient Go types.
@@ -65,8 +55,16 @@ func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 
+	return ParseRuleValues(data), nil
+}
+
+// ParseRuleValues converts already fetched A2S rule strings
+// into convenient Go values without issuing another network request.
+// Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
+// The input map is not modified.
+func ParseRuleValues(data map[string]string) map[string]any {
 	if data == nil {
-		return nil, nil
+		return nil
 	}
 
 	rules := make(map[string]any, len(data))
@@ -75,7 +73,7 @@ func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
 		rules[key] = parseRuleValue(value, &base64Buf)
 	}
 
-	return rules, nil
+	return rules
 }
 
 // parseRuleValue attempts to parse a rule value
