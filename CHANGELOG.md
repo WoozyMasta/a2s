@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning][].
 
 ### Fixed
 
+* CLI preserve generic A2S_INFO keywords in JSON output
 * `a3sb` assemble one-based rule pages by page number
   and reject inconsistent, missing, or conflicting pages
 * `a2s` and `a3sb` reject malformed and truncated UDP responses without panics

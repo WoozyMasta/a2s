@@ -170,8 +170,10 @@ func formatAppID(id uint64) string {
 	return steamID.String()
 }
 
-// printInfoJSON preserves the generic Info JSON and replaces keywords
-// with a typed representation for the supported Arma 3 and DayZ formats.
+// printInfoJSON preserves raw keywords for generic games and replaces them
+// with the existing typed representation for the supported Arma 3 and DayZ formats.
+// The replacement is intentional for those two game-specific schemas;
+// unsupported games keep the wire-level keyword list unchanged.
 func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 	// Create a map to hold the JSON structure
 	jsonMap := make(map[string]any)
@@ -187,15 +189,14 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 		fatalf("Failed to unmarshal JSON: %v", err)
 	}
 
-	// Parse keywords for Arma3/DayZ
-	delete(jsonMap, "keywords")
-
 	switch info.ID {
 	case appid.Arma3:
+		delete(jsonMap, "keywords")
 		armaData := keywords.ParseArma3(info.Keywords)
 		jsonMap["keywords"] = armaData
 
 	case appid.DayZ, appid.DayZExperimental:
+		delete(jsonMap, "keywords")
 		dayZData := keywords.ParseDayZ(info.Keywords)
 		jsonMap["keywords"] = dayZData
 	}
