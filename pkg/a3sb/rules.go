@@ -18,38 +18,87 @@ const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
 
 // Rules contains parsed A3SB rules response data.
 //
-// When GetRules is called in automatic mode and the response is native A2S,
-// the typed A3SB fields remain zero-valued
-// and ExtraRules contains the complete ordinary A2S rules map.
-// Binary A3SB page values are never exposed through ExtraRules
-// after an A3SB page candidate has been identified.
+// When GetRules receives a non-zero game AppID,
+// the binary rules payload is parsed using the explicitly selected game layout.
+// For automatic mode, the response is classified as either native A2S
+// or A3SB before the payload is parsed.
+//
+// A native A2S result has Version == 0, keeps its complete ordinary rules map in ExtraRules,
+// and leaves the typed A3SB fields at their zero values.
+// An A3SB result has a non-zero Version and exposes the fields decoded from its binary payload.
 type Rules struct {
-	Flags      *Flags      `json:"flags,omitempty"`      // Flags, I don't know what's actually encoded there
-	Difficulty *Difficulty `json:"difficulty,omitempty"` // Difficulty (Arma 3 only)
+	// Flags contains the currently undocumented A3SB flags.
+	// It is nil when the response flags byte is zero.
+	Flags *Flags `json:"flags,omitempty"`
 
-	// ExtraRules contains ordinary A2S key/value properties that are not represented by typed fields.
+	// Difficulty contains Arma 3 difficulty settings.
+	// It is nil for DayZ and when the Arma 3 response reports no difficulty settings.
+	Difficulty *Difficulty `json:"difficulty,omitempty"`
+
+	// ExtraRules contains ordinary A2S key/value properties
+	// that are not represented by typed fields.
 	//
-	// In native A2S automatic fallback it contains the complete rules map;
-	// it never contains rejected A3SB pages.
+	// In native A2S automatic fallback it contains the complete rules map.
+	// For A3SB responses it contains non-page outer properties
+	// that were not consumed by a game-specific parser.
+	// It never contains A3SB page carriers, including carriers rejected as malformed.
 	ExtraRules map[string]string `json:"extra_rules,omitempty"`
 
-	Description     string           `json:"description,omitempty"`      // Server description
-	Island          string           `json:"island,omitempty"`           // Name of world [DayZ]
-	Platform        string           `json:"platform,omitempty"`         // Server OS [DayZ]
-	DLC             []DLCInfo        `json:"dlcs,omitempty"`             // List of information about DLC
-	CreatorDLC      []DLCInfo        `json:"creator_dlc,omitempty"`      // List of information about Creator DLC (Arma 3 only)
-	Mods            []Mod            `json:"mods,omitempty"`             // List of information about modifications
-	Signatures      []string         `json:"signatures,omitempty"`       // List of signatures
-	id              uint64           ``                                  // Steam AppID used to select protocol variants.
-	Language        types.ServerLang `json:"language,omitempty"`         // DayZ Server Language [DayZ]
-	AllowedBuild    uint16           `json:"allowed_build,omitempty"`    // Allowed client build for connect [DayZ]
-	ClientPort      uint16           `json:"client_port,omitempty"`      // Client port [DayZ]
-	RequiredBuild   uint16           `json:"required_build,omitempty"`   // Required client build for connect [DayZ]
-	RequiredVersion uint16           `json:"required_version,omitempty"` // Required client version for connect [DayZ]
-	TimeLeft        uint16           `json:"time_left,omitempty"`        // Time for respawn [DayZ]
-	stats           [4]byte          ``                                  // A3SB page counts: raw, paged, blank, overflow.
-	Version         byte             `json:"version"`                    // Protocol version
-	Dedicated       bool             `json:"dedicated,omitempty"`        // Dedicated [DayZ]
+	// Description is the DayZ server description.
+	// It is not part of the Arma 3 layout.
+	Description string `json:"description,omitempty"`
+
+	// Island is the DayZ world or island name.
+	Island string `json:"island,omitempty"`
+
+	// Platform is the normalized DayZ server platform name.
+	Platform string `json:"platform,omitempty"`
+
+	// DLC contains the DLC entries reported by the server in protocol mask order.
+	// Each entry may include its protocol hash.
+	DLC []DLCInfo `json:"dlcs,omitempty"`
+
+	// CreatorDLC contains Arma 3 Creator DLC entries reported by the server.
+	CreatorDLC []DLCInfo `json:"creator_dlc,omitempty"`
+
+	// Mods contains regular server modifications.
+	// A mod may have ID zero when it is private or local to the server.
+	Mods []Mod `json:"mods,omitempty"`
+
+	// Signatures contains the signature names reported by the server.
+	Signatures []string `json:"signatures,omitempty"`
+
+	// id is the Steam AppID used to select the A3SB layout and game-specific parsing rules.
+	id uint64 ``
+
+	// Language is the DayZ server language value.
+	Language types.ServerLang `json:"language,omitempty"`
+
+	// AllowedBuild is the DayZ client build allowed to connect to the server.
+	AllowedBuild uint16 `json:"allowed_build,omitempty"`
+
+	// ClientPort is the DayZ game/client port advertised by the server.
+	ClientPort uint16 `json:"client_port,omitempty"`
+
+	// RequiredBuild is the DayZ client build required by the server.
+	RequiredBuild uint16 `json:"required_build,omitempty"`
+
+	// RequiredVersion is the DayZ client version required by the server.
+	RequiredVersion uint16 `json:"required_version,omitempty"`
+
+	// TimeLeft is the DayZ time-left value.
+	TimeLeft uint16 `json:"time_left,omitempty"`
+
+	// stats stores internal A3SB envelope statistics in the order
+	// raw, paged, blank, and overflow.
+	stats [4]byte ``
+
+	// Version is the A3SB binary protocol version.
+	// It is zero for a native A2S automatic fallback result.
+	Version byte `json:"version"`
+
+	// Dedicated reports whether the DayZ server is dedicated.
+	Dedicated bool `json:"dedicated,omitempty"`
 }
 
 // a3sbEnvelope contains the validated outer response and assembled page data.

@@ -52,6 +52,8 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 
 		switch idLen {
 		case 1:
+			// Theoretical short ID form;
+			// not observed in available server responses.
 			id, err := reader.Byte()
 			if err != nil {
 				return fmt.Errorf("mod %d id length: %w", i, err)
@@ -59,6 +61,8 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 			mod.ID = uint64(id)
 
 		case 4:
+			// Observed standard form: Workshop IDs are encoded as uint32 values.
+			// ID 0 is intended for private/local mods.
 			id, err := reader.Uint32()
 			if err != nil {
 				return fmt.Errorf("mod %d id length: %w", i, err)
@@ -66,13 +70,18 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 			mod.ID = uint64(id)
 
 		case 8:
+			// Theoretical extended Steam ID form;
+			// not observed in available server responses.
 			id, err := reader.Uint64()
 			if err != nil {
 				return fmt.Errorf("mod %d id length: %w", i, err)
 			}
 			mod.ID = id
 
-		case 19: // Arma Creators DLC, right way check 4 byte, but this works too, return 00010011
+		case 19:
+			// 0x13 marks a Creator DLC entry, not a 19-byte ID.
+			// It is followed by a uint32 Steam AppID and no mod name;
+			// the next byte starts the next mod record.
 			id, err := reader.Uint32()
 			if err != nil {
 				return fmt.Errorf("mod %d id length: %w", i, err)
@@ -83,6 +92,9 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 			continue
 
 		default:
+			// The 2-byte form is mentioned in the protocol notes,
+			// but its wire layout is not confirmed by a packet fixture.
+			// Keep it unsupported until a real response justifies a parser change.
 			return fmt.Errorf("mod %d id length (%d) unknown", i, idLen)
 		}
 
