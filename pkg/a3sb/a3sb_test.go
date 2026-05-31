@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // testServersConfig represents the structure of test_servers.json
@@ -346,38 +345,6 @@ func TestRulesDayZMultiple(t *testing.T) {
 	t.Logf("Successfully queried %d/%d DayZ servers", successCount, len(servers))
 }
 
-// BenchmarkRules benchmarks A2S_RULES query (auto-detect game)
-func BenchmarkRules(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	// Try Arma 3 first, then DayZ
-	var gameID uint64
-	_, err = client.GetRulesArma3(context.Background())
-	if err != nil {
-		// If Arma 3 fails, use DayZ
-		gameID = 221100 // DayZ AppID
-	} else {
-		gameID = 107410 // Arma 3 AppID
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(context.Background(), gameID)
-		if err != nil {
-			b.Fatalf("GetRules failed: %v", err)
-		}
-	}
-}
-
 // getFirstTestServerArma3 returns the first Arma 3 server from test_servers.json
 func getFirstTestServerArma3(t testing.TB) string {
 	servers, err := readTestServersArma3()
@@ -400,48 +367,4 @@ func getFirstTestServerDayZ(t testing.TB) string {
 		t.Skip("No DayZ test servers found in test_servers.json")
 	}
 	return servers[0]
-}
-
-// BenchmarkRulesArma3 benchmarks A2S_RULES for Arma 3
-func BenchmarkRulesArma3(b *testing.B) {
-	serverAddr := getFirstTestServerArma3(b)
-	if serverAddr == "" {
-		b.Skip("No Arma 3 test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(context.Background(), appid.Arma3)
-		if err != nil {
-			b.Fatalf("GetRules failed for Arma 3: %v", err)
-		}
-	}
-}
-
-// BenchmarkRulesDayZ benchmarks A2S_RULES for DayZ
-func BenchmarkRulesDayZ(b *testing.B) {
-	serverAddr := getFirstTestServerDayZ(b)
-	if serverAddr == "" {
-		b.Skip("No DayZ test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(context.Background(), appid.DayZ)
-		if err != nil {
-			b.Fatalf("GetRules failed for DayZ: %v", err)
-		}
-	}
 }
