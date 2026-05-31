@@ -1,32 +1,34 @@
 /*
-Package a3sb extends the A2S client
-with Arma 3 Server Browser Protocol (A3SB)
-support built on top of A2S_RULES.
+Package a3sb parses Arma 3 Server Browser Protocol responses carried by A2S_RULES.
 
-https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
+Wrap an *a2s.Client in [Client] and use [Client.GetRules]
+to retrieve typed Arma 3 or DayZ data.
 
-# Usage:
+A non-zero game AppID selects an explicit layout;
+use constants from github.com/woozymasta/a2s/pkg/appid,
+such as appid.Arma3 or appid.DayZ.
+The [Client.GetRulesArma3] and [Client.GetRulesDayZ] helpers
+select the corresponding layouts directly.
 
-	client, err := a2s.New("127.0.0.1", 27016)
-	if err != nil {
-		panic(err)
-	}
-	defer client.Close()
-	ctx := context.Background()
+Pass game == 0 when the server's game is unknown.
+The response is classified from the A2S_RULES payload
+without an additional A2S_INFO request.
+Native A2S rules are returned in [Rules.ExtraRules] with [Rules.Version] == 0;
+recognized A3SB responses are parsed into typed fields with a non-zero [Rules.Version].
 
-	// Wrap client
-	a3Client := &a3sb.Client{Client: client}
+For A3SB responses, [Rules.ExtraRules] contains ordinary outer A2S properties
+that are not represented by typed fields.
+Binary A3SB page carriers are consumed by the parser
+and are not exposed as ordinary rule strings.
 
-	// Game id must be passed as the second argument to properly read the Arma 3 or Dayz rules
-	rules, err := a3Client.GetRules(ctx, 221100)
-	if err != nil {
-		panic(err)
-	}
+Close the embedded A2S client when it is no longer needed.
+Runnable API examples are available in the package example tests.
 
-	// Can also perform standard a2s methods
-	info, err := a3Client.GetInfo(ctx)
-	if err != nil {
-		panic(err)
-	}
+See the protocol documentation for Arma 3: [Protocol v3] and [Protocol v2].
+Additional implementation notes are available in [A3SB protocol notes].
+
+[Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
+[Protocol v2]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol2
+[A3SB protocol notes]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md
 */
 package a3sb
