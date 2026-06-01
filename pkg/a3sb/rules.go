@@ -102,8 +102,8 @@ type Rules struct {
 }
 
 // a3sbEnvelope contains the validated outer response and assembled page data.
-// Page values are copied while the envelope is built because the input buffer
-// belongs to the query transaction and must not be retained by a result.
+// The assembled page buffer owns its data;
+// individual entry slices are used only while the envelope is being built.
 type a3sbEnvelope struct {
 	extraRules   map[string]string
 	encodedPages []byte
@@ -279,7 +279,7 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 			continue
 		}
 
-		pageValues[pageNumber] = append([]byte(nil), entry.Value...)
+		pageValues[pageNumber] = entry.Value
 	}
 
 	if requirePageOne && !pageOnePresent {
