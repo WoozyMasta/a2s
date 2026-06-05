@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
@@ -518,15 +519,15 @@ func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rules := &Rules{id: appid.Arma3}
-			reader := bread.NewReader(test.data)
+			decoder := wire.NewDecoder(test.data)
 
-			err := rules.readDifficulty(reader)
+			err := rules.readDifficulty(&decoder)
 			if test.wantErr {
 				if err == nil {
 					t.Fatal("readDifficulty returned nil error for truncated field")
 				}
-				if !errors.Is(err, bread.ErrUnderflow) {
-					t.Fatalf("error = %v, want bread.ErrUnderflow", err)
+				if !errors.Is(err, io.ErrUnexpectedEOF) {
+					t.Fatalf("error = %v, want io.ErrUnexpectedEOF", err)
 				}
 				return
 			}
@@ -540,7 +541,7 @@ func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
 				t.Fatalf("difficulty = %+v, want %+v", *rules.Difficulty, *test.want)
 			}
 			if test.wantMarker {
-				if got, err := reader.Byte(); err != nil || got != marker {
+				if got, err := decoder.Byte(); err != nil || got != marker {
 					t.Fatalf("marker read = 0x%X, %v; want 0x%X", got, err, marker)
 				}
 			}
@@ -558,7 +559,8 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 
 	for iteration := 0; iteration < 100; iteration++ {
 		rules := &Rules{id: appid.Arma3}
-		if err := rules.readDLC(bread.NewReader(hashData), mask); err != nil {
+		decoder := wire.NewDecoder(hashData)
+		if err := rules.readDLC(&decoder, mask); err != nil {
 			t.Fatalf("readDLC returned error: %v", err)
 		}
 

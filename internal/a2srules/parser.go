@@ -6,7 +6,7 @@ package a2srules
 import (
 	"errors"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 var (
@@ -42,28 +42,24 @@ type Result struct {
 // Duplicate keys and entry order are preserved.
 // Trailing bytes are returned in Result.Remaining so each protocol package can apply its own policy.
 func Parse(data []byte) (Result, error) {
-	reader := bread.NewReader(data)
-	count, err := reader.Uint16()
+	decoder := wire.NewDecoder(data)
+	count, err := decoder.Uint16()
 	if err != nil {
 		return Result{}, errors.Join(ErrCount, err)
 	}
 
 	if count == 0 {
-		return Result{Remaining: data[reader.Pos():]}, nil
+		return Result{Remaining: decoder.Tail()}, nil
 	}
 
 	entries := make([]Entry, 0, int(count))
 	for i := 0; i < int(count); i++ {
-		if reader.Len() < 4 {
-			return Result{}, ErrInsufficientData
-		}
-
-		key, err := reader.BytesPage()
+		key, err := decoder.CStringBytes()
 		if err != nil {
 			return Result{}, errors.Join(ErrKey, err)
 		}
 
-		value, err := reader.BytesPage()
+		value, err := decoder.CStringBytes()
 		if err != nil {
 			return Result{}, errors.Join(ErrValue, err)
 		}
@@ -73,7 +69,7 @@ func Parse(data []byte) (Result, error) {
 
 	return Result{
 		Entries:   entries,
-		Remaining: data[reader.Pos():],
+		Remaining: decoder.Tail(),
 	}, nil
 }
 

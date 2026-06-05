@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 func mustDecodeHex(t *testing.T, s string) []byte {
@@ -22,7 +22,8 @@ func TestReadGoldSourceInfo_MissingBotsByte(t *testing.T) {
 	data := mustDecodeHex(t, "302e302e302e303a3237303135004e4f5244204c4c472023204e45572049503a203133352e3132352e3231322e32393a32373031350064655f64757374320d0063737472696b65005061696e7462616c6c204d6f64001f202f646c000001")
 
 	info := &Info{}
-	if err := info.readGoldSourceInfo(bread.NewReader(data)); err != nil {
+	decoder := wire.NewDecoder(data)
+	if err := info.readGoldSourceInfo(&decoder); err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
 
@@ -52,7 +53,8 @@ func TestReadGoldSourceInfo_MissingVacAndBotsBytes(t *testing.T) {
 	}
 
 	info := &Info{}
-	if err := info.readGoldSourceInfo(bread.NewReader(data)); err != nil {
+	decoder := wire.NewDecoder(data)
+	if err := info.readGoldSourceInfo(&decoder); err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
 
@@ -76,7 +78,8 @@ func TestReadGoldSourceInfo_StillFailsOnMandatoryFields(t *testing.T) {
 	}
 
 	info := &Info{}
-	err := info.readGoldSourceInfo(bread.NewReader(data))
+	decoder := wire.NewDecoder(data)
+	err := info.readGoldSourceInfo(&decoder)
 	if err == nil {
 		t.Fatal("expected parse error, got nil")
 	}

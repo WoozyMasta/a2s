@@ -2,8 +2,9 @@ package a2s
 
 import (
 	"errors"
+	"io"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // ModInfo contains mod information from GoldSource A2S_INFO response.
@@ -17,26 +18,26 @@ type ModInfo struct {
 }
 
 // readGoldSourceInfo parses GoldSource protocol A2S_INFO response (obsolete).
-func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
+func (i *Info) readGoldSourceInfo(r *wire.Decoder) error {
 	var err error
 
-	if i.Address, err = r.String(); err != nil {
+	if i.Address, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoGSAddress, err)
 	}
 
-	if i.Name, err = r.String(); err != nil {
+	if i.Name, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoServerName, err)
 	}
 
-	if i.Map, err = r.String(); err != nil {
+	if i.Map, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoMapName, err)
 	}
 
-	if i.Folder, err = r.String(); err != nil {
+	if i.Folder, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoFolderName, err)
 	}
 
-	if i.Game, err = r.String(); err != nil {
+	if i.Game, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoGameName, err)
 	}
 
@@ -64,11 +65,11 @@ func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 	}
 	i.Environment = Environment(environment)
 
-	if i.Visibility, err = r.Bool(); err != nil {
+	if i.Visibility, err = readInfoBool(r); err != nil {
 		return errors.Join(ErrInfoVisibility, err)
 	}
 
-	modded, err := r.Bool()
+	modded, err := readInfoBool(r)
 	if err != nil {
 		return errors.Join(ErrInfoGSModded, err)
 	}
@@ -79,8 +80,8 @@ func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 		}
 	}
 
-	if i.VAC, err = r.Bool(); err != nil {
-		if errors.Is(err, bread.ErrUnderflow) {
+	if i.VAC, err = readInfoBool(r); err != nil {
+		if errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil // Older GoldSource servers may end after the mod block.
 		}
 
@@ -88,7 +89,7 @@ func (i *Info) readGoldSourceInfo(r *bread.Reader) error {
 	}
 
 	if i.Bots, err = r.Byte(); err != nil {
-		if errors.Is(err, bread.ErrUnderflow) {
+		if errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil // Bot count was added after the original GoldSource response.
 		}
 

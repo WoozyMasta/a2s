@@ -3,19 +3,19 @@ package a2s
 import (
 	"errors"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // readGoldSourceMods parses mod information from GoldSource protocol (obsolete).
-func readGoldSourceMods(r *bread.Reader) (*ModInfo, error) {
+func readGoldSourceMods(r *wire.Decoder) (*ModInfo, error) {
 	info := &ModInfo{}
 
 	var err error
-	if info.Link, err = r.String(); err != nil {
+	if info.Link, err = r.CString(); err != nil {
 		return nil, errors.Join(ErrInfoGSModLink, err)
 	}
 
-	if info.DownloadLink, err = r.String(); err != nil {
+	if info.DownloadLink, err = r.CString(); err != nil {
 		return nil, errors.Join(ErrInfoGSModDownloadLink, err)
 	}
 
@@ -27,11 +27,11 @@ func readGoldSourceMods(r *bread.Reader) (*ModInfo, error) {
 		return nil, errors.Join(ErrInfoGSModSize, err)
 	}
 
-	if info.Type, err = r.Bool(); err != nil {
+	if info.Type, err = readInfoBool(r); err != nil {
 		return nil, errors.Join(ErrInfoGSModType, err)
 	}
 
-	if info.DLL, err = r.Bool(); err != nil {
+	if info.DLL, err = readInfoBool(r); err != nil {
 		return nil, errors.Join(ErrInfoGSModDLL, err)
 	}
 

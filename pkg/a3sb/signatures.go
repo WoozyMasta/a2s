@@ -3,11 +3,11 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // readSignatures parses the signature list from an A3SB response.
-func (r *Rules) readSignatures(reader *bread.Reader) error {
+func (r *Rules) readSignatures(reader *wire.Decoder) error {
 	signCount, err := reader.Byte()
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func (r *Rules) readSignatures(reader *bread.Reader) error {
 			continue
 		}
 
-		signature, err := reader.StringLen(int(signLen))
+		signature, err := reader.FixedString(int(signLen))
 		if err != nil {
 			return fmt.Errorf("%d name: %w", i, err)
 		}

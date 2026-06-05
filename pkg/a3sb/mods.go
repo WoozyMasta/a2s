@@ -3,7 +3,7 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // Mod contains mod information from an A3SB response.
@@ -25,7 +25,7 @@ var arma3CreatorDLC = map[uint64]string{
 }
 
 // readMods parses mods and creator DLC from an A3SB response.
-func (r *Rules) readMods(reader *bread.Reader) error {
+func (r *Rules) readMods(reader *wire.Decoder) error {
 	modCount, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("mod count: %w", err)
@@ -35,7 +35,9 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 	}
 
 	r.Mods = make([]Mod, 0, int(modCount))
-	r.CreatorDLC = make([]DLCInfo, 0, 4)
+	// Preserve the existing non-nil empty slice
+	// without allocating backing storage until a Creator DLC entry is actually present.
+	r.CreatorDLC = []DLCInfo{}
 
 	for i := 0; i < int(modCount); i++ {
 		var mod Mod
@@ -82,10 +84,14 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 			// 0x13 marks a Creator DLC entry, not a 19-byte ID.
 			// It is followed by a uint32 Steam AppID and no mod name;
 			// the next byte starts the next mod record.
+			if cap(r.CreatorDLC) == 0 {
+				r.CreatorDLC = make([]DLCInfo, 0, 4)
+			}
 			id, err := reader.Uint32()
 			if err != nil {
 				return fmt.Errorf("mod %d id length: %w", i, err)
 			}
+
 			creatorDLC.ID = uint64(id)
 			creatorDLC.Name = arma3CreatorDLC[creatorDLC.ID]
 			r.CreatorDLC = append(r.CreatorDLC, creatorDLC)
@@ -104,7 +110,7 @@ func (r *Rules) readMods(reader *bread.Reader) error {
 		}
 
 		if nameLen != 0 {
-			if mod.Name, err = reader.StringLen(int(nameLen)); err != nil {
+			if mod.Name, err = reader.FixedString(int(nameLen)); err != nil {
 				return fmt.Errorf("mod %d hash: %w", i, err)
 			}
 		}

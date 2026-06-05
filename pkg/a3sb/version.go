@@ -3,7 +3,7 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -31,7 +31,7 @@ the selection rule and fixtures must be updated when that protocol change occurs
 [Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 [Protocol v2]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol2
 */
-func (r *Rules) readVersion(reader *bread.Reader) error {
+func (r *Rules) readVersion(reader *wire.Decoder) error {
 	version, err := reader.Byte()
 	if err != nil {
 		return err

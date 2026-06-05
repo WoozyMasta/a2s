@@ -3,7 +3,7 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // Flags represents the currently undocumented bit flags from an A3SB response.
@@ -19,7 +19,7 @@ type Flags struct {
 }
 
 // readFlags reads the optional flags byte and keeps zero flags as nil.
-func (r *Rules) readFlags(reader *bread.Reader) error {
+func (r *Rules) readFlags(reader *wire.Decoder) error {
 	value, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("flags: %w", err)

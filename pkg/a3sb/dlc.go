@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/bits"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -47,7 +47,7 @@ var arma3DLC = map[DLC]DLCInfo{
 }
 
 // readDLC parses DLC information from bitmask and reads hashes.
-func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
+func (r *Rules) readDLC(reader *wire.Decoder, dlcMask uint16) error {
 	switch r.id {
 	case appid.Arma3:
 		r.DLC = parseDLC(dlcMask, arma3DLC)

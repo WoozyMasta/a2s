@@ -3,7 +3,7 @@ package a3sb
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -23,7 +23,7 @@ type Difficulty struct {
 // readDifficulty parses difficulty settings for Arma 3.
 // It still consumes both protocol bytes
 // before checking whether the first byte contains settings.
-func (r *Rules) readDifficulty(reader *bread.Reader) error {
+func (r *Rules) readDifficulty(reader *wire.Decoder) error {
 	if r.id != appid.Arma3 {
 		return nil
 	}

@@ -45,8 +45,8 @@ func TestParseRejectsMalformedEntries(t *testing.T) {
 		want error
 	}{
 		{name: "count", data: []byte{1}, want: ErrCount},
-		{name: "entry header", data: []byte{1, 0, 'a'}, want: ErrInsufficientData},
-		{name: "key", data: []byte{1, 0, 'a', 'v', 'x', 'y'}, want: ErrKey},
+		{name: "key", data: []byte{1, 0, 'a'}, want: ErrKey},
+		{name: "key without terminator", data: []byte{1, 0, 'a', 'v', 'x', 'y'}, want: ErrKey},
 		{name: "value", data: []byte{1, 0, 'a', 0, 'v', 'x'}, want: ErrValue},
 	}
 
@@ -57,6 +57,19 @@ func TestParseRejectsMalformedEntries(t *testing.T) {
 				t.Fatalf("Parse error = %v, want %v", err, test.want)
 			}
 		})
+	}
+}
+
+func TestParseAllowsEmptyKeyAndValue(t *testing.T) {
+	result, err := Parse([]byte{1, 0, 0, 0})
+	if err != nil {
+		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(result.Entries) != 1 {
+		t.Fatalf("entry count = %d, want 1", len(result.Entries))
+	}
+	if len(result.Entries[0].Key) != 0 || len(result.Entries[0].Value) != 0 {
+		t.Fatalf("entry = %q/%q, want empty key and value", result.Entries[0].Key, result.Entries[0].Value)
 	}
 }
 

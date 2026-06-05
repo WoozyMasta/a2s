@@ -3,9 +3,10 @@ package a2s
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // Player contains player information from A2S_PLAYER query.
@@ -31,8 +32,8 @@ func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
 
 // parsePlayers parses a standard A2S_PLAYER payload without copying its buffer.
 func parsePlayers(data []byte) ([]Player, error) {
-	reader := bread.NewReader(data)
-	count, err := reader.Byte()
+	decoder := wire.NewDecoder(data)
+	count, err := decoder.Byte()
 	if err != nil {
 		return nil, errors.Join(ErrPlayerCount, err)
 	}
@@ -42,24 +43,33 @@ func parsePlayers(data []byte) ([]Player, error) {
 	for i := 0; i < int(count); i++ {
 		player := Player{}
 
-		if player.Index, err = reader.Byte(); err != nil {
+		if player.Index, err = decoder.Byte(); err != nil {
 			return nil, errors.Join(ErrPlayerIndex, err)
 		}
 
-		if player.Name, err = reader.String(); err != nil {
+		if player.Name, err = decoder.CString(); err != nil {
 			return nil, errors.Join(ErrPlayerName, err)
 		}
 
-		if player.Score, err = reader.Int32(); err != nil {
+		if player.Score, err = decoder.Int32(); err != nil {
 			return nil, errors.Join(ErrPlayerScore, err)
 		}
 
-		if player.Duration, err = reader.Duration32(); err != nil {
+		var seconds float32
+		if seconds, err = decoder.Float32(); err != nil {
 			return nil, errors.Join(ErrPlayerDuration, err)
 		}
+		player.Duration = durationFromSeconds32(seconds)
 
 		players = append(players, player)
 	}
 
 	return players, nil
+}
+
+// durationFromSeconds32 converts the float32 seconds
+// used by A2S_PLAYER to a time.Duration
+// while preserving the protocol's fractional-second rounding.
+func durationFromSeconds32(seconds float32) time.Duration {
+	return time.Duration(math.Round(float64(seconds) * float64(time.Second)))
 }

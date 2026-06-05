@@ -5,8 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
+
+// errInfoInvalidBoolean identifies a malformed A2S boolean field.
+var errInfoInvalidBoolean = errors.New("A2S_INFO: boolean field must be 0 or 1")
 
 // Info contains parsed A2S_INFO response data.
 //
@@ -109,17 +112,17 @@ func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
 
 // parseInfo parses an A2S_INFO payload without taking ownership of its buffer.
 func parseInfo(data []byte, format Flag, duration time.Duration) (*Info, error) {
-	reader := bread.NewReader(data)
+	decoder := wire.NewDecoder(data)
 	info := &Info{Ping: duration, Format: InfoFormat(format)}
 
 	switch format {
 	case infoResponseSource:
-		if err := info.readSourceInfo(reader); err != nil {
+		if err := info.readSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoSourceResponse, err)
 		}
 
 	case infoResponseGoldSource:
-		if err := info.readGoldSourceInfo(reader); err != nil {
+		if err := info.readGoldSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoGoldSourceResponse, err)
 		}
 
@@ -128,4 +131,23 @@ func parseInfo(data []byte, format Flag, duration time.Duration) (*Info, error) 
 	}
 
 	return info, nil
+}
+
+// readInfoBool decodes the strict boolean representation used by A2S_INFO.
+func readInfoBool(decoder *wire.Decoder) (bool, error) {
+	value, err := decoder.Byte()
+	if err != nil {
+		return false, err
+	}
+
+	switch value {
+	case 0:
+		return false, nil
+
+	case 1:
+		return true, nil
+
+	default:
+		return false, errInfoInvalidBoolean
+	}
 }

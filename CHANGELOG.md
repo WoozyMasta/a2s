@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning][].
 
 ### Changed
 
+* `a2s` and `a3sb` replace the legacy binary reader with a shared,
+  bounds-checked wire decoder across protocol parsers,
+  preserving malformed packet handling and improving parser performance
 * `a2s` uses an 8192-byte default UDP receive buffer
   shared by A2S and A3SB queries without mutating client configuration
 * `a2s` query methods accept `context.Context` for cancellation

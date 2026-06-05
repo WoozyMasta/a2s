@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/a2srules"
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
@@ -291,8 +291,9 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 		return a3sbEnvelope{}, err
 	}
 
+	// assemblePages returns an owned buffer, so escape decoding can reuse it.
 	return a3sbEnvelope{
-		encodedPages: bread.AppendEscapeSequences(nil, encodedPages),
+		encodedPages: appendEscapeSequences(nil, encodedPages),
 		extraRules:   rawRules,
 		pageCount:    pageCount,
 		blankCount:   blankCount,
@@ -369,58 +370,56 @@ func assemblePages(pages map[byte][]byte, pageCount byte) ([]byte, error) {
 
 // readA3SB parses Arma 3 Server Browser Protocol data.
 func (r *Rules) readA3SB(data []byte) error {
-	reader := bread.NewReader(data)
+	decoder := wire.NewDecoder(data)
 	var err error
 
-	if err := r.readVersion(reader); err != nil {
+	if err := r.readVersion(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrVersion, err)
 	}
 
-	if err := r.readFlags(reader); err != nil {
+	if err := r.readFlags(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrFlags, err)
 	}
 
-	dlcMask, err := reader.Uint16()
+	dlcMask, err := decoder.Uint16()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDLC, err)
 	}
 
-	if err := r.readDifficulty(reader); err != nil {
+	if err := r.readDifficulty(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrDifficulty, err)
 	}
 
 	if dlcMask != 0 {
-		if err := r.readDLC(reader, dlcMask); err != nil {
+		if err := r.readDLC(&decoder, dlcMask); err != nil {
 			return fmt.Errorf("%w: %w", ErrDLC, err)
 		}
 	}
 
-	if err := r.readMods(reader); err != nil {
+	if err := r.readMods(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrMod, err)
 	}
 
-	if err := r.readSignatures(reader); err != nil {
+	if err := r.readSignatures(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrSignature, err)
 	}
 
 	// Arma 3 ends after signatures; remaining bytes identify the DayZ suffix.
-	if reader.Len() == 0 {
+	if decoder.Empty() {
 		return nil
 	}
 
 	// DayZ-specific: server description
-	descLen, err := reader.Byte()
+	descLen, err := decoder.Byte()
 	if err != nil {
 		return fmt.Errorf("%w length: %w", ErrDescription, err)
 	}
-	if r.Description, err = reader.StringLen(int(descLen)); err != nil {
+	if r.Description, err = decoder.FixedString(int(descLen)); err != nil {
 		return fmt.Errorf("%w: %w", ErrDescription, err)
 	}
 
-	if reader.Len() > 0 {
-		// Get remaining bytes for error message
-		pos := reader.Pos()
-		remaining := data[pos:]
+	if !decoder.Empty() {
+		remaining := decoder.Tail()
 		return fmt.Errorf("%w: 0x%X (%s)", ErrRulesDataRemains, remaining, remaining)
 	}
 

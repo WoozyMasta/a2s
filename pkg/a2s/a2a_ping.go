@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // GetPing queries server ping (A2A_PING) and returns complete query latency.
@@ -16,10 +16,19 @@ func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
 		return 0, err
 	}
 
-	reader := bread.NewReader(data)
-	if _, err := reader.String(); err != nil {
-		return duration, fmt.Errorf("%w payload: %w", ErrPingRead, err)
+	if err := parsePing(data); err != nil {
+		return duration, err
 	}
 
 	return duration, nil
+}
+
+// parsePing validates the payload of an A2A_PING response.
+func parsePing(data []byte) error {
+	decoder := wire.NewDecoder(data)
+	if _, err := decoder.CString(); err != nil {
+		return fmt.Errorf("%w payload: %w", ErrPingRead, err)
+	}
+
+	return nil
 }
