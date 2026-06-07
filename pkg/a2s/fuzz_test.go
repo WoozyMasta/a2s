@@ -14,7 +14,7 @@ func FuzzParseChallenge(f *testing.F) {
 }
 
 func FuzzParseChallengeResponse(f *testing.F) {
-	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(challengeResponse), 0x78, 0x56, 0x34, 0x12})
+	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(ResponseChallenge), 0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = parseChallengeResponse(data)
 	})
@@ -23,14 +23,14 @@ func FuzzParseChallengeResponse(f *testing.F) {
 func FuzzParseInfoSource(f *testing.F) {
 	f.Add([]byte{17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, infoResponseSource, 0)
+		_, _ = parseInfo(data, ResponseInfo, 0)
 	})
 }
 
 func FuzzParseInfoGoldSource(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, infoResponseGoldSource, 0)
+		_, _ = parseInfo(data, ResponseInfoGoldSource, 0)
 	})
 }
 
@@ -59,7 +59,7 @@ func FuzzParseRules(f *testing.F) {
 }
 
 func FuzzParsePacketHeaders(f *testing.F) {
-	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(playerResponse)})
+	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(ResponsePlayers)})
 	f.Add([]byte{0xfe, 0xff, 0xff, 0xff, 1, 0, 0, 0, 1})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = isMultiPacket(data)
@@ -83,7 +83,7 @@ func FuzzCreateHeader(f *testing.F) {
 	f.Add(byte(InfoRequest), uint32(singlePacket))
 	f.Add(byte(RulesRequest), uint32(0x12345678))
 	f.Fuzz(func(t *testing.T, request byte, challenge uint32) {
-		_, _ = createHeader(Flag(request), challenge)
+		_, _ = createHeader(QueryType(request), challenge)
 	})
 }
 

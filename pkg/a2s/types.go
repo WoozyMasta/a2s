@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 )
 
-// Flag represents request/response type byte in A2S protocol header.
-type Flag byte
+// QueryType identifies an A2S request type byte.
+type QueryType byte
+
+// ResponseType identifies an A2S response type byte.
+type ResponseType byte
 
 // EDF represents Extra Data Flag bits in A2S_INFO response.
 type EDF byte
@@ -15,10 +18,11 @@ type InfoFormat byte
 
 // String returns the human-readable engine name.
 func (i InfoFormat) String() string {
-	switch Flag(i) {
-	case infoResponseSource:
+	switch ResponseType(i) {
+	case ResponseInfo:
 		return "Source"
-	case infoResponseGoldSource:
+
+	case ResponseInfoGoldSource:
 		return "GoldSource"
 	}
 

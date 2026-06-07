@@ -223,7 +223,7 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 // Automatically handles challenge-response if server requires it.
 // Context covers complete query transaction, including retries,
 // challenge exchange, and split-packet assembly.
-func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.Duration, error) {
+func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, ResponseType, time.Duration, error) {
 	if c == nil {
 		return nil, 0, 0, ErrClientClosed
 	}
@@ -248,49 +248,50 @@ func (c *Client) Get(ctx context.Context, requestType Flag) ([]byte, Flag, time.
 	started := time.Now()
 
 	var (
-		lastUnexpectedErr  error
-		lastUnexpectedFlag Flag
+		lastUnexpectedErr      error
+		lastUnexpectedResponse ResponseType
 	)
 
 	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
-		resp, flag, err := c.requestWithChallenge(effectiveCtx, requestType)
+		resp, responseType, err := c.requestWithChallenge(effectiveCtx, requestType)
 		duration := time.Since(started)
 		if err != nil {
 			if lastUnexpectedErr != nil {
-				return nil, lastUnexpectedFlag, duration, errors.Join(lastUnexpectedErr, err)
+				return nil, lastUnexpectedResponse, duration, errors.Join(lastUnexpectedErr, err)
 			}
 
-			return nil, flag, duration, err
+			return nil, responseType, duration, err
 		}
 
 		// If response type is not valid, classify error as ErrQueryUnsupported and continue.
-		if err := validateResponseType(requestType, flag); err != nil {
+		if err := validateResponseType(requestType, responseType); err != nil {
 			classified := err
 			switch {
-			case flag == challengeResponse:
+			case responseType == ResponseChallenge:
 				classified = errors.Join(err, ErrChallengeLoop)
 
-			case requestType != InfoRequest && (flag == infoResponseSource || flag == infoResponseGoldSource):
+			case requestType != InfoRequest &&
+				(responseType == ResponseInfo || responseType == ResponseInfoGoldSource):
 				classified = errors.Join(err, ErrQueryUnsupported)
 			}
 
 			if requestType != InfoRequest &&
-				(flag == challengeResponse ||
-					flag == infoResponseSource ||
-					flag == infoResponseGoldSource) {
+				(responseType == ResponseChallenge ||
+					responseType == ResponseInfo ||
+					responseType == ResponseInfoGoldSource) {
 				lastUnexpectedErr = classified
-				lastUnexpectedFlag = flag
+				lastUnexpectedResponse = responseType
 				continue
 			}
 
-			return resp[5:], flag, duration, classified
+			return resp[5:], responseType, duration, classified
 		}
 
-		return resp[5:], flag, duration, nil
+		return resp[5:], responseType, duration, nil
 	}
 
 	if lastUnexpectedErr != nil {
-		return nil, lastUnexpectedFlag, time.Since(started), lastUnexpectedErr
+		return nil, lastUnexpectedResponse, time.Since(started), lastUnexpectedErr
 	}
 
 	return nil, 0, time.Since(started), validationErrForRequest(requestType)
@@ -333,7 +334,7 @@ func (c *Client) releaseQuery() {
 // including its bounded challenge exchange.
 // ChallengeRequest returns its challenge
 // as the final response and must never enter this exchange.
-func (c *Client) requestWithChallenge(ctx context.Context, requestType Flag) ([]byte, Flag, error) {
+func (c *Client) requestWithChallenge(ctx context.Context, requestType QueryType) ([]byte, ResponseType, error) {
 	challenge := singlePacket
 
 	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
@@ -342,22 +343,22 @@ func (c *Client) requestWithChallenge(ctx context.Context, requestType Flag) ([]
 			return nil, 0, err
 		}
 
-		flag := Flag(resp[4])
-		if flag != challengeResponse || requestType == ChallengeRequest || requestType == PingRequest {
-			return resp, flag, nil
+		responseType := ResponseType(resp[4])
+		if responseType != ResponseChallenge || requestType == ChallengeRequest || requestType == PingRequest {
+			return resp, responseType, nil
 		}
 
 		if attempt == maxChallengeResponses-1 {
-			return resp, challengeResponse, ErrChallengeLoop
+			return resp, ResponseChallenge, ErrChallengeLoop
 		}
 
 		challenge, err = parseChallengeResponse(resp)
 		if err != nil {
-			return resp, challengeResponse, err
+			return resp, ResponseChallenge, err
 		}
 	}
 
-	return nil, challengeResponse, ErrChallengeLoop
+	return nil, ResponseChallenge, ErrChallengeLoop
 }
 
 // parseChallengeResponse reads a challenge from a complete A2S response.
@@ -375,7 +376,7 @@ func parseChallengeResponse(data []byte) (uint32, error) {
 }
 
 // validationErrForRequest returns an error for an unsupported request type.
-func validationErrForRequest(requestType Flag) error {
+func validationErrForRequest(requestType QueryType) error {
 	switch requestType {
 	case InfoRequest:
 		return ErrValidatorInfo
@@ -399,7 +400,7 @@ func validationErrForRequest(requestType Flag) error {
 
 // request creates header, sends request and returns a complete response.
 // Handles multi-packet responses by collecting and assembling packets.
-func (c *Client) request(ctx context.Context, requestType Flag, challenge uint32) ([]byte, error) {
+func (c *Client) request(ctx context.Context, requestType QueryType, challenge uint32) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

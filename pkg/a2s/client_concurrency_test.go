@@ -39,7 +39,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 				return
 			}
 
-			if n < 5 || Flag(buffer[4]) != PingRequest {
+			if n < 5 || QueryType(buffer[4]) != PingRequest {
 				serverErr <- ErrWrongRequest
 				return
 			}
@@ -58,7 +58,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 				defer atomic.AddInt32(&active, -1)
 
 				time.Sleep(25 * time.Millisecond)
-				if _, err := server.WriteToUDP(singlePacketFixture(pingResponse, nil), address); err != nil {
+				if _, err := server.WriteToUDP(singlePacketFixture(ResponsePing, nil), address); err != nil {
 					serverErr <- err
 				}
 			}(address)

@@ -35,7 +35,7 @@ func TestParseInfo(t *testing.T) {
 	body = append(body, "1.0"...)
 	body = append(body, 0, 0)
 
-	info, err := parseInfo(body, infoResponseSource, 25*time.Millisecond)
+	info, err := parseInfo(body, ResponseInfo, 25*time.Millisecond)
 	if err != nil {
 		t.Fatalf("parseInfo returned error: %v", err)
 	}

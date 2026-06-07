@@ -23,7 +23,7 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || Flag(buffer[4]) != RulesRequest {
+		if n != 9 || QueryType(buffer[4]) != RulesRequest {
 			serverErr <- ErrWrongRequest
 			return
 		}
@@ -31,7 +31,7 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 		time.Sleep(30 * time.Millisecond)
 		challenge := make([]byte, 4)
 		binary.LittleEndian.PutUint32(challenge, 0x12345678)
-		if _, err := server.WriteToUDP(singlePacketFixture(challengeResponse, challenge), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, challenge), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -41,13 +41,13 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || Flag(buffer[4]) != RulesRequest {
+		if n != 9 || QueryType(buffer[4]) != RulesRequest {
 			serverErr <- ErrWrongRequest
 			return
 		}
 
 		time.Sleep(30 * time.Millisecond)
-		_, err = server.WriteToUDP(singlePacketFixture(rulesResponse, []byte("rules")), address)
+		_, err = server.WriteToUDP(singlePacketFixture(ResponseRules, []byte("rules")), address)
 		serverErr <- err
 	}()
 
@@ -61,8 +61,8 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	if flag != ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
 	}
 	if duration < 50*time.Millisecond {
 		t.Fatalf("query duration = %s, want challenge exchange included", duration)
@@ -79,7 +79,7 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	}
 	defer server.Close()
 
-	assembled := singlePacketFixture(rulesResponse, []byte("split timing"))
+	assembled := singlePacketFixture(ResponseRules, []byte("split timing"))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, len(assembled)-1)
 	if len(packets) != 2 {
 		t.Fatalf("split fixture packet count = %d, want 2", len(packets))
@@ -113,8 +113,8 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse || string(data) != "split timing" {
-		t.Fatalf("response = (%q, 0x%X), want (split timing, 0x%X)", data, flag, rulesResponse)
+	if flag != ResponseRules || string(data) != "split timing" {
+		t.Fatalf("response = (%q, 0x%X), want (split timing, 0x%X)", data, flag, ResponseRules)
 	}
 	if duration < 25*time.Millisecond {
 		t.Fatalf("query duration = %s, want split assembly included", duration)

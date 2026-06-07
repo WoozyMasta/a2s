@@ -13,7 +13,7 @@ func TestProtocolFixtureCorpusRequests(t *testing.T) {
 	tests := []struct {
 		name      string
 		fixture   string
-		request   Flag
+		request   QueryType
 		challenge uint32
 	}{
 		{name: "info", fixture: "request_info.hex", request: InfoRequest, challenge: singlePacket},
@@ -40,7 +40,7 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	t.Run("source info", func(t *testing.T) {
 		info, err := parseInfo(
 			readProtocolFixture(t, "source_info_payload.hex"),
-			infoResponseSource,
+			ResponseInfo,
 			25*time.Millisecond,
 		)
 		if err != nil {
@@ -54,7 +54,7 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	t.Run("goldsource info", func(t *testing.T) {
 		info, err := parseInfo(
 			readProtocolFixture(t, "goldsource_info_payload.hex"),
-			infoResponseGoldSource,
+			ResponseInfoGoldSource,
 			0,
 		)
 		if err != nil {

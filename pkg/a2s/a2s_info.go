@@ -111,17 +111,17 @@ func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
 }
 
 // parseInfo parses an A2S_INFO payload without taking ownership of its buffer.
-func parseInfo(data []byte, format Flag, duration time.Duration) (*Info, error) {
+func parseInfo(data []byte, format ResponseType, duration time.Duration) (*Info, error) {
 	decoder := wire.NewDecoder(data)
 	info := &Info{Ping: duration, Format: InfoFormat(format)}
 
 	switch format {
-	case infoResponseSource:
+	case ResponseInfo:
 		if err := info.readSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoSourceResponse, err)
 		}
 
-	case infoResponseGoldSource:
+	case ResponseInfoGoldSource:
 		if err := info.readGoldSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoGoldSourceResponse, err)
 		}

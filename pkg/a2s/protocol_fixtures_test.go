@@ -64,7 +64,7 @@ func (f *udpPacketFixture) Addr() *net.UDPAddr {
 	}
 }
 
-func singlePacketFixture(response Flag, payload []byte) []byte {
+func singlePacketFixture(response ResponseType, payload []byte) []byte {
 	packet := make([]byte, 5+len(payload))
 	binary.LittleEndian.PutUint32(packet[:4], singlePacket)
 	packet[4] = byte(response)
@@ -100,7 +100,7 @@ func sourceSplitPacketSequence(id uint32, payload []byte, chunkSize int) [][]byt
 }
 
 func TestSinglePacketFixture(t *testing.T) {
-	packet := singlePacketFixture(playerResponse, []byte{0x01, 0x02})
+	packet := singlePacketFixture(ResponsePlayers, []byte{0x01, 0x02})
 
 	multi, err := isMultiPacket(packet)
 	if err != nil {
@@ -109,13 +109,13 @@ func TestSinglePacketFixture(t *testing.T) {
 	if multi {
 		t.Fatal("single packet fixture classified as split packet")
 	}
-	if got, want := packet[4], byte(playerResponse); got != want {
+	if got, want := packet[4], byte(ResponsePlayers); got != want {
 		t.Fatalf("response type = 0x%X, want 0x%X", got, want)
 	}
 }
 
 func TestSourceSplitPacketFixture(t *testing.T) {
-	assembled := singlePacketFixture(rulesResponse, []byte("split fixture"))
+	assembled := singlePacketFixture(ResponseRules, []byte("split fixture"))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 4)
 	if len(packets) != 5 {
 		t.Fatalf("packet count = %d, want 5", len(packets))
@@ -137,7 +137,7 @@ func TestSourceSplitPacketFixture(t *testing.T) {
 }
 
 func TestPacketFixtureUDPFeed(t *testing.T) {
-	packet := singlePacketFixture(infoResponseSource, []byte("fixture"))
+	packet := singlePacketFixture(ResponseInfo, []byte("fixture"))
 	fixture := newUDPPacketFixture(t, packet)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -150,8 +150,8 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != infoResponseSource {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, infoResponseSource)
+	if flag != ResponseInfo {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseInfo)
 	}
 	if string(data) != "fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "fixture")
@@ -159,7 +159,7 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 }
 
 func TestSplitPacketFixtureUDPFeed(t *testing.T) {
-	assembled := singlePacketFixture(rulesResponse, []byte("split fixture"))
+	assembled := singlePacketFixture(ResponseRules, []byte("split fixture"))
 	fixture := newUDPPacketFixture(t, sourceSplitPacketSequence(0x1AFEBABE, assembled, 3)...)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -172,8 +172,8 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	if flag != ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
 	}
 	if string(data) != "split fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "split fixture")
@@ -181,7 +181,7 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 }
 
 func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
-	assembled := singlePacketFixture(rulesResponse, []byte("reordered split fixture"))
+	assembled := singlePacketFixture(ResponseRules, []byte("reordered split fixture"))
 	packets := sourceSplitPacketSequence(0x1AFEBABE, assembled, 3)
 	reordered := append(append([][]byte{}, packets[1:]...), packets[0])
 	fixture := newUDPPacketFixture(t, reordered...)
@@ -196,8 +196,8 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	if flag != ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
 	}
 	if string(data) != "reordered split fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "reordered split fixture")
@@ -205,7 +205,7 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 }
 
 func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
-	assembled := append(singlePacketFixture(rulesResponse, []byte("compressed split fixture:")),
+	assembled := append(singlePacketFixture(ResponseRules, []byte("compressed split fixture:")),
 		bytes.Repeat([]byte("0123456789abcdef"), 20)...)
 	compressed := []byte{
 		0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53, 0x59, 0xf3, 0x7d, 0x36, 0x5d,
@@ -241,8 +241,8 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	if flag != ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
 	}
 	if !bytes.Equal(data, assembled[5:]) {
 		t.Fatalf("response payload = %q, want %q", data, assembled[5:])
@@ -252,7 +252,7 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 	packets := sourceSplitPacketSequence(
 		0x12345678,
-		singlePacketFixture(rulesResponse, []byte("invalid index")),
+		singlePacketFixture(ResponseRules, []byte("invalid index")),
 		3,
 	)
 	packets[0][9] = packets[0][8]
@@ -270,7 +270,7 @@ func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 }
 
 func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
-	assembled := singlePacketFixture(rulesResponse, []byte("inconsistent split fixture"))
+	assembled := singlePacketFixture(ResponseRules, []byte("inconsistent split fixture"))
 	first := sourceSplitPacketSequence(0x12345678, assembled, 8)
 	second := sourceSplitPacketSequence(0x12345678, assembled, 3)
 	fixture := newUDPPacketFixture(t, first[0], second[1])
@@ -289,7 +289,7 @@ func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
 func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
 	packets := sourceSplitPacketSequence(
 		0x12345678,
-		singlePacketFixture(rulesResponse, []byte("duplicate split fixture")),
+		singlePacketFixture(ResponseRules, []byte("duplicate split fixture")),
 		3,
 	)
 	duplicate := append([]byte(nil), packets[0]...)
@@ -357,7 +357,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 	}
 
 	t.Run("raw", func(t *testing.T) {
-		fixture := newUDPPacketFixture(t, singlePacketFixture(rulesResponse, payload))
+		fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, payload))
 		client, err := NewWithAddr(fixture.Addr())
 		if err != nil {
 			t.Fatalf("create client: %v", err)
@@ -382,7 +382,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 	})
 
 	t.Run("parsed", func(t *testing.T) {
-		fixture := newUDPPacketFixture(t, singlePacketFixture(rulesResponse, payload))
+		fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, payload))
 		client, err := NewWithAddr(fixture.Addr())
 		if err != nil {
 			t.Fatalf("create client: %v", err)
@@ -432,7 +432,7 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 		t.Run(strconv.Itoa(length), func(t *testing.T) {
 			packet := make([]byte, length)
 			binary.LittleEndian.PutUint32(packet[:4], singlePacket)
-			packet[4] = byte(challengeResponse)
+			packet[4] = byte(ResponseChallenge)
 			fixture := newUDPPacketFixture(t, packet)
 
 			client, err := NewWithAddr(fixture.Addr())
@@ -456,8 +456,8 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 }
 
 func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
-	challenge := singlePacketFixture(challengeResponse, []byte{0x01, 0x02, 0x03, 0x04})
-	response := singlePacketFixture(rulesResponse, []byte("rules"))
+	challenge := singlePacketFixture(ResponseChallenge, []byte{0x01, 0x02, 0x03, 0x04})
+	response := singlePacketFixture(ResponseRules, []byte("rules"))
 	fixture := newUDPPacketFixture(t, challenge, response)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -470,8 +470,8 @@ func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, rulesResponse)
+	if flag != ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
 	}
 	if string(data) != "rules" {
 		t.Fatalf("response payload = %q, want %q", data, "rules")
@@ -488,7 +488,7 @@ func TestGetPlayersParsesSignedScores(t *testing.T) {
 		payload = binary.LittleEndian.AppendUint32(payload, math.Float32bits(1))
 	}
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(playerResponse, payload))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponsePlayers, payload))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)
@@ -521,7 +521,7 @@ func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
 	payload = binary.LittleEndian.AppendUint32(payload, 2)
 	payload = binary.LittleEndian.AppendUint32(payload, 3)
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(playerResponse, payload))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponsePlayers, payload))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)

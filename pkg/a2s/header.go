@@ -12,7 +12,7 @@ import (
 //   - RulesRequest     = 0x56
 //   - ChallengeRequest = 0x57 (DEPRECATED)
 //   - PingRequest      = 0x69 (DEPRECATED)
-func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
+func createHeader(requestType QueryType, challenge uint32) ([]byte, error) {
 	var req []byte
 	payloadLen := len(infoPayload)
 

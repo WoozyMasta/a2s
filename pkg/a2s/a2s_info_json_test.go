@@ -27,7 +27,7 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	body = append(body, 0)
 	body = binary.LittleEndian.AppendUint64(body, 107410)
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(infoResponseSource, body))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseInfo, body))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)

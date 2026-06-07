@@ -17,7 +17,7 @@ func BenchmarkParseInfoSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parseInfo(data, infoResponseSource, 25*time.Millisecond); err != nil {
+		if _, err := parseInfo(data, ResponseInfo, 25*time.Millisecond); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -29,7 +29,7 @@ func BenchmarkParseInfoGoldSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parseInfo(data, infoResponseGoldSource, 25*time.Millisecond); err != nil {
+		if _, err := parseInfo(data, ResponseInfoGoldSource, 25*time.Millisecond); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -60,7 +60,7 @@ func BenchmarkParseRulesFixture(b *testing.B) {
 }
 
 func BenchmarkParseSplitHeadersFixture(b *testing.B) {
-	assembled := singlePacketFixture(rulesResponse, bytes.Repeat([]byte("rules"), 256))
+	assembled := singlePacketFixture(ResponseRules, bytes.Repeat([]byte("rules"), 256))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 128)
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -75,7 +75,7 @@ func BenchmarkParseSplitHeadersFixture(b *testing.B) {
 }
 
 func BenchmarkGetSplitFixture(b *testing.B) {
-	assembled := singlePacketFixture(rulesResponse, bytes.Repeat([]byte("rules"), 256))
+	assembled := singlePacketFixture(ResponseRules, bytes.Repeat([]byte("rules"), 256))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 128)
 	server := newBenchmarkUDPServer(b, packets)
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Second))
@@ -96,7 +96,7 @@ func BenchmarkGetSplitFixture(b *testing.B) {
 
 func BenchmarkDecompressSplitFixture(b *testing.B) {
 	assembled := append(
-		singlePacketFixture(rulesResponse, []byte("compressed split fixture:")),
+		singlePacketFixture(ResponseRules, []byte("compressed split fixture:")),
 		bytes.Repeat([]byte("0123456789abcdef"), 20)...,
 	)
 	compressed := benchmarkCompressedPayload()

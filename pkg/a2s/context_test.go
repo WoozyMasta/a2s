@@ -24,13 +24,13 @@ func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || Flag(buffer[4]) != RulesRequest {
+		if n != 9 || QueryType(buffer[4]) != RulesRequest {
 			serverErr <- ErrWrongRequest
 			return
 		}
 
 		challenge := []byte{1, 2, 3, 4}
-		if _, err := server.WriteToUDP(singlePacketFixture(challengeResponse, challenge), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, challenge), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -94,14 +94,14 @@ func TestGetContextDeadlineCoversQueryQueue(t *testing.T) {
 			return
 		}
 
-		if n < 5 || Flag(buffer[4]) != PingRequest {
+		if n < 5 || QueryType(buffer[4]) != PingRequest {
 			serverErr <- ErrWrongRequest
 			return
 		}
 
 		close(firstRequest)
 		<-releaseFirst
-		_, err = server.WriteToUDP(singlePacketFixture(pingResponse, nil), address)
+		_, err = server.WriteToUDP(singlePacketFixture(ResponsePing, nil), address)
 		serverErr <- err
 	}()
 

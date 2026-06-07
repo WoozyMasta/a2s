@@ -24,14 +24,14 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 5 || Flag(buffer[4]) != ChallengeRequest {
+		if n != 5 || QueryType(buffer[4]) != ChallengeRequest {
 			serverErr <- errors.New("unexpected challenge request")
 			return
 		}
 
 		payload := make([]byte, 4)
 		binary.LittleEndian.PutUint32(payload, 0x12345678)
-		_, err = server.WriteToUDP(singlePacketFixture(challengeResponse, payload), address)
+		_, err = server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address)
 		serverErr <- err
 	}()
 
@@ -69,7 +69,7 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || Flag(buffer[4]) != RulesRequest {
+		if n != 9 || QueryType(buffer[4]) != RulesRequest {
 			serverErr <- errors.New("unexpected initial rules request")
 			return
 		}
@@ -77,7 +77,7 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 		challenge := uint32(0x12345678)
 		payload := make([]byte, 4)
 		binary.LittleEndian.PutUint32(payload, challenge)
-		if _, err := server.WriteToUDP(singlePacketFixture(challengeResponse, payload), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -87,7 +87,7 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || Flag(buffer[4]) != RulesRequest {
+		if n != 9 || QueryType(buffer[4]) != RulesRequest {
 			serverErr <- errors.New("unexpected challenged rules request")
 			return
 		}
@@ -96,7 +96,7 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 			return
 		}
 
-		_, err = server.WriteToUDP(singlePacketFixture(rulesResponse, []byte("rules")), address)
+		_, err = server.WriteToUDP(singlePacketFixture(ResponseRules, []byte("rules")), address)
 		serverErr <- err
 	}()
 
@@ -110,8 +110,8 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != rulesResponse || string(data) != "rules" {
-		t.Fatalf("response = (%q, 0x%X), want (rules, 0x%X)", data, flag, rulesResponse)
+	if flag != ResponseRules || string(data) != "rules" {
+		t.Fatalf("response = (%q, 0x%X), want (rules, 0x%X)", data, flag, ResponseRules)
 	}
 
 	if err := <-serverErr; err != nil {
@@ -137,11 +137,11 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 				serverErr <- err
 				return
 			}
-			if n != 9 || Flag(buffer[4]) != RulesRequest {
+			if n != 9 || QueryType(buffer[4]) != RulesRequest {
 				serverErr <- errors.New("unexpected rules request")
 				return
 			}
-			if _, err := server.WriteToUDP(singlePacketFixture(challengeResponse, payload), address); err != nil {
+			if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address); err != nil {
 				serverErr <- err
 				return
 			}
@@ -159,8 +159,8 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	if !errors.Is(err, ErrChallengeLoop) {
 		t.Fatalf("Get error = %v, want ErrChallengeLoop", err)
 	}
-	if flag != challengeResponse {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, challengeResponse)
+	if flag != ResponseChallenge {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseChallenge)
 	}
 
 	if err := <-serverErr; err != nil {

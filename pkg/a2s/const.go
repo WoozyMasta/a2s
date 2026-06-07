@@ -19,11 +19,11 @@ const (
 	// A2S_INFO
 
 	// InfoRequest requests basic information about the server.
-	InfoRequest Flag = 0x54
-	// infoResponseGoldSource identifies an obsolete GoldSource response.
-	infoResponseGoldSource Flag = 0x6D
-	// infoResponseSource identifies a Source response.
-	infoResponseSource Flag = 0x49
+	InfoRequest QueryType = 0x54
+	// ResponseInfoGoldSource identifies an obsolete GoldSource response.
+	ResponseInfoGoldSource ResponseType = 0x6D
+	// ResponseInfo identifies a Source A2S_INFO response.
+	ResponseInfo ResponseType = 0x49
 	// infoPayload is the payload used by an A2S_INFO request.
 	infoPayload string = "Source Engine Query"
 
@@ -41,28 +41,28 @@ const (
 	// A2S_PLAYER
 
 	// PlayerRequest requests details about each player on the server.
-	PlayerRequest Flag = 0x55
-	// playerResponse identifies an A2S_PLAYER response.
-	playerResponse Flag = 0x44
+	PlayerRequest QueryType = 0x55
+	// ResponsePlayers identifies an A2S_PLAYER response.
+	ResponsePlayers ResponseType = 0x44
 
 	// A2S_RULES
 
 	// RulesRequest requests the rules used by the server.
-	RulesRequest Flag = 0x56
-	// rulesResponse identifies an A2S_RULES response.
-	rulesResponse Flag = 0x45
+	RulesRequest QueryType = 0x56
+	// ResponseRules identifies an A2S_RULES response.
+	ResponseRules ResponseType = 0x45
 
 	// A2S_SERVERQUERY_GETCHALLENGE (DEPRECATED)
 
 	// ChallengeRequest requests a challenge for player and rules queries.
-	ChallengeRequest Flag = 0x57
-	// challengeResponse identifies an A2S challenge response.
-	challengeResponse Flag = 0x41
+	ChallengeRequest QueryType = 0x57
+	// ResponseChallenge identifies an A2S challenge response.
+	ResponseChallenge ResponseType = 0x41
 
 	// A2A_PING (DEPRECATED)
 
 	// PingRequest requests a legacy A2A_PING response.
-	PingRequest Flag = 0x69
-	// pingResponse identifies an A2A_PING response.
-	pingResponse Flag = 0x6A
+	PingRequest QueryType = 0x69
+	// ResponsePing identifies an A2A_PING response.
+	ResponsePing ResponseType = 0x6A
 )

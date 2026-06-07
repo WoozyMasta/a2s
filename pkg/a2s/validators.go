@@ -34,30 +34,30 @@ func isMultiPacket(data []byte) (bool, error) {
 }
 
 // validateResponseType verifies response type matches the request type.
-func validateResponseType(request, response Flag) error {
+func validateResponseType(request QueryType, response ResponseType) error {
 	switch request {
 	case InfoRequest:
-		if response != infoResponseSource && response != infoResponseGoldSource {
+		if response != ResponseInfo && response != ResponseInfoGoldSource {
 			return errors.Join(ErrValidatorInfo, fmt.Errorf("0x%X", response))
 		}
 
 	case PlayerRequest:
-		if response != playerResponse {
+		if response != ResponsePlayers {
 			return errors.Join(ErrValidatorPlayer, fmt.Errorf("0x%X", response))
 		}
 
 	case RulesRequest:
-		if response != rulesResponse {
+		if response != ResponseRules {
 			return errors.Join(ErrValidatorRules, fmt.Errorf("0x%X", response))
 		}
 
 	case PingRequest:
-		if response != pingResponse {
+		if response != ResponsePing {
 			return errors.Join(ErrValidatorPing, fmt.Errorf("0x%X", response))
 		}
 
 	case ChallengeRequest:
-		if response != challengeResponse {
+		if response != ResponseChallenge {
 			return errors.Join(ErrValidatorChallenge, fmt.Errorf("0x%X", response))
 		}
 
