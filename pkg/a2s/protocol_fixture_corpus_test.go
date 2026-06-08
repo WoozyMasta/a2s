@@ -14,12 +14,32 @@ func TestProtocolFixtureCorpusRequests(t *testing.T) {
 		name      string
 		fixture   string
 		request   QueryType
-		challenge uint32
+		challenge Challenge
 	}{
-		{name: "info", fixture: "request_info.hex", request: InfoRequest, challenge: singlePacket},
-		{name: "challenge", fixture: "request_challenge.hex", request: ChallengeRequest, challenge: singlePacket},
-		{name: "players", fixture: "request_players_challenge.hex", request: PlayerRequest, challenge: 0x12345678},
-		{name: "rules", fixture: "request_rules_challenge.hex", request: RulesRequest, challenge: 0x12345678},
+		{
+			name:      "info",
+			fixture:   "request_info.hex",
+			request:   InfoRequest,
+			challenge: InitialChallenge,
+		},
+		{
+			name:      "challenge",
+			fixture:   "request_challenge.hex",
+			request:   ChallengeRequest,
+			challenge: InitialChallenge,
+		},
+		{
+			name:      "players",
+			fixture:   "request_players_challenge.hex",
+			request:   PlayerRequest,
+			challenge: Challenge{0x78, 0x56, 0x34, 0x12},
+		},
+		{
+			name:      "rules",
+			fixture:   "request_rules_challenge.hex",
+			request:   RulesRequest,
+			challenge: Challenge{0x78, 0x56, 0x34, 0x12},
+		},
 	}
 
 	for _, test := range tests {
@@ -91,8 +111,9 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseChallenge() error = %v", err)
 		}
-		if challenge != 0x12345678 {
-			t.Fatalf("challenge = 0x%X, want 0x12345678", challenge)
+		want := Challenge{0x78, 0x56, 0x34, 0x12}
+		if challenge != want {
+			t.Fatalf("challenge = %X, want %X", challenge, want)
 		}
 	})
 }

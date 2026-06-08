@@ -7,25 +7,29 @@ import (
 	"github.com/woozymasta/a2s/internal/wire"
 )
 
-// GetChallenge queries challenge number (A2S_SERVERQUERY_GETCHALLENGE).
+// GetChallenge queries an opaque challenge token
+// (A2S_SERVERQUERY_GETCHALLENGE).
 //
 // Deprecated: challenge is handled automatically by Get() method.
-func (c *Client) GetChallenge(ctx context.Context) (uint32, error) {
+func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
 	data, _, _, err := c.Get(ctx, ChallengeRequest)
 	if err != nil {
-		return 0, err
+		return Challenge{}, err
 	}
 
 	return parseChallenge(data)
 }
 
-// parseChallenge parses the four-byte little-endian challenge payload.
-func parseChallenge(data []byte) (uint32, error) {
+// parseChallenge parses the four-byte challenge payload without reordering it.
+func parseChallenge(data []byte) (Challenge, error) {
 	decoder := wire.NewDecoder(data)
-	challenge, err := decoder.Uint32()
+	value, err := decoder.Bytes(len(Challenge{}))
 	if err != nil {
-		return 0, errors.Join(ErrChallengeValue, err)
+		return Challenge{}, errors.Join(ErrChallengeValue, err)
 	}
+
+	var challenge Challenge
+	copy(challenge[:], value)
 
 	return challenge, nil
 }

@@ -10,6 +10,13 @@ type QueryType byte
 // ResponseType identifies an A2S response type byte.
 type ResponseType byte
 
+// Challenge is the opaque four-byte token used by A2S challenge exchanges.
+// Its byte order is preserved exactly as received from or sent to the server.
+type Challenge [4]byte
+
+// InitialChallenge is the reserved token used to start a challenge-aware query.
+var InitialChallenge = Challenge{0xFF, 0xFF, 0xFF, 0xFF}
+
 // EDF represents Extra Data Flag bits in A2S_INFO response.
 type EDF byte
 

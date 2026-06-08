@@ -1,7 +1,7 @@
 package a2s
 
 import (
-	"encoding/binary"
+	"bytes"
 	"hash/crc32"
 	"testing"
 )
@@ -80,21 +80,27 @@ func FuzzDecompressBzip2(f *testing.F) {
 }
 
 func FuzzCreateHeader(f *testing.F) {
-	f.Add(byte(InfoRequest), uint32(singlePacket))
-	f.Add(byte(RulesRequest), uint32(0x12345678))
-	f.Fuzz(func(t *testing.T, request byte, challenge uint32) {
+	f.Add(byte(InfoRequest), []byte{0xff, 0xff, 0xff, 0xff})
+	f.Add(byte(RulesRequest), []byte{0x78, 0x56, 0x34, 0x12})
+	f.Fuzz(func(t *testing.T, request byte, challengeData []byte) {
+		var challenge Challenge
+		copy(challenge[:], challengeData)
 		_, _ = createHeader(QueryType(request), challenge)
 	})
 }
 
 func FuzzBinaryChallengeRoundTrip(f *testing.F) {
-	f.Add(uint32(0x12345678))
-	f.Fuzz(func(t *testing.T, value uint32) {
-		data := make([]byte, 4)
-		binary.LittleEndian.PutUint32(data, value)
+	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
+	f.Fuzz(func(t *testing.T, data []byte) {
 		got, err := parseChallenge(data)
-		if err != nil || got != value {
-			t.Fatalf("challenge round-trip = (%d, %v), want %d", got, err, value)
+		if len(data) != len(Challenge{}) {
+			if err == nil {
+				t.Fatalf("parseChallenge(%X) returned nil error", data)
+			}
+			return
+		}
+		if err != nil || !bytes.Equal(got[:], data) {
+			t.Fatalf("challenge round-trip = (%X, %v), want %X", got, err, data)
 		}
 	})
 }

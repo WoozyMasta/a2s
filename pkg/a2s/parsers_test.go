@@ -1,6 +1,7 @@
 package a2s
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"math"
@@ -15,8 +16,12 @@ func TestParseChallenge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseChallenge returned error: %v", err)
 	}
-	if got != 0x12345678 {
-		t.Fatalf("challenge = 0x%X, want 0x12345678", got)
+	want := Challenge{0x78, 0x56, 0x34, 0x12}
+	if got != want {
+		t.Fatalf("challenge = %X, want %X", got, want)
+	}
+	if !bytes.Equal(got[:], data) {
+		t.Fatalf("challenge bytes = %X, want %X", got, data)
 	}
 
 	if _, err := parseChallenge(data[:3]); !errors.Is(err, ErrChallengeValue) {

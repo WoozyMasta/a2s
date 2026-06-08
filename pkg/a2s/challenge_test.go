@@ -1,8 +1,8 @@
 package a2s
 
 import (
+	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"net"
 	"testing"
@@ -29,8 +29,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 			return
 		}
 
-		payload := make([]byte, 4)
-		binary.LittleEndian.PutUint32(payload, 0x12345678)
+		payload := []byte{0x78, 0x56, 0x34, 0x12}
 		_, err = server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address)
 		serverErr <- err
 	}()
@@ -45,8 +44,9 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetChallenge returned error: %v", err)
 	}
-	if got != 0x12345678 {
-		t.Fatalf("challenge = 0x%X, want 0x12345678", got)
+	want := Challenge{0x78, 0x56, 0x34, 0x12}
+	if got != want {
+		t.Fatalf("challenge = %X, want %X", got, want)
 	}
 
 	if err := <-serverErr; err != nil {
@@ -54,7 +54,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	}
 }
 
-func TestGetUsesLittleEndianChallenge(t *testing.T) {
+func TestGetPreservesChallengeBytes(t *testing.T) {
 	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
@@ -74,9 +74,8 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 			return
 		}
 
-		challenge := uint32(0x12345678)
-		payload := make([]byte, 4)
-		binary.LittleEndian.PutUint32(payload, challenge)
+		challenge := Challenge{0x78, 0x56, 0x34, 0x12}
+		payload := append([]byte(nil), challenge[:]...)
 		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address); err != nil {
 			serverErr <- err
 			return
@@ -91,8 +90,8 @@ func TestGetUsesLittleEndianChallenge(t *testing.T) {
 			serverErr <- errors.New("unexpected challenged rules request")
 			return
 		}
-		if got := binary.LittleEndian.Uint32(buffer[5:9]); got != challenge {
-			serverErr <- errors.New("challenge was not encoded as little-endian")
+		if !bytes.Equal(buffer[5:9], challenge[:]) {
+			serverErr <- errors.New("challenge bytes were not preserved")
 			return
 		}
 
@@ -129,8 +128,7 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	serverErr := make(chan error, 1)
 	go func() {
 		buffer := make([]byte, 64*1024)
-		payload := make([]byte, 4)
-		binary.LittleEndian.PutUint32(payload, 1)
+		payload := []byte{1, 0, 0, 0}
 		for i := 0; i < maxChallengeResponses; i++ {
 			n, address, err := server.ReadFromUDP(buffer)
 			if err != nil {

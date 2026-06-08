@@ -335,7 +335,7 @@ func (c *Client) releaseQuery() {
 // ChallengeRequest returns its challenge
 // as the final response and must never enter this exchange.
 func (c *Client) requestWithChallenge(ctx context.Context, requestType QueryType) ([]byte, ResponseType, error) {
-	challenge := singlePacket
+	challenge := InitialChallenge
 
 	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
 		resp, err := c.request(ctx, requestType, challenge)
@@ -362,9 +362,9 @@ func (c *Client) requestWithChallenge(ctx context.Context, requestType QueryType
 }
 
 // parseChallengeResponse reads a challenge from a complete A2S response.
-func parseChallengeResponse(data []byte) (uint32, error) {
+func parseChallengeResponse(data []byte) (Challenge, error) {
 	if len(data) < 9 {
-		return 0, fmt.Errorf(
+		return Challenge{}, fmt.Errorf(
 			"%w: %w (got %d bytes, want at least 9)",
 			ErrChallengeRead,
 			ErrInsufficientData,
@@ -372,7 +372,12 @@ func parseChallengeResponse(data []byte) (uint32, error) {
 		)
 	}
 
-	return binary.LittleEndian.Uint32(data[5:9]), nil
+	challenge, err := parseChallenge(data[5:])
+	if err != nil {
+		return Challenge{}, errors.Join(ErrChallengeRead, err)
+	}
+
+	return challenge, nil
 }
 
 // validationErrForRequest returns an error for an unsupported request type.
@@ -400,7 +405,7 @@ func validationErrForRequest(requestType QueryType) error {
 
 // request creates header, sends request and returns a complete response.
 // Handles multi-packet responses by collecting and assembling packets.
-func (c *Client) request(ctx context.Context, requestType QueryType, challenge uint32) ([]byte, error) {
+func (c *Client) request(ctx context.Context, requestType QueryType, challenge Challenge) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

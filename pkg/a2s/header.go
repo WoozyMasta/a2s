@@ -12,7 +12,7 @@ import (
 //   - RulesRequest     = 0x56
 //   - ChallengeRequest = 0x57 (DEPRECATED)
 //   - PingRequest      = 0x69 (DEPRECATED)
-func createHeader(requestType QueryType, challenge uint32) ([]byte, error) {
+func createHeader(requestType QueryType, challenge Challenge) ([]byte, error) {
 	var req []byte
 	payloadLen := len(infoPayload)
 
@@ -23,7 +23,7 @@ func createHeader(requestType QueryType, challenge uint32) ([]byte, error) {
 		// Pre-allocate with exact capacity:
 		// 4 (header) + 1 (type) + payload + 1 (null) + 4 (challenge, optional)
 		capacity := 4 + 1 + payloadLen + 1
-		if challenge != singlePacket {
+		if challenge != InitialChallenge {
 			capacity += 4
 		}
 		req = make([]byte, 0, capacity)
@@ -31,8 +31,8 @@ func createHeader(requestType QueryType, challenge uint32) ([]byte, error) {
 		req = append(req, byte(requestType))
 		req = append(req, []byte(infoPayload)...)
 		req = append(req, 0x00)
-		if challenge != singlePacket {
-			req = binary.LittleEndian.AppendUint32(req, challenge)
+		if challenge != InitialChallenge {
+			req = append(req, challenge[:]...)
 		}
 		return req, nil
 
@@ -41,7 +41,7 @@ func createHeader(requestType QueryType, challenge uint32) ([]byte, error) {
 		req = make([]byte, 0, 9)
 		req = binary.BigEndian.AppendUint32(req, singlePacket)
 		req = append(req, byte(requestType))
-		req = binary.LittleEndian.AppendUint32(req, challenge)
+		req = append(req, challenge[:]...)
 		return req, nil
 
 	case PingRequest, ChallengeRequest:
