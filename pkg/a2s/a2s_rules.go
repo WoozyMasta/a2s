@@ -10,9 +10,56 @@ import (
 	"github.com/woozymasta/a2s/internal/a2srules"
 )
 
+// Rule is one ordered A2S_RULES key/value pair.
+type Rule struct {
+	Name  string `json:"name" yaml:"name"`
+	Value string `json:"value" yaml:"value"`
+}
+
+// Rules preserves A2S_RULES entry order and duplicate names.
+type Rules []Rule
+
+// Get returns the last value for name, matching the old map representation.
+func (r Rules) Get(name string) (string, bool) {
+	for i := len(r) - 1; i >= 0; i-- {
+		if r[i].Name == name {
+			return r[i].Value, true
+		}
+	}
+
+	return "", false
+}
+
+// Values returns all values for name in wire order.
+func (r Rules) Values(name string) []string {
+	var values []string
+	for _, rule := range r {
+		if rule.Name == name {
+			values = append(values, rule.Value)
+		}
+	}
+
+	return values
+}
+
+// Map converts rules to a map using the last value for duplicate names.
+// The conversion loses entry order and duplicate values.
+func (r Rules) Map() map[string]string {
+	if len(r) == 0 {
+		return nil
+	}
+
+	rules := make(map[string]string, len(r))
+	for _, rule := range r {
+		rules[rule.Name] = rule.Value
+	}
+
+	return rules
+}
+
 // GetRules queries server rules (A2S_RULES).
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
-func (c *Client) GetRules(ctx context.Context) (map[string]string, error) {
+func (c *Client) GetRules(ctx context.Context) (Rules, error) {
 	data, _, _, err := c.Get(ctx, RulesRequest)
 	if err != nil {
 		return nil, err
@@ -21,8 +68,8 @@ func (c *Client) GetRules(ctx context.Context) (map[string]string, error) {
 	return parseRules(data)
 }
 
-// parseRules parses an A2S_RULES payload without copying its buffer.
-func parseRules(data []byte) (map[string]string, error) {
+// parseRules parses an A2S_RULES payload into ordered string entries.
+func parseRules(data []byte) (Rules, error) {
 	result, err := a2srules.Parse(data)
 	if err != nil {
 		switch {
@@ -43,12 +90,20 @@ func parseRules(data []byte) (map[string]string, error) {
 		}
 	}
 
-	return a2srules.Map(result.Entries), nil
+	rules := make(Rules, 0, len(result.Entries))
+	for _, entry := range result.Entries {
+		rules = append(rules, Rule{
+			Name:  string(entry.Key),
+			Value: string(entry.Value),
+		})
+	}
+
+	return rules, nil
 }
 
 // GetParsedRules queries server rules and converts values into convenient Go types.
 // Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
-// Use GetRules when the original wire strings must be preserved.
+// Duplicate names use the last value, like Rules.Get and Rules.Map.
 func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
 	data, err := c.GetRules(ctx)
 	if err != nil {
@@ -58,19 +113,19 @@ func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
 	return ParseRuleValues(data), nil
 }
 
-// ParseRuleValues converts already fetched A2S rule strings
+// ParseRuleValues converts already fetched A2S rules
 // into convenient Go values without issuing another network request.
 // Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
-// The input map is not modified.
-func ParseRuleValues(data map[string]string) map[string]any {
+// The input rules are not modified.
+func ParseRuleValues(data Rules) map[string]any {
 	if data == nil {
 		return nil
 	}
 
 	rules := make(map[string]any, len(data))
 	var base64Buf []byte
-	for key, value := range data {
-		rules[key] = parseRuleValue(value, &base64Buf)
+	for _, rule := range data {
+		rules[rule.Name] = parseRuleValue(rule.Value, &base64Buf)
 	}
 
 	return rules

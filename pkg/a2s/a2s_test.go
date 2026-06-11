@@ -138,8 +138,8 @@ func TestRulesSingle(t *testing.T) {
 	}
 
 	t.Logf("Retrieved %d rules", len(rules))
-	for key, value := range rules {
-		t.Logf("  %s = %s", key, value)
+	for _, rule := range rules {
+		t.Logf("  %s = %s", rule.Name, rule.Value)
 	}
 }
 

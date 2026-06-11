@@ -11,7 +11,8 @@ and response validation are handled by the client.
 Create a Client with New, NewWithString, or NewWithAddr.
 Query methods accept a context.Context
 and return typed results where the protocol has a defined structure.
-GetRules preserves the server's rule values as strings;
+GetRules preserves server rule order, duplicate names, and string values;
+Rules.Map provides an explicitly lossy map conversion;
 GetParsedRules and ParseRuleValues provide
 optional heuristic conversion to convenient Go values.
 

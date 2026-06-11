@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/internal/a2srules"
+	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -23,16 +24,16 @@ func BenchmarkParseA3SBArma3Fixture(b *testing.B) {
 func BenchmarkParseA3SBDayZFixture(b *testing.B) {
 	envelope := a3sbEnvelope{
 		encodedPages: benchmarkDayZPayload(),
-		extraRules: map[string]string{
-			"allowedBuild":    "123",
-			"clientPort":      "2303",
-			"dedicated":       "1",
-			"island":          "Chernarus",
-			"language":        "0",
-			"platform":        "win",
-			"requiredBuild":   "123",
-			"requiredVersion": "1",
-			"timeLeft":        "45",
+		extraRules: a2s.Rules{
+			{Name: "allowedBuild", Value: "123"},
+			{Name: "clientPort", Value: "2303"},
+			{Name: "dedicated", Value: "1"},
+			{Name: "island", Value: "Chernarus"},
+			{Name: "language", Value: "0"},
+			{Name: "platform", Value: "win"},
+			{Name: "requiredBuild", Value: "123"},
+			{Name: "requiredVersion", Value: "1"},
+			{Name: "timeLeft", Value: "45"},
 		},
 	}
 	b.ReportAllocs()

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/internal/a2srules"
+	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -47,6 +48,6 @@ func FuzzParseRulesDayZ(f *testing.F) {
 	f.Add([]byte("allowedBuild"), []byte("123"))
 	f.Fuzz(func(t *testing.T, key, value []byte) {
 		rules := &Rules{id: appid.DayZ}
-		_ = rules.parseRulesDayZ(map[string]string{string(key): string(value)})
+		_ = rules.parseRulesDayZ(a2s.Rules{{Name: string(key), Value: string(value)}})
 	})
 }

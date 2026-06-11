@@ -100,7 +100,9 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseRules() error = %v", err)
 		}
-		if rules["mode"] != "coop" || rules["encoded"] != "c2VydmVy" {
+		mode, modeOK := rules.Get("mode")
+		encoded, encodedOK := rules.Get("encoded")
+		if !modeOK || !encodedOK || mode != "coop" || encoded != "c2VydmVy" {
 			t.Fatalf("parsed rules = %#v", rules)
 		}
 	})

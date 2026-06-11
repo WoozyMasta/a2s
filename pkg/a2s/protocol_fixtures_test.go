@@ -375,8 +375,9 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 			"encoded": "c2VydmVyIHRleHQ=",
 		}
 		for key, value := range want {
-			if rules[key] != value {
-				t.Errorf("raw rule %q = %q, want %q", key, rules[key], value)
+			got, ok := rules.Get(key)
+			if !ok || got != value {
+				t.Errorf("raw rule %q = %q, want %q", key, got, value)
 			}
 		}
 	})

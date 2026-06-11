@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -185,13 +186,15 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 		t.Fatalf("GetRules returned error: %v", err)
 	}
 
-	if got := rules.ExtraRules[string([]byte{0x01})]; got != "one" {
+	got, ok := rules.ExtraRules.Get(string([]byte{0x01}))
+	if !ok || got != "one" {
 		t.Fatalf("one-byte raw rule = %q, want %q", got, "one")
 	}
-	if got := rules.ExtraRules[string([]byte{0x02, 0x03, 0x04})]; got != "long" {
+	got, ok = rules.ExtraRules.Get(string([]byte{0x02, 0x03, 0x04}))
+	if !ok || got != "long" {
 		t.Fatalf("long raw rule = %q, want %q", got, "long")
 	}
-	if _, ok := rules.ExtraRules[""]; ok {
+	if _, ok := rules.ExtraRules.Get(""); ok {
 		t.Fatal("blank rule key should not be preserved as a raw rule")
 	}
 	if stats := rules.GetReaderStats(); stats[1] != 1 {
@@ -295,6 +298,7 @@ func TestGetRulesAutomaticReturnsNativeA2S(t *testing.T) {
 	rules, err := getAutomaticRulesFromFixture(
 		t,
 		rulesFixtureEntry{key: []byte("hostname"), value: []byte("test server")},
+		rulesFixtureEntry{key: []byte("hostname"), value: []byte("updated server")},
 		rulesFixtureEntry{key: []byte("map"), value: []byte("de_dust2")},
 	)
 	if err != nil {
@@ -303,10 +307,11 @@ func TestGetRulesAutomaticReturnsNativeA2S(t *testing.T) {
 	if rules.Version != 0 {
 		t.Fatalf("native A2S version = %d, want 0", rules.Version)
 	}
-	if got := rules.ExtraRules["hostname"]; got != "test server" {
-		t.Fatalf("hostname = %q, want %q", got, "test server")
+	if got, want := rules.ExtraRules.Values("hostname"), []string{"test server", "updated server"}; !slices.Equal(got, want) {
+		t.Fatalf("hostname values = %#v, want %#v", got, want)
 	}
-	if got := rules.ExtraRules["map"]; got != "de_dust2" {
+	got, ok := rules.ExtraRules.Get("map")
+	if !ok || got != "de_dust2" {
 		t.Fatalf("map = %q, want %q", got, "de_dust2")
 	}
 }
@@ -378,7 +383,8 @@ func TestGetRulesAutomaticDoesNotTreatPageTwoAsA3SB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("automatic GetRules returned error: %v", err)
 	}
-	if got := rules.ExtraRules[string([]byte{2, 2})]; got != string([]byte{0x01, 0x02}) {
+	got, ok := rules.ExtraRules.Get(string([]byte{2, 2}))
+	if !ok || got != string([]byte{0x01, 0x02}) {
 		t.Fatalf("page-like native value = %X, want 0102", []byte(got))
 	}
 }
@@ -436,7 +442,8 @@ func TestGetRulesArma3KeepsOuterRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRules returned error: %v", err)
 	}
-	if got := rules.ExtraRules["dedicated"]; got != "invalid" {
+	got, ok := rules.ExtraRules.Get("dedicated")
+	if !ok || got != "invalid" {
 		t.Fatalf("Arma 3 outer rule = %q, want %q", got, "invalid")
 	}
 }

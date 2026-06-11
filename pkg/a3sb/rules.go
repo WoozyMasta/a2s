@@ -23,7 +23,7 @@ const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
 // For automatic mode, the response is classified as either native A2S
 // or A3SB before the payload is parsed.
 //
-// A native A2S result has Version == 0, keeps its complete ordinary rules map in ExtraRules,
+// A native A2S result has Version == 0, keeps its complete ordinary rules in ExtraRules,
 // and leaves the typed A3SB fields at their zero values.
 // An A3SB result has a non-zero Version and exposes the fields decoded from its binary payload.
 type Rules struct {
@@ -38,11 +38,11 @@ type Rules struct {
 	// ExtraRules contains ordinary A2S key/value properties
 	// that are not represented by typed fields.
 	//
-	// In native A2S automatic fallback it contains the complete rules map.
+	// In native A2S automatic fallback it contains the complete ordered rules.
 	// For A3SB responses it contains non-page outer properties
 	// that were not consumed by a game-specific parser.
 	// It never contains A3SB page carriers, including carriers rejected as malformed.
-	ExtraRules map[string]string `json:"extra_rules,omitempty"`
+	ExtraRules a2s.Rules `json:"extra_rules,omitempty"`
 
 	// Description is the DayZ server description.
 	// It is not part of the Arma 3 layout.
@@ -105,7 +105,7 @@ type Rules struct {
 // The assembled page buffer owns its data;
 // individual entry slices are used only while the envelope is being built.
 type a3sbEnvelope struct {
-	extraRules   map[string]string
+	extraRules   a2s.Rules
 	encodedPages []byte
 	pageCount    byte
 	blankCount   byte
@@ -197,7 +197,24 @@ func parseAutomatic(result a2srules.Result) (*Rules, error) {
 // nativeRules returns ordinary A2S rules only when no A3SB page-1 candidate was found.
 // This prevents binary carrier pages from leaking into ExtraRules.
 func nativeRules(entries []a2srules.Entry) *Rules {
-	return &Rules{ExtraRules: a2srules.Map(entries)}
+	return &Rules{ExtraRules: rulesFromEntries(entries)}
+}
+
+// rulesFromEntries converts shared parser entries without discarding order or duplicates.
+func rulesFromEntries(entries []a2srules.Entry) a2s.Rules {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	rules := make(a2s.Rules, 0, len(entries))
+	for _, entry := range entries {
+		rules = append(rules, a2s.Rule{
+			Name:  string(entry.Key),
+			Value: string(entry.Value),
+		})
+	}
+
+	return rules
 }
 
 // hasPageOneCandidate checks only the unambiguous first A3SB page marker.
@@ -224,7 +241,7 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 	var pageCount byte
 	var blankCount byte
 	var overflow byte
-	var rawRules map[string]string
+	var rawRules a2s.Rules
 	pageOnePresent := false
 
 	for _, entry := range entries {
@@ -238,10 +255,10 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 		}
 
 		if len(entry.Key) != 2 {
-			if rawRules == nil {
-				rawRules = make(map[string]string, 8)
-			}
-			rawRules[string(entry.Key)] = string(entry.Value)
+			rawRules = append(rawRules, a2s.Rule{
+				Name:  string(entry.Key),
+				Value: string(entry.Value),
+			})
 			continue
 		}
 

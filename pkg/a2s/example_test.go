@@ -23,10 +23,10 @@ func ExampleNew() {
 }
 
 func ExampleParseRuleValues() {
-	rules := a2s.ParseRuleValues(map[string]string{
-		"hostname": "Example server",
-		"players":  "12",
-		"secure":   "true",
+	rules := a2s.ParseRuleValues(a2s.Rules{
+		{Name: "hostname", Value: "Example server"},
+		{Name: "players", Value: "12"},
+		{Name: "secure", Value: "true"},
 	})
 
 	fmt.Printf("%s %T %T\n", rules["hostname"], rules["players"], rules["secure"])

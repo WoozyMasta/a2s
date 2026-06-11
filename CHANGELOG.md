@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning][].
 
 * `a2s` separate request and response type bytes
   into `QueryType` and `ResponseType`, removing the ambiguous `Flag` API
+* `a2s` expose ordered, duplicate-safe A2S_RULES entries through `Rules`,
+  with explicit lossy map conversion; `a3sb` preserves the same semantics
 * `a2s` and `a3sb` replace the legacy binary reader with a shared,
   bounds-checked wire decoder across protocol parsers,
   preserving malformed packet handling and improving parser performance

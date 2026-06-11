@@ -72,8 +72,8 @@ func executeRulesStandard(ctx context.Context, client *a2s.Client, raw bool, for
 		rawRules, rawErr := client.GetRules(ctx)
 		err = rawErr
 		rules = make(map[string]any, len(rawRules))
-		for key, value := range rawRules {
-			rules[key] = value
+		for _, rule := range rawRules {
+			rules[rule.Name] = rule.Value
 		}
 	} else {
 		rules, err = client.GetParsedRules(ctx)

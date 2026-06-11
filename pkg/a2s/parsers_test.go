@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"slices"
 	"testing"
 	"time"
 )
@@ -100,8 +101,28 @@ func TestParseRules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseRules returned error: %v", err)
 	}
-	if rules["mode"] != "coop" || rules["encoded"] != "c2VydmVy" {
+	mode, modeOK := rules.Get("mode")
+	encoded, encodedOK := rules.Get("encoded")
+	if !modeOK || !encodedOK || mode != "coop" || encoded != "c2VydmVy" {
 		t.Fatalf("parsed rules = %#v", rules)
+	}
+}
+
+func TestRulesPreserveOrderAndDuplicates(t *testing.T) {
+	rules := Rules{
+		{Name: "mode", Value: "coop"},
+		{Name: "mode", Value: "versus"},
+		{Name: "map", Value: "de_dust2"},
+	}
+
+	if got, want := rules.Values("mode"), []string{"coop", "versus"}; !slices.Equal(got, want) {
+		t.Fatalf("mode values = %#v, want %#v", got, want)
+	}
+	if got, ok := rules.Get("mode"); !ok || got != "versus" {
+		t.Fatalf("last mode = %q, found %t, want versus", got, ok)
+	}
+	if got := rules.Map(); got["mode"] != "versus" || got["map"] != "de_dust2" {
+		t.Fatalf("mapped rules = %#v", got)
 	}
 }
 
