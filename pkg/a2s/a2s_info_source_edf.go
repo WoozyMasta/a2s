@@ -64,9 +64,11 @@ func (i *Info) readEDF(r *wire.Decoder, edf EDF) error {
 	}
 
 	if (edf & edfGameID) != 0 {
-		if i.ID, err = r.Uint64(); err != nil {
-			return errors.Join(ErrInfoEDFGameID, err)
+		gameID, readErr := r.Uint64()
+		if readErr != nil {
+			return errors.Join(ErrInfoEDFGameID, readErr)
 		}
+		i.GameID = &gameID
 	}
 
 	return nil

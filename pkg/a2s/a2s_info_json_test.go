@@ -38,8 +38,14 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetInfo returned error: %v", err)
 	}
-	if info.ID != 107410 {
-		t.Fatalf("parsed ID = %d, want 107410", info.ID)
+	if info.AppID != 1234 {
+		t.Fatalf("parsed AppID = %d, want 1234", info.AppID)
+	}
+	if info.GameID == nil || *info.GameID != 107410 {
+		t.Fatalf("parsed GameID = %v, want 107410", info.GameID)
+	}
+	if got := info.EffectiveID(); got != 107410 {
+		t.Fatalf("effective ID = %d, want 107410", got)
 	}
 
 	jsonData, err := json.Marshal(info)
@@ -58,7 +64,8 @@ func TestSourceInfoJSONContract(t *testing.T) {
 		"game":           "Test game",
 		"version":        "1.0",
 		"keywords":       []any{"one", "two"},
-		"id":             float64(107410),
+		"app_id":         float64(1234),
+		"game_id":        float64(107410),
 		"steam_id":       float64(123456789),
 		"port":           float64(27015),
 		"source_tv_name": "spectator",

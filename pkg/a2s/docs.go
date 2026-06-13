@@ -21,6 +21,9 @@ or [Client.GetInfoWithMeta] when query latency is also needed,
 [Client.GetPlayers] for the current player list,
 and [Client.GetRules] for server-defined key/value properties.
 
+A2S_INFO exposes the 16-bit AppID and optional EDF GameID separately.
+Use [Info.EffectiveID] when an effective game identifier is needed.
+
 Complete query transactions on one Client are serialized.
 Use separate clients when independent queries must run in parallel.
 The client does not require an A2S_INFO request before querying players or rules.

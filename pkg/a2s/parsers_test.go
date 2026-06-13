@@ -44,8 +44,21 @@ func TestParseInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseInfo returned error: %v", err)
 	}
-	if info.Name != "Test server" || info.ID != 1234 {
+	if info.Name != "Test server" || info.AppID != 1234 || info.EffectiveID() != 1234 {
 		t.Fatalf("parsed info = %+v", info)
+	}
+}
+
+func TestInfoEffectiveID(t *testing.T) {
+	info := Info{AppID: 1234}
+	if got := info.EffectiveID(); got != 1234 {
+		t.Fatalf("effective ID without GameID = %d, want 1234", got)
+	}
+
+	gameID := uint64(0)
+	info.GameID = &gameID
+	if got := info.EffectiveID(); got != 0 {
+		t.Fatalf("effective ID with explicit zero GameID = %d, want 0", got)
 	}
 }
 

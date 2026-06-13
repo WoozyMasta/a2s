@@ -32,11 +32,11 @@ func (i *Info) readSourceInfo(r *wire.Decoder) error {
 		return errors.Join(ErrInfoGameName, err)
 	}
 
-	id, err := r.Uint16()
+	appID, err := r.Uint16()
 	if err != nil {
-		return errors.Join(ErrInfoGameID, err)
+		return errors.Join(ErrInfoAppID, err)
 	}
-	i.ID = uint64(id)
+	i.AppID = appID
 
 	if i.Players, err = r.Byte(); err != nil {
 		return errors.Join(ErrInfoPlayerCount, err)
@@ -70,7 +70,7 @@ func (i *Info) readSourceInfo(r *wire.Decoder) error {
 		return errors.Join(ErrInfoVAC, err)
 	}
 
-	if i.ID == appid.TheShip {
+	if i.EffectiveID() == appid.TheShip {
 		// The Ship inserts its game-specific block
 		// before the common version and EDF fields.
 		if i.TheShip, err = readTheShipInfo(r); err != nil {

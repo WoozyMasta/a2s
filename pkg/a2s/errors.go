@@ -20,7 +20,7 @@ var (
 	ErrInfoMapName            = errors.New("A2S_INFO: map name read failed")
 	ErrInfoFolderName         = errors.New("A2S_INFO: folder name read failed")
 	ErrInfoGameName           = errors.New("A2S_INFO: game name read failed")
-	ErrInfoGameID             = errors.New("A2S_INFO: game ID read failed")
+	ErrInfoAppID              = errors.New("A2S_INFO: AppID read failed")
 	ErrInfoPlayerCount        = errors.New("A2S_INFO: player count read failed")
 	ErrInfoMaxPlayerCount     = errors.New("A2S_INFO: max player count read failed")
 	ErrInfoBotsCount          = errors.New("A2S_INFO: bots count read failed")

@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning][].
 
 * `appid` exposes the curated Steam AppID registry for A2S-compatible games
 * `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
+* `a2s` exposes protocol-faithful `AppID` and `GameID` fields,
+  with `Info.EffectiveID()` for effective game ID lookup
 
 ### Changed
 
@@ -63,6 +65,7 @@ and this project adheres to [Semantic Versioning][].
 
 ### Removed
 
+* `a2s` removes the ambiguous `Info.ID` field
 * `a2s` removes transport-only `Info.Ping` from the A2S_INFO model and JSON
 * remove the redundant `--skip-info` rules option
   after rules detection stopped requiring `A2S_INFO`

@@ -49,7 +49,7 @@ func executeInfo(cmd *InfoCommand) {
 		{"Map on server:", info.Map},
 		{"Game folder:", info.Folder},
 		{"Game name:", info.Game},
-		{"Steam AppID:", formatAppID(info.ID)},
+		{"Game ID:", formatAppID(info.EffectiveID())},
 		{"Players/Slots:", fmt.Sprintf("%d/%d", info.Players, info.MaxPlayers)},
 		{"Bots count:", fmt.Sprintf("%d", info.Bots)},
 		{"Server type:", info.ServerType.String()},
@@ -98,7 +98,7 @@ func executeInfo(cmd *InfoCommand) {
 			// Keywords have game-specific structure only
 			// for the supported Arma 3 and DayZ AppIDs;
 			// other games keep the raw list above.
-			switch info.ID {
+			switch info.EffectiveID() {
 			case appid.Arma3:
 				arma := keywords.ParseArma3(info.Keywords)
 				t.AppendRows([]table.Row{
@@ -155,13 +155,9 @@ func executeInfo(cmd *InfoCommand) {
 	}
 }
 
-// formatAppID returns a known game name with its numeric AppID,
-// or only the original numeric value when the ID is unknown or does not fit AppID.
+// formatAppID returns a known game name with its numeric effective ID,
+// or only the original numeric value when the ID is unknown.
 func formatAppID(id uint64) string {
-	if id > uint64(^uint32(0)) {
-		return fmt.Sprintf("%d", id)
-	}
-
 	steamID := appid.AppID(id)
 	if name, ok := steamID.Name(); ok {
 		return fmt.Sprintf("%s (%d)", name, id)
@@ -189,7 +185,7 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 		fatalf("Failed to unmarshal JSON: %v", err)
 	}
 
-	switch info.ID {
+	switch info.EffectiveID() {
 	case appid.Arma3:
 		delete(jsonMap, "keywords")
 		armaData := keywords.ParseArma3(info.Keywords)

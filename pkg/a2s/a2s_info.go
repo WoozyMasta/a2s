@@ -12,12 +12,6 @@ var errInfoInvalidBoolean = errors.New("A2S_INFO: boolean field must be 0 or 1")
 
 // Info contains parsed A2S_INFO response data.
 //
-// A2S_INFO has a legacy 16-bit AppID and an optional EDF GameID.
-// This type intentionally exposes one effective ID:
-// EDF GameID takes precedence because the legacy value may be truncated
-// Callers use ID for game detection and output;
-// the raw wire identifiers are not exposed separately.
-//
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format
 type Info struct {
 	// The Ship-specific fields, present only for The Ship servers.
@@ -50,9 +44,12 @@ type Info struct {
 	// Server tags from EDF 0x20.
 	Keywords []string `json:"keywords,omitempty"`
 
-	// Effective game identifier;
-	// EDF GameID replaces the legacy AppID when present.
-	ID uint64 `json:"id"`
+	// AppID is the 16-bit identifier from the base A2S_INFO response.
+	AppID uint16 `json:"app_id"`
+
+	// GameID is the optional full identifier from EDF GameID.
+	// A nil pointer means that the EDF GameID field was not present.
+	GameID *uint64 `json:"game_id,omitempty"`
 
 	// Server SteamID (EDF 0x10).
 	SteamID uint64 `json:"steam_id,omitempty"`
@@ -92,6 +89,15 @@ type Info struct {
 
 	// Extra Data Flags indicating which optional fields are present.
 	EDF EDF `json:"EDF,omitempty"`
+}
+
+// EffectiveID returns the full GameID when present, otherwise the legacy AppID.
+func (i Info) EffectiveID() uint64 {
+	if i.GameID != nil {
+		return *i.GameID
+	}
+
+	return uint64(i.AppID)
 }
 
 // GetInfo queries server information (A2S_INFO).

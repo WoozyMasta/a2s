@@ -16,7 +16,7 @@ func TestFormatAppID(t *testing.T) {
 	}{
 		{name: "known", id: 107410, want: "Arma 3 (107410)"},
 		{name: "unknown", id: 123456, want: "123456"},
-		{name: "game ID wider than AppID", id: 1<<32 + 123, want: "4294967419"},
+		{name: "unknown wide game ID", id: 1<<32 + 123, want: "4294967419"},
 	}
 
 	for _, tt := range tests {
@@ -31,7 +31,7 @@ func TestFormatAppID(t *testing.T) {
 func TestPrintInfoJSONPreservesGenericKeywords(t *testing.T) {
 	output := captureRulesStdout(t, func() {
 		printInfoJSON(&a2s.Info{
-			ID:       1337,
+			AppID:    1337,
 			Keywords: []string{"foo", "bar"},
 		}, NewFormatter("json"))
 	})
@@ -77,7 +77,8 @@ func TestPrintInfoJSONUsesTypedKeywordsForSupportedGames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			output := captureRulesStdout(t, func() {
-				printInfoJSON(&a2s.Info{ID: tt.id, Keywords: tt.keywords}, NewFormatter("json"))
+				gameID := tt.id
+				printInfoJSON(&a2s.Info{GameID: &gameID, Keywords: tt.keywords}, NewFormatter("json"))
 			})
 
 			var result map[string]any
