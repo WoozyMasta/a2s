@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/woozymasta/a2s/internal/testfixtures"
 )
@@ -61,7 +60,6 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 		info, err := parseInfo(
 			readProtocolFixture(t, "source_info_payload.hex"),
 			ResponseInfo,
-			25*time.Millisecond,
 		)
 		if err != nil {
 			t.Fatalf("parseInfo() error = %v", err)
@@ -75,7 +73,6 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 		info, err := parseInfo(
 			readProtocolFixture(t, "goldsource_info_payload.hex"),
 			ResponseInfoGoldSource,
-			0,
 		)
 		if err != nil {
 			t.Fatalf("parseInfo() error = %v", err)

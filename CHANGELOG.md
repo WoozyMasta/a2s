@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning][].
 ### Added
 
 * `appid` exposes the curated Steam AppID registry for A2S-compatible games
+* `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
 
 ### Changed
 
@@ -62,8 +63,9 @@ and this project adheres to [Semantic Versioning][].
 
 ### Removed
 
-* remove the redundant `--skip-info` rules option after rules detection
-  stopped requiring `A2S_INFO`
+* `a2s` removes transport-only `Info.Ping` from the A2S_INFO model and JSON
+* remove the redundant `--skip-info` rules option
+  after rules detection stopped requiring `A2S_INFO`
 
 * remove the `github.com/woozymasta/steam` dependency
   in favor of a curated local A2S AppID registry

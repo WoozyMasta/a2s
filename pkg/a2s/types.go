@@ -2,6 +2,7 @@ package a2s
 
 import (
 	"encoding/json"
+	"time"
 )
 
 // QueryType identifies an A2S request type byte.
@@ -16,6 +17,13 @@ type Challenge [4]byte
 
 // InitialChallenge is the reserved token used to start a challenge-aware query.
 var InitialChallenge = Challenge{0xFF, 0xFF, 0xFF, 0xFF}
+
+// QueryMeta contains transport metadata for one completed client query.
+// It is separate from protocol response models.
+type QueryMeta struct {
+	// Duration is the complete logical query latency.
+	Duration time.Duration
+}
 
 // EDF represents Extra Data Flag bits in A2S_INFO response.
 type EDF byte

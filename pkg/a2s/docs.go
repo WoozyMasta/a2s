@@ -17,6 +17,7 @@ GetParsedRules and ParseRuleValues provide
 optional heuristic conversion to convenient Go values.
 
 Use [Client.GetInfo] for server metadata,
+or [Client.GetInfoWithMeta] when query latency is also needed,
 [Client.GetPlayers] for the current player list,
 and [Client.GetRules] for server-defined key/value properties.
 

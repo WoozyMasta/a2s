@@ -94,7 +94,7 @@ func TestInfoSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	info, err := client.GetInfo(context.Background())
+	info, meta, err := client.GetInfoWithMeta(context.Background())
 	if err != nil {
 		t.Fatalf("GetInfo failed: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestInfoSingle(t *testing.T) {
 	}
 
 	t.Logf("Server: %s | Map: %s | Players: %d/%d | Ping: %v",
-		info.Name, info.Map, info.Players, info.MaxPlayers, info.Ping)
+		info.Name, info.Map, info.Players, info.MaxPlayers, meta.Duration)
 }
 
 // TestRulesSingle tests A2S_RULES query on first server from test_servers.conf
@@ -205,7 +205,7 @@ func TestInfoMultiple(t *testing.T) {
 			continue
 		}
 
-		info, err := client.GetInfo(context.Background())
+		info, meta, err := client.GetInfoWithMeta(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -216,7 +216,7 @@ func TestInfoMultiple(t *testing.T) {
 		if info != nil {
 			successCount++
 			t.Logf("✓ %s: %s | Map: %s | Players: %d/%d | Ping: %v",
-				serverAddr, info.Name, info.Map, info.Players, info.MaxPlayers, info.Ping)
+				serverAddr, info.Name, info.Map, info.Players, info.MaxPlayers, meta.Duration)
 		}
 	}
 

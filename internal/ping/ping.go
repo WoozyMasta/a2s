@@ -37,7 +37,7 @@ func Start(client *a2s.Client, count, period int) {
 	// Starting the main ping loop in a goroutine
 	go func() {
 		for i := 0; count == 0 || i < count; i++ {
-			info, err := client.GetInfo(context.Background())
+			info, meta, err := client.GetInfoWithMeta(context.Background())
 			if err != nil {
 				log.Printf("Failed to get ping: %v", err)
 				errorCount++
@@ -45,7 +45,7 @@ func Start(client *a2s.Client, count, period int) {
 			}
 
 			// Write ping to the ring buffer
-			pingDuration := info.Ping
+			pingDuration := meta.Duration
 			buffer.Add(pingDuration)
 
 			fmt.Printf(

@@ -89,7 +89,7 @@ func TestParseInfoSourceOptionalTailFailures(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := parseInfo(test.data, ResponseInfo, 0)
+			_, err := parseInfo(test.data, ResponseInfo)
 			if test.want == nil {
 				if err != nil {
 					t.Fatalf("parseInfo() error = %v, want nil", err)

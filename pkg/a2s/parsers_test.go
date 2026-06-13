@@ -7,7 +7,6 @@ import (
 	"math"
 	"slices"
 	"testing"
-	"time"
 )
 
 func TestParseChallenge(t *testing.T) {
@@ -41,11 +40,11 @@ func TestParseInfo(t *testing.T) {
 	body = append(body, "1.0"...)
 	body = append(body, 0, 0)
 
-	info, err := parseInfo(body, ResponseInfo, 25*time.Millisecond)
+	info, err := parseInfo(body, ResponseInfo)
 	if err != nil {
 		t.Fatalf("parseInfo returned error: %v", err)
 	}
-	if info.Name != "Test server" || info.ID != 1234 || info.Ping != 25*time.Millisecond {
+	if info.Name != "Test server" || info.ID != 1234 {
 		t.Fatalf("parsed info = %+v", info)
 	}
 }

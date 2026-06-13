@@ -21,7 +21,7 @@ func executeInfo(cmd *InfoCommand) {
 	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	defer closeClient(client)
 
-	info, err := client.GetInfo(context.Background())
+	info, meta, err := client.GetInfoWithMeta(context.Background())
 	if err != nil {
 		fatalf("Failed to get server info: %s", err)
 	}
@@ -145,7 +145,7 @@ func executeInfo(cmd *InfoCommand) {
 		}
 	}
 
-	t.AppendRow(table.Row{"Server ping:", fmt.Sprintf("%d ms", info.Ping.Milliseconds())})
+	t.AppendRow(table.Row{"Server ping:", fmt.Sprintf("%d ms", meta.Duration.Milliseconds())})
 
 	formatter.PrintTable(t)
 

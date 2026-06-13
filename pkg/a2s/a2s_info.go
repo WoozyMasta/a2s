@@ -3,7 +3,6 @@ package a2s
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/woozymasta/a2s/internal/wire"
 )
@@ -51,11 +50,6 @@ type Info struct {
 	// Server tags from EDF 0x20.
 	Keywords []string `json:"keywords,omitempty"`
 
-	// Complete logical query latency from the first request to the assembled response,
-	// including challenge exchange, retries, and split packets.
-	// This field is not sent by the server.
-	Ping time.Duration `json:"ping"`
-
 	// Effective game identifier;
 	// EDF GameID replaces the legacy AppID when present.
 	ID uint64 `json:"id"`
@@ -102,18 +96,31 @@ type Info struct {
 
 // GetInfo queries server information (A2S_INFO).
 func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
+	info, _, err := c.GetInfoWithMeta(ctx)
+	return info, err
+}
+
+// GetInfoWithMeta queries server information
+// and returns transport metadata separately
+// from the protocol response model.
+func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) {
 	data, format, duration, err := c.Get(ctx, InfoRequest)
 	if err != nil {
-		return nil, err
+		return nil, QueryMeta{}, err
 	}
 
-	return parseInfo(data, format, duration)
+	info, err := parseInfo(data, format)
+	if err != nil {
+		return nil, QueryMeta{}, err
+	}
+
+	return info, QueryMeta{Duration: duration}, nil
 }
 
 // parseInfo parses an A2S_INFO payload without taking ownership of its buffer.
-func parseInfo(data []byte, format ResponseType, duration time.Duration) (*Info, error) {
+func parseInfo(data []byte, format ResponseType) (*Info, error) {
 	decoder := wire.NewDecoder(data)
-	info := &Info{Ping: duration, Format: InfoFormat(format)}
+	info := &Info{Format: InfoFormat(format)}
 
 	switch format {
 	case ResponseInfo:

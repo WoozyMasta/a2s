@@ -51,11 +51,6 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	if err := json.Unmarshal(jsonData, &got); err != nil {
 		t.Fatalf("unmarshal info JSON: %v", err)
 	}
-	if _, ok := got["ping"]; !ok {
-		t.Fatal("ping is missing from Info JSON")
-	}
-	delete(got, "ping")
-
 	want := map[string]any{
 		"name":           "Test server",
 		"map":            "test_map",

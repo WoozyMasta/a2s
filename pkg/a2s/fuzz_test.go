@@ -23,14 +23,14 @@ func FuzzParseChallengeResponse(f *testing.F) {
 func FuzzParseInfoSource(f *testing.F) {
 	f.Add([]byte{17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, ResponseInfo, 0)
+		_, _ = parseInfo(data, ResponseInfo)
 	})
 }
 
 func FuzzParseInfoGoldSource(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, ResponseInfoGoldSource, 0)
+		_, _ = parseInfo(data, ResponseInfoGoldSource)
 	})
 }
 
