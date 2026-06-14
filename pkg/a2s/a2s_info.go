@@ -20,6 +20,10 @@ type Info struct {
 	// GoldSource mod information, present when the Mod field is 0x01.
 	Mod *ModInfo `json:"mod,omitempty"`
 
+	// GameID is the optional full identifier (EDF 0x01).
+	// A nil pointer means that the EDF GameID field was not present.
+	GameID *uint64 `json:"game_id,omitempty"`
+
 	// Server name.
 	Name string `json:"name"`
 
@@ -41,18 +45,14 @@ type Info struct {
 	// Server IP address and port from the GoldSource response.
 	Address string `json:"address,omitempty"`
 
-	// Server tags from EDF 0x20.
+	// Server tags (EDF 0x20).
 	Keywords []string `json:"keywords,omitempty"`
-
-	// AppID is the 16-bit identifier from the base A2S_INFO response.
-	AppID uint16 `json:"app_id"`
-
-	// GameID is the optional full identifier from EDF GameID.
-	// A nil pointer means that the EDF GameID field was not present.
-	GameID *uint64 `json:"game_id,omitempty"`
 
 	// Server SteamID (EDF 0x10).
 	SteamID uint64 `json:"steam_id,omitempty"`
+
+	// AppID is the 16-bit identifier from the base A2S_INFO response.
+	AppID uint16 `json:"app_id"`
 
 	// Game port number (EDF 0x80).
 	Port uint16 `json:"port,omitempty"`
