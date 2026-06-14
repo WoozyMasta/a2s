@@ -1,9 +1,5 @@
 package a2s
 
-import (
-	"encoding/binary"
-)
-
 // createHeader builds A2S protocol request header.
 //
 // InfoRequest includes "Source Engine Query" payload, other requests include challenge value.
@@ -13,45 +9,25 @@ import (
 //   - ChallengeRequest = 0x57 (DEPRECATED)
 //   - PingRequest      = 0x69 (DEPRECATED)
 func createHeader(requestType QueryType, challenge Challenge) ([]byte, error) {
-	var req []byte
-	payloadLen := len(infoPayload)
-
+	var hasChallenge bool
 	switch requestType {
 	case InfoRequest:
-		// A2S_INFO normally carries its textual payload
-		// and may append a challenge when retrying a server response.
-		// Pre-allocate with exact capacity:
-		// 4 (header) + 1 (type) + payload + 1 (null) + 4 (challenge, optional)
-		capacity := 4 + 1 + payloadLen + 1
-		if challenge != InitialChallenge {
-			capacity += 4
-		}
-		req = make([]byte, 0, capacity)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		req = append(req, []byte(infoPayload)...)
-		req = append(req, 0x00)
-		if challenge != InitialChallenge {
-			req = append(req, challenge[:]...)
-		}
-		return req, nil
+		hasChallenge = challenge != InitialChallenge
 
 	case PlayerRequest, RulesRequest:
-		// Player and rules requests always carry the challenge value.
-		req = make([]byte, 0, 9)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		req = append(req, challenge[:]...)
-		return req, nil
+		hasChallenge = true
 
-	case PingRequest, ChallengeRequest:
-		// Legacy ping and challenge requests have no request-specific payload.
-		req = make([]byte, 0, 5)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		return req, nil
+	case ChallengeRequest, PingRequest:
 
 	default:
 		return nil, ErrHeaderWrongRequest
 	}
+
+	request := Request{
+		Type:         requestType,
+		Challenge:    challenge,
+		HasChallenge: hasChallenge,
+	}
+
+	return AppendRequest(nil, request)
 }

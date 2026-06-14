@@ -11,6 +11,18 @@ type QueryType byte
 // ResponseType identifies an A2S response type byte.
 type ResponseType byte
 
+// Request represents one complete A2S request datagram.
+//
+// INFO may omit its challenge on the initial request.
+// PLAYER and RULES always require a challenge.
+// HasChallenge preserves that wire-level distinction;
+// Challenge is kept opaque and is not interpreted as an integer.
+type Request struct {
+	Type         QueryType
+	Challenge    Challenge
+	HasChallenge bool
+}
+
 // Challenge is the opaque four-byte token used by A2S challenge exchanges.
 // Its byte order is preserved exactly as received from or sent to the server.
 type Challenge [4]byte
