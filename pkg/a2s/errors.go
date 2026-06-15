@@ -84,6 +84,7 @@ var (
 	ErrHeaderWrongRequest      = errors.New("unsupported request type in header")
 	ErrRequestHeader           = errors.New("invalid A2S request header")
 	ErrRequestPayload          = errors.New("invalid A2S request payload")
+	ErrPacketHeader            = errors.New("invalid A2S packet header")
 	ErrInsufficientData        = errors.New("insufficient data length")
 	ErrMultiPacketInvalid      = errors.New("received invalid packet identifier in response")
 	ErrMultiPacketMismatch     = errors.New("mismatched number of packets received")

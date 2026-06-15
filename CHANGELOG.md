@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning][].
 * `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
 * `a2s` exposes protocol-faithful `AppID` and `GameID` fields,
   with `Info.EffectiveID()` for effective game ID lookup
+* `a2s` exposes a lossless logical `Packet` codec for single-packet responses
 
 ### Changed
 

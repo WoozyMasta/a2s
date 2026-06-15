@@ -11,6 +11,16 @@ type QueryType byte
 // ResponseType identifies an A2S response type byte.
 type ResponseType byte
 
+// Packet is one logical A2S response using single-packet framing.
+//
+// Payload excludes the four-byte packet marker and response type byte.
+// Decoders own the returned payload bytes,
+// so the packet is independent from the input buffer used to decode it.
+type Packet struct {
+	Payload []byte
+	Type    ResponseType
+}
+
 // Request represents one complete A2S request datagram.
 //
 // INFO may omit its challenge on the initial request.
