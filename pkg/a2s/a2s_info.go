@@ -115,7 +115,7 @@ func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) 
 		return nil, QueryMeta{}, err
 	}
 
-	info, err := parseInfo(data, format)
+	info, err := DecodeInfo(Packet{Type: format, Payload: data})
 	if err != nil {
 		return nil, QueryMeta{}, err
 	}
@@ -123,12 +123,16 @@ func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) 
 	return info, QueryMeta{Duration: duration}, nil
 }
 
-// parseInfo parses an A2S_INFO payload without taking ownership of its buffer.
-func parseInfo(data []byte, format ResponseType) (*Info, error) {
-	decoder := wire.NewDecoder(data)
-	info := &Info{Format: InfoFormat(format)}
+// DecodeInfo parses a logical A2S_INFO response packet.
+//
+// The packet payload is decoded without modifying it.
+// The response type must be ResponseInfo or ResponseInfoGoldSource;
+// other packet types are rejected.
+func DecodeInfo(packet Packet) (*Info, error) {
+	decoder := wire.NewDecoder(packet.Payload)
+	info := &Info{Format: InfoFormat(packet.Type)}
 
-	switch format {
+	switch packet.Type {
 	case ResponseInfo:
 		if err := info.readSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoSourceResponse, err)

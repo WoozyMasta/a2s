@@ -33,6 +33,13 @@ func TestReadInfoBool(t *testing.T) {
 	}
 }
 
+func TestDecodeInfoRejectsUnsupportedPacketType(t *testing.T) {
+	_, err := DecodeInfo(Packet{Type: ResponseRules})
+	if !errors.Is(err, ErrInfoUnsupportedFormat) {
+		t.Fatalf("DecodeInfo() error = %v, want ErrInfoUnsupportedFormat", err)
+	}
+}
+
 func TestParseInfoSourceOptionalTailFailures(t *testing.T) {
 	base := benchmarkSourceInfo()
 	base = base[:len(base)-1]
@@ -89,18 +96,18 @@ func TestParseInfoSourceOptionalTailFailures(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := parseInfo(test.data, ResponseInfo)
+			_, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: test.data})
 			if test.want == nil {
 				if err != nil {
-					t.Fatalf("parseInfo() error = %v, want nil", err)
+					t.Fatalf("DecodeInfo() error = %v, want nil", err)
 				}
 				return
 			}
 			if !errors.Is(err, test.want) {
-				t.Fatalf("parseInfo() error = %v, want %v", err, test.want)
+				t.Fatalf("DecodeInfo() error = %v, want %v", err, test.want)
 			}
 			if !errors.Is(err, io.ErrUnexpectedEOF) {
-				t.Fatalf("parseInfo() error = %v, want io.ErrUnexpectedEOF", err)
+				t.Fatalf("DecodeInfo() error = %v, want io.ErrUnexpectedEOF", err)
 			}
 		})
 	}

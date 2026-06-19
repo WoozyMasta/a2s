@@ -20,17 +20,17 @@ func FuzzParseChallengeResponse(f *testing.F) {
 	})
 }
 
-func FuzzParseInfoSource(f *testing.F) {
+func FuzzDecodeInfoSource(f *testing.F) {
 	f.Add([]byte{17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, ResponseInfo)
+		_, _ = DecodeInfo(Packet{Type: ResponseInfo, Payload: data})
 	})
 }
 
-func FuzzParseInfoGoldSource(f *testing.F) {
+func FuzzDecodeInfoGoldSource(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseInfo(data, ResponseInfoGoldSource)
+		_, _ = DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: data})
 	})
 }
 

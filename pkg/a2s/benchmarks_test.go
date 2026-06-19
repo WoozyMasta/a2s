@@ -17,7 +17,7 @@ func BenchmarkParseInfoSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parseInfo(data, ResponseInfo); err != nil {
+		if _, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -29,7 +29,7 @@ func BenchmarkParseInfoGoldSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parseInfo(data, ResponseInfoGoldSource); err != nil {
+		if _, err := DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

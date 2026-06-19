@@ -40,9 +40,9 @@ func TestParseInfo(t *testing.T) {
 	body = append(body, "1.0"...)
 	body = append(body, 0, 0)
 
-	info, err := parseInfo(body, ResponseInfo)
+	info, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: body})
 	if err != nil {
-		t.Fatalf("parseInfo returned error: %v", err)
+		t.Fatalf("DecodeInfo returned error: %v", err)
 	}
 	if info.Name != "Test server" || info.AppID != 1234 || info.EffectiveID() != 1234 {
 		t.Fatalf("parsed info = %+v", info)

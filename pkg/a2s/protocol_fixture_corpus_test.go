@@ -57,12 +57,12 @@ func TestProtocolFixtureCorpusRequests(t *testing.T) {
 
 func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	t.Run("source info", func(t *testing.T) {
-		info, err := parseInfo(
-			readProtocolFixture(t, "source_info_payload.hex"),
-			ResponseInfo,
-		)
+		info, err := DecodeInfo(Packet{
+			Type:    ResponseInfo,
+			Payload: readProtocolFixture(t, "source_info_payload.hex"),
+		})
 		if err != nil {
-			t.Fatalf("parseInfo() error = %v", err)
+			t.Fatalf("DecodeInfo() error = %v", err)
 		}
 		if info.Name != "Test server" || info.Map != "test_map" {
 			t.Fatalf("parsed info = %+v", info)
@@ -70,12 +70,12 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("goldsource info", func(t *testing.T) {
-		info, err := parseInfo(
-			readProtocolFixture(t, "goldsource_info_payload.hex"),
-			ResponseInfoGoldSource,
-		)
+		info, err := DecodeInfo(Packet{
+			Type:    ResponseInfoGoldSource,
+			Payload: readProtocolFixture(t, "goldsource_info_payload.hex"),
+		})
 		if err != nil {
-			t.Fatalf("parseInfo() error = %v", err)
+			t.Fatalf("DecodeInfo() error = %v", err)
 		}
 		if info.Name != "Test server" || info.Map != "test_map" {
 			t.Fatalf("parsed info = %+v", info)
