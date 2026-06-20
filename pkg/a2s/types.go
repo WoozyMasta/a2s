@@ -17,8 +17,11 @@ type ResponseType byte
 // Decoders own the returned payload bytes,
 // so the packet is independent from the input buffer used to decode it.
 type Packet struct {
+	// Payload is the response body without the packet marker and response type.
 	Payload []byte
-	Type    ResponseType
+
+	// Type is the raw response type byte.
+	Type ResponseType
 }
 
 // Request represents one complete A2S request datagram.
@@ -28,8 +31,13 @@ type Packet struct {
 // HasChallenge preserves that wire-level distinction;
 // Challenge is kept opaque and is not interpreted as an integer.
 type Request struct {
-	Type         QueryType
-	Challenge    Challenge
+	// Type is the request type byte.
+	Type QueryType
+
+	// Challenge is the opaque four-byte challenge token.
+	Challenge Challenge
+
+	// HasChallenge reports whether Challenge is present on the wire.
 	HasChallenge bool
 }
 
