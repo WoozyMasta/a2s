@@ -87,7 +87,9 @@ type Info struct {
 	// Whether Valve Anti-Cheat is enabled.
 	VAC bool `json:"vac"`
 
-	// Extra Data Flags indicating which optional fields are present.
+	// Extra Data Flags decoded from the response.
+	// Encoders derive known flags from populated optional fields
+	// instead of treating this metadata as their source of truth.
 	EDF EDF `json:"EDF,omitempty"`
 }
 

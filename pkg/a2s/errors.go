@@ -15,6 +15,7 @@ var (
 	ErrInfoSourceResponse     = errors.New("A2S_INFO: Source response failed")
 	ErrInfoGoldSourceResponse = errors.New("A2S_INFO: GoldSource response failed")
 	ErrInfoUnsupportedFormat  = errors.New("A2S_INFO: unsupported format")
+	ErrInfoEncode             = errors.New("A2S_INFO: encode failed")
 	ErrInfoProtocol           = errors.New("A2S_INFO: protocol read failed")
 	ErrInfoServerName         = errors.New("A2S_INFO: server name read failed")
 	ErrInfoMapName            = errors.New("A2S_INFO: map name read failed")

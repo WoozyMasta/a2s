@@ -30,9 +30,14 @@ func DecodePacket(data []byte) (Packet, error) {
 
 // AppendPacket appends one complete logical single-packet A2S response to dst.
 func AppendPacket(dst []byte, packet Packet) ([]byte, error) {
-	dst = binary.LittleEndian.AppendUint32(dst, singlePacket)
-	dst = append(dst, byte(packet.Type))
+	dst = appendPacketHeader(dst, packet.Type)
 	dst = append(dst, packet.Payload...)
 
 	return dst, nil
+}
+
+// appendPacketHeader appends the common logical response framing.
+func appendPacketHeader(dst []byte, responseType ResponseType) []byte {
+	dst = binary.LittleEndian.AppendUint32(dst, singlePacket)
+	return append(dst, byte(responseType))
 }

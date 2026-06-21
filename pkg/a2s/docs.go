@@ -23,6 +23,7 @@ and [Client.GetRules] for server-defined key/value properties.
 
 A2S_INFO exposes the 16-bit AppID and optional EDF GameID separately.
 Use [Info.EffectiveID] when an effective game identifier is needed.
+Use [DecodeInfo] and [AppendInfo] for transport-independent A2S_INFO codecs.
 
 Complete query transactions on one Client are serialized.
 Use separate clients when independent queries must run in parallel.
