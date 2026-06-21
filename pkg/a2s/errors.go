@@ -62,10 +62,11 @@ var (
 
 	// A2S_RULES errors
 
-	ErrRuleRead  = errors.New("A2S_RULES: failed to read")
-	ErrRuleCount = errors.New("A2S_RULES: count read failed")
-	ErrRuleKey   = errors.New("A2S_RULES: key read failed")
-	ErrRuleValue = errors.New("A2S_RULES: value read failed")
+	ErrRuleRead   = errors.New("A2S_RULES: failed to read")
+	ErrRuleEncode = errors.New("A2S_RULES: encode failed")
+	ErrRuleCount  = errors.New("A2S_RULES: count read failed")
+	ErrRuleKey    = errors.New("A2S_RULES: key read failed")
+	ErrRuleValue  = errors.New("A2S_RULES: value read failed")
 
 	// A2A_PING errors
 

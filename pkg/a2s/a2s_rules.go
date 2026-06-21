@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strconv"
 	"unicode/utf8"
 
@@ -12,7 +13,10 @@ import (
 
 // Rule is one ordered A2S_RULES key/value pair.
 type Rule struct {
-	Name  string `json:"name" yaml:"name"`
+	// Name is the rule key as received on the wire.
+	Name string `json:"name" yaml:"name"`
+
+	// Value is the rule value as received on the wire.
 	Value string `json:"value" yaml:"value"`
 }
 
@@ -65,12 +69,19 @@ func (c *Client) GetRules(ctx context.Context) (Rules, error) {
 		return nil, err
 	}
 
-	return parseRules(data)
+	return DecodeRules(Packet{Type: ResponseRules, Payload: data})
 }
 
-// parseRules parses an A2S_RULES payload into ordered string entries.
-func parseRules(data []byte) (Rules, error) {
-	result, err := a2srules.Parse(data)
+// DecodeRules parses a logical A2S_RULES response packet.
+//
+// The response type must be ResponseRules.
+// Rule order and duplicate names are preserved in the returned slice.
+func DecodeRules(packet Packet) (Rules, error) {
+	if packet.Type != ResponseRules {
+		return nil, errors.Join(ErrRuleRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
+	}
+
+	result, err := a2srules.Parse(packet.Payload)
 	if err != nil {
 		switch {
 		case errors.Is(err, a2srules.ErrCount):

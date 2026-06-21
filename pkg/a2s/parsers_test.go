@@ -109,9 +109,9 @@ func TestParseRules(t *testing.T) {
 		data = append(data, 0)
 	}
 
-	rules, err := parseRules(data)
+	rules, err := DecodeRules(Packet{Type: ResponseRules, Payload: data})
 	if err != nil {
-		t.Fatalf("parseRules returned error: %v", err)
+		t.Fatalf("DecodeRules returned error: %v", err)
 	}
 	mode, modeOK := rules.Get("mode")
 	encoded, encodedOK := rules.Get("encoded")
@@ -158,7 +158,7 @@ func BenchmarkParseRules(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := parseRules(data); err != nil {
+		if _, err := DecodeRules(Packet{Type: ResponseRules, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

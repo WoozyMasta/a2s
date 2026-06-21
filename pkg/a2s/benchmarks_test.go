@@ -53,7 +53,7 @@ func BenchmarkParseRulesFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parseRules(data); err != nil {
+		if _, err := DecodeRules(Packet{Type: ResponseRules, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

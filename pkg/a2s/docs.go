@@ -26,6 +26,7 @@ Use [Info.EffectiveID] when an effective game identifier is needed.
 Use [DecodeInfo] and [AppendInfo] for transport-independent A2S_INFO codecs.
 Use [DecodePlayers] and [AppendPlayers] for standard A2S_PLAYER codecs;
 The Ship's extended player response remains a separate API.
+Use [DecodeRules] and [AppendRules] for ordered A2S_RULES codecs.
 
 Complete query transactions on one Client are serialized.
 Use separate clients when independent queries must run in parallel.

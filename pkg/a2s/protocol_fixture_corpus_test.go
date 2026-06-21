@@ -96,9 +96,12 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("rules", func(t *testing.T) {
-		rules, err := parseRules(readProtocolFixture(t, "rules_payload.hex"))
+		rules, err := DecodeRules(Packet{
+			Type:    ResponseRules,
+			Payload: readProtocolFixture(t, "rules_payload.hex"),
+		})
 		if err != nil {
-			t.Fatalf("parseRules() error = %v", err)
+			t.Fatalf("DecodeRules() error = %v", err)
 		}
 		mode, modeOK := rules.Get("mode")
 		encoded, encodedOK := rules.Get("encoded")
