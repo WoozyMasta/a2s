@@ -87,9 +87,9 @@ func TestParsePlayersTruncation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := parsePlayers(data[:test.end])
+			_, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data[:test.end]})
 			if !errors.Is(err, test.want) {
-				t.Fatalf("parsePlayers() error = %v, want %v", err, test.want)
+				t.Fatalf("DecodePlayers() error = %v, want %v", err, test.want)
 			}
 		})
 	}
@@ -98,10 +98,10 @@ func TestParsePlayersTruncation(t *testing.T) {
 		t.Run("arbitrary truncation", func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					t.Fatalf("parsePlayers() panicked for length %d: %v", end, recovered)
+					t.Fatalf("DecodePlayers() panicked for length %d: %v", end, recovered)
 				}
 			}()
-			_, _ = parsePlayers(data[:end])
+			_, _ = DecodePlayers(Packet{Type: ResponsePlayers, Payload: data[:end]})
 		})
 	}
 }

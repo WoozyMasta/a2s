@@ -41,7 +41,7 @@ func BenchmarkParsePlayersFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if _, err := parsePlayers(data); err != nil {
+		if _, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -72,7 +72,7 @@ func TestParsePlayers(t *testing.T) {
 		data = binary.LittleEndian.AppendUint32(data, math.Float32bits(1))
 	}
 
-	players, err := parsePlayers(data)
+	players, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
 	if err != nil {
 		t.Fatalf("parsePlayers returned error: %v", err)
 	}
@@ -147,7 +147,7 @@ func BenchmarkParsePlayers(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := parsePlayers(data); err != nil {
+		if _, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

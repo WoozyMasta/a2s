@@ -51,6 +51,7 @@ var (
 	// A2S_PLAYER errors
 
 	ErrPlayerRead     = errors.New("A2S_PLAYER: failed to read player")
+	ErrPlayerEncode   = errors.New("A2S_PLAYER: encode failed")
 	ErrPlayerCount    = errors.New("A2S_PLAYER: count read failed")
 	ErrPlayerIndex    = errors.New("A2S_PLAYER: index read failed")
 	ErrPlayerName     = errors.New("A2S_PLAYER: name read failed")

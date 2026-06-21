@@ -83,9 +83,12 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("players", func(t *testing.T) {
-		players, err := parsePlayers(readProtocolFixture(t, "players_payload.hex"))
+		players, err := DecodePlayers(Packet{
+			Type:    ResponsePlayers,
+			Payload: readProtocolFixture(t, "players_payload.hex"),
+		})
 		if err != nil {
-			t.Fatalf("parsePlayers() error = %v", err)
+			t.Fatalf("DecodePlayers() error = %v", err)
 		}
 		if len(players) != 2 || players[0].Score != -1 || players[1].Score != int32(^uint32(0)>>1) {
 			t.Fatalf("parsed players = %+v", players)

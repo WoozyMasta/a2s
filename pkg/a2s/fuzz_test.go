@@ -38,7 +38,7 @@ func FuzzParsePlayers(f *testing.F) {
 	f.Add([]byte{0})
 	f.Add([]byte{1, 0, 'p', 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parsePlayers(data)
+		_, _ = DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
 	})
 }
 

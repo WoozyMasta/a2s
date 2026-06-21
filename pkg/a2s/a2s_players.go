@@ -3,6 +3,7 @@ package a2s
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -27,12 +28,19 @@ func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
 		return nil, err
 	}
 
-	return parsePlayers(data)
+	return DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
 }
 
-// parsePlayers parses a standard A2S_PLAYER payload without copying its buffer.
-func parsePlayers(data []byte) ([]Player, error) {
-	decoder := wire.NewDecoder(data)
+// DecodePlayers parses a standard logical A2S_PLAYER response packet.
+//
+// The response type must be ResponsePlayers.
+// The Ship's extended player payload remains available through GetTheShipPlayers.
+func DecodePlayers(packet Packet) ([]Player, error) {
+	if packet.Type != ResponsePlayers {
+		return nil, errors.Join(ErrPlayerRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
+	}
+
+	decoder := wire.NewDecoder(packet.Payload)
 	count, err := decoder.Byte()
 	if err != nil {
 		return nil, errors.Join(ErrPlayerCount, err)
