@@ -20,6 +20,7 @@ Use [Client.GetInfo] for server metadata,
 or [Client.GetInfoWithMeta] when query latency is also needed,
 [Client.GetPlayers] for the current player list,
 and [Client.GetRules] for server-defined key/value properties.
+Use [Client.Query] when the complete logical response packet is needed.
 
 A2S_INFO exposes the 16-bit AppID and optional EDF GameID separately.
 Use [Info.EffectiveID] when an effective game identifier is needed.

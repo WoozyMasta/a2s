@@ -112,17 +112,17 @@ func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
 // and returns transport metadata separately
 // from the protocol response model.
 func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) {
-	data, format, duration, err := c.Get(ctx, InfoRequest)
+	packet, meta, err := c.Query(ctx, InfoRequest)
 	if err != nil {
 		return nil, QueryMeta{}, err
 	}
 
-	info, err := DecodeInfo(Packet{Type: format, Payload: data})
+	info, err := DecodeInfo(packet)
 	if err != nil {
 		return nil, QueryMeta{}, err
 	}
 
-	return info, QueryMeta{Duration: duration}, nil
+	return info, meta, nil
 }
 
 // DecodeInfo parses a logical A2S_INFO response packet.

@@ -129,12 +129,12 @@ func (c *Client) GetRulesDayZ(ctx context.Context) (*Rules, error) {
 // native A2S rules are returned in ExtraRules,
 // while A3SB version 2 and version 3 select DayZ and Arma 3 respectively.
 func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
-	data, _, _, err := c.Get(ctx, a2s.RulesRequest)
+	packet, _, err := c.Query(ctx, a2s.RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := a2srules.Parse(data)
+	result, err := a2srules.Parse(packet.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrRules, err)
 	}

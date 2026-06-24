@@ -11,16 +11,16 @@ import (
 // GetPing queries server ping (A2A_PING) and returns complete query latency.
 // Deprecated: ping is included in all query responses.
 func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
-	data, _, duration, err := c.Get(ctx, PingRequest)
+	packet, meta, err := c.Query(ctx, PingRequest)
 	if err != nil {
 		return 0, err
 	}
 
-	if err := parsePing(data); err != nil {
-		return duration, err
+	if err := parsePing(packet.Payload); err != nil {
+		return meta.Duration, err
 	}
 
-	return duration, nil
+	return meta.Duration, nil
 }
 
 // parsePing validates the payload of an A2A_PING response.

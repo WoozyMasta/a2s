@@ -10,14 +10,14 @@ import (
 // GetChallenge queries an opaque challenge token
 // (A2S_SERVERQUERY_GETCHALLENGE).
 //
-// Deprecated: challenge is handled automatically by Get() method.
+// Deprecated: challenge is handled automatically by Query.
 func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
-	data, _, _, err := c.Get(ctx, ChallengeRequest)
+	packet, _, err := c.Query(ctx, ChallengeRequest)
 	if err != nil {
 		return Challenge{}, err
 	}
 
-	return parseChallenge(data)
+	return parseChallenge(packet.Payload)
 }
 
 // parseChallenge parses the four-byte challenge payload without reordering it.

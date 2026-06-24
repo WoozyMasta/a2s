@@ -19,8 +19,8 @@ func AppendRules(dst []byte, rules Rules) ([]byte, error) {
 
 	dst = appendPacketHeader(dst, ResponseRules)
 	// #nosec G115 -- count is validated to fit uint16.
+	dst = binary.LittleEndian.AppendUint16(dst, uint16(len(rules)))
 	for _, rule := range rules {
-		dst = binary.LittleEndian.AppendUint16(dst, uint16(len(rules)))
 		dst = append(dst, rule.Name...)
 		dst = append(dst, 0)
 		dst = append(dst, rule.Value...)

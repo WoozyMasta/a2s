@@ -23,12 +23,12 @@ type Player struct {
 // GetPlayers queries the player list (A2S_PLAYER).
 // It returns a non-nil empty slice when the server reports no players.
 func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
-	data, _, _, err := c.Get(ctx, PlayerRequest)
+	packet, _, err := c.Query(ctx, PlayerRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
+	return DecodePlayers(packet)
 }
 
 // DecodePlayers parses a standard logical A2S_PLAYER response packet.

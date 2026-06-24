@@ -1,0 +1,29 @@
+package a2s
+
+import (
+	"context"
+	"testing"
+)
+
+func TestQueryReturnsLogicalPacket(t *testing.T) {
+	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, []byte("rules")))
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	packet, meta, err := client.Query(context.Background(), RulesRequest)
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+	if packet.Type != ResponseRules {
+		t.Fatalf("packet type = 0x%X, want 0x%X", packet.Type, ResponseRules)
+	}
+	if string(packet.Payload) != "rules" {
+		t.Fatalf("packet payload = %q, want %q", packet.Payload, "rules")
+	}
+	if meta.Duration < 0 {
+		t.Fatalf("query duration = %s, want non-negative duration", meta.Duration)
+	}
+}

@@ -217,24 +217,24 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 	return &clone
 }
 
-// Get sends request and returns response data (without header),
-// response type, complete query duration and error.
+// Query sends one A2S request and returns the final logical response packet.
 //
-// Automatically handles challenge-response if server requires it.
-// Context covers complete query transaction, including retries,
-// challenge exchange, and split-packet assembly.
-func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, ResponseType, time.Duration, error) {
+// Challenge-response, split-packet assembly,
+// and compressed split responses are handled internally.
+// QueryMeta.Duration covers the complete logical transaction,
+// including retries and challenge exchange.
+func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, QueryMeta, error) {
 	if c == nil {
-		return nil, 0, 0, ErrClientClosed
+		return Packet{}, QueryMeta{}, ErrClientClosed
 	}
 	if ctx == nil {
-		return nil, 0, 0, ErrNilContext
+		return Packet{}, QueryMeta{}, ErrNilContext
 	}
 
 	effectiveCtx, cancel := c.effectiveContext(ctx)
 	defer cancel()
 	if err := c.acquireQuery(effectiveCtx); err != nil {
-		return nil, 0, 0, err
+		return Packet{}, QueryMeta{}, err
 	}
 	defer c.releaseQuery()
 
@@ -242,7 +242,7 @@ func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, Respon
 	defer c.queryMu.Unlock()
 
 	if c.conn == nil {
-		return nil, 0, 0, ErrClientClosed
+		return Packet{}, QueryMeta{}, ErrClientClosed
 	}
 
 	started := time.Now()
@@ -254,47 +254,60 @@ func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, Respon
 
 	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
 		resp, responseType, err := c.requestWithChallenge(effectiveCtx, requestType)
-		duration := time.Since(started)
+		meta := QueryMeta{Duration: time.Since(started)}
 		if err != nil {
 			if lastUnexpectedErr != nil {
-				return nil, lastUnexpectedResponse, duration, errors.Join(lastUnexpectedErr, err)
+				return Packet{Type: lastUnexpectedResponse}, meta, errors.Join(lastUnexpectedErr, err)
 			}
 
-			return nil, responseType, duration, err
+			return Packet{Type: responseType}, meta, err
+		}
+
+		packet, err := DecodePacket(resp)
+		if err != nil {
+			return Packet{}, meta, err
 		}
 
 		// If response type is not valid, classify error as ErrQueryUnsupported and continue.
-		if err := validateResponseType(requestType, responseType); err != nil {
+		if err := validateResponseType(requestType, packet.Type); err != nil {
 			classified := err
 			switch {
-			case responseType == ResponseChallenge:
+			case packet.Type == ResponseChallenge:
 				classified = errors.Join(err, ErrChallengeLoop)
 
 			case requestType != InfoRequest &&
-				(responseType == ResponseInfo || responseType == ResponseInfoGoldSource):
+				(packet.Type == ResponseInfo || packet.Type == ResponseInfoGoldSource):
 				classified = errors.Join(err, ErrQueryUnsupported)
 			}
 
 			if requestType != InfoRequest &&
-				(responseType == ResponseChallenge ||
-					responseType == ResponseInfo ||
-					responseType == ResponseInfoGoldSource) {
+				(packet.Type == ResponseChallenge ||
+					packet.Type == ResponseInfo ||
+					packet.Type == ResponseInfoGoldSource) {
 				lastUnexpectedErr = classified
-				lastUnexpectedResponse = responseType
+				lastUnexpectedResponse = packet.Type
 				continue
 			}
 
-			return resp[5:], responseType, duration, classified
+			return packet, meta, classified
 		}
 
-		return resp[5:], responseType, duration, nil
+		return packet, meta, nil
 	}
 
 	if lastUnexpectedErr != nil {
-		return nil, lastUnexpectedResponse, time.Since(started), lastUnexpectedErr
+		return Packet{Type: lastUnexpectedResponse}, QueryMeta{Duration: time.Since(started)}, lastUnexpectedErr
 	}
 
-	return nil, 0, time.Since(started), validationErrForRequest(requestType)
+	return Packet{}, QueryMeta{Duration: time.Since(started)}, validationErrForRequest(requestType)
+}
+
+// Get sends one A2S request and returns its payload, response type, and query duration.
+//
+// Deprecated: use Query to retain the complete logical response as a Packet.
+func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, ResponseType, time.Duration, error) {
+	packet, meta, err := c.Query(ctx, requestType)
+	return packet.Payload, packet.Type, meta.Duration, err
 }
 
 // effectiveContext applies the client timeout

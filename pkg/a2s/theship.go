@@ -49,12 +49,12 @@ func readTheShipInfo(r *wire.Decoder) (*TheShip, error) {
 // GetTheShipPlayers queries the player list with The Ship game-specific fields.
 // It returns a non-nil empty slice when the server reports no players.
 func (c *Client) GetTheShipPlayers(ctx context.Context) ([]TheShipPlayer, error) {
-	data, _, _, err := c.Get(ctx, PlayerRequest)
+	packet, _, err := c.Query(ctx, PlayerRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseTheShipPlayers(data)
+	return parseTheShipPlayers(packet.Payload)
 }
 
 // parseTheShipPlayers parses The Ship's extended A2S_PLAYER payload.

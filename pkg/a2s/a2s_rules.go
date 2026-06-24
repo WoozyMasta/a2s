@@ -64,12 +64,12 @@ func (r Rules) Map() map[string]string {
 // GetRules queries server rules (A2S_RULES).
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
 func (c *Client) GetRules(ctx context.Context) (Rules, error) {
-	data, _, _, err := c.Get(ctx, RulesRequest)
+	packet, _, err := c.Query(ctx, RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return DecodeRules(Packet{Type: ResponseRules, Payload: data})
+	return DecodeRules(packet)
 }
 
 // DecodeRules parses a logical A2S_RULES response packet.
