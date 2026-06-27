@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/wire"
-	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 /*
@@ -42,17 +41,12 @@ func (r *Rules) readVersion(reader *wire.Decoder) error {
 		return ErrProtoV1
 
 	case 3:
-		if r.id == 0 {
-			r.id = appid.Arma3
-		}
-		if isDayZGame(r.id) {
+		if r.Layout == LayoutDayZ {
 			return ErrProtoV3
 		}
 
 	case 2:
-		if r.id == 0 {
-			r.id = appid.DayZ
-		}
+		// Both known layouts use a v2 version byte; their field layouts differ.
 
 	default:
 		return fmt.Errorf("%w: protocol version %d", ErrProtoNewest, version)

@@ -5,7 +5,6 @@ import (
 	"math/bits"
 
 	"github.com/woozymasta/a2s/internal/wire"
-	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // DLC identifies a bit in the server browser protocol DLC mask.
@@ -16,6 +15,7 @@ type DLCInfo struct {
 	Name string `json:"name,omitempty"` // DLC name from predefined maps.
 	ID   uint64 `json:"id,omitempty"`   // DLC Steam AppID.
 	Hash uint32 `json:"hash,omitempty"` // DLC short hash.
+	Flag DLC    `json:"flag"`           // DLC bit present in the wire mask.
 }
 
 // DayZ DLC Map for DLC byte blocks
@@ -48,11 +48,11 @@ var arma3DLC = map[DLC]DLCInfo{
 
 // readDLC parses DLC information from bitmask and reads hashes.
 func (r *Rules) readDLC(reader *wire.Decoder, dlcMask uint16) error {
-	switch r.id {
-	case appid.Arma3:
+	switch r.Layout {
+	case LayoutArma3:
 		r.DLC = parseDLC(dlcMask, arma3DLC)
 
-	case appid.DayZ, appid.DayZExperimental:
+	case LayoutDayZ:
 		r.DLC = parseDLC(dlcMask, dayzDLC)
 
 	default:
@@ -90,11 +90,13 @@ func parseDLC(mask uint16, dlcs map[DLC]DLCInfo) []DLCInfo {
 		}
 
 		if info, ok := dlcs[bit]; ok {
+			info.Flag = bit
 			result = append(result, info)
 			continue
 		}
 
 		result = append(result, DLCInfo{
+			Flag: bit,
 			ID:   0,
 			Name: fmt.Sprintf("Unknown DLC %d", bit),
 		})

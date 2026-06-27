@@ -129,7 +129,7 @@ func getAutomaticRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*
 func TestMinimalDayZProtocolFixture(t *testing.T) {
 	// v2, zero flags, no DLC, no mods, and no signatures.
 	data := []byte{2, 0, 0, 0, 0, 0}
-	rules := &Rules{id: appid.DayZ}
+	rules := &Rules{Layout: LayoutDayZ, appID: appid.DayZ}
 
 	if err := rules.readA3SB(data); err != nil {
 		t.Fatalf("readA3SB returned error: %v", err)
@@ -197,9 +197,6 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	if _, ok := rules.ExtraRules.Get(""); ok {
 		t.Fatal("blank rule key should not be preserved as a raw rule")
 	}
-	if stats := rules.GetReaderStats(); stats[1] != 1 {
-		t.Fatalf("page count stat = %d, want 1", stats[1])
-	}
 }
 
 func TestGetRulesDoesNotMutateBufferSize(t *testing.T) {
@@ -247,9 +244,6 @@ func TestGetRulesAssemblesPagesByNumber(t *testing.T) {
 	}
 	if rules.Version != 2 {
 		t.Fatalf("protocol version = %d, want 2", rules.Version)
-	}
-	if stats := rules.GetReaderStats(); stats[1] != 2 {
-		t.Fatalf("page count stat = %d, want 2", stats[1])
 	}
 }
 
@@ -525,7 +519,7 @@ func TestReadDifficultyConsumesFixedWidthField(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rules := &Rules{id: appid.Arma3}
+			rules := &Rules{Layout: LayoutArma3, appID: appid.Arma3}
 			decoder := wire.NewDecoder(test.data)
 
 			err := rules.readDifficulty(&decoder)
@@ -565,7 +559,7 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 	binary.LittleEndian.PutUint32(hashData[8:12], 0x33333333)
 
 	for iteration := 0; iteration < 100; iteration++ {
-		rules := &Rules{id: appid.Arma3}
+		rules := &Rules{Layout: LayoutArma3, appID: appid.Arma3}
 		decoder := wire.NewDecoder(hashData)
 		if err := rules.readDLC(&decoder, mask); err != nil {
 			t.Fatalf("readDLC returned error: %v", err)
@@ -578,15 +572,16 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 		want := []struct {
 			name string
 			id   uint64
+			flag DLC
 			hash uint32
 		}{
-			{name: "Karts", id: 288520, hash: 0x11111111},
-			{name: "Tanks", id: 798390, hash: 0x22222222},
-			{name: "Unknown DLC 8192", id: 0, hash: 0x33333333},
+			{name: "Karts", id: 288520, flag: 0x1, hash: 0x11111111},
+			{name: "Tanks", id: 798390, flag: 0x200, hash: 0x22222222},
+			{name: "Unknown DLC 8192", id: 0, flag: 0x2000, hash: 0x33333333},
 		}
 		for index, expected := range want {
 			got := rules.DLC[index]
-			if got.Name != expected.name || got.ID != expected.id || got.Hash != expected.hash {
+			if got.Name != expected.name || got.ID != expected.id || got.Flag != expected.flag || got.Hash != expected.hash {
 				t.Fatalf("iteration %d DLC[%d] = %+v, want %+v", iteration, index, got, expected)
 			}
 		}

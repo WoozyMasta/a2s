@@ -49,6 +49,7 @@ func (r *Rules) parseRulesDayZ(data a2s.Rules) error {
 			r.Language = types.ServerLang(language) // #nosec G115
 
 		case "platform":
+			r.PlatformRaw = v
 			switch v {
 			case "win":
 				r.Platform = "Windows"

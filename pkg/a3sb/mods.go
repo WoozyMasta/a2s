@@ -8,9 +8,10 @@ import (
 
 // Mod contains mod information from an A3SB response.
 type Mod struct {
-	Name string `json:"name,omitempty"` // Mod name from response
-	ID   uint64 `json:"id,omitempty"`   // Mod ID in SteamWorkshop
-	Hash uint32 `json:"hash,omitempty"` // Mod short hash
+	Name     string `json:"name,omitempty"`      // Mod name from response.
+	ID       uint64 `json:"id,omitempty"`        // Mod ID in SteamWorkshop.
+	Hash     uint32 `json:"hash,omitempty"`      // Mod short hash.
+	IDLength byte   `json:"id_length,omitempty"` // Wire idLen value.
 }
 
 // arma3CreatorDLC maps creator DLC AppIDs found in the mods block to names.
@@ -103,6 +104,8 @@ func (r *Rules) readMods(reader *wire.Decoder) error {
 			// Keep it unsupported until a real response justifies a parser change.
 			return fmt.Errorf("mod %d id length (%d) unknown", i, idLen)
 		}
+
+		mod.IDLength = idLen
 
 		nameLen, err := reader.Byte()
 		if err != nil {

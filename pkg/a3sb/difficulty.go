@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/woozymasta/a2s/internal/wire"
-	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // Difficulty represents Arma 3 server difficulty settings decoded from two bytes:
@@ -24,7 +23,7 @@ type Difficulty struct {
 // It still consumes both protocol bytes
 // before checking whether the first byte contains settings.
 func (r *Rules) readDifficulty(reader *wire.Decoder) error {
-	if r.id != appid.Arma3 {
+	if r.Layout != LayoutArma3 {
 		return nil
 	}
 

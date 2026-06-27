@@ -93,7 +93,7 @@ func TestReadA3SBDayZDescriptionTruncation(t *testing.T) {
 
 	for end := baseLength; end < len(data); end++ {
 		t.Run("truncated description", func(t *testing.T) {
-			rules := &Rules{id: appid.DayZ}
+			rules := &Rules{Layout: LayoutDayZ, appID: appid.DayZ}
 			if err := rules.readA3SB(data[:end]); err == nil {
 				t.Fatalf("readA3SB() returned nil for length %d", end)
 			}
@@ -110,7 +110,7 @@ func TestReadA3SBShortBuffersDoNotPanic(t *testing.T) {
 				}
 			}()
 
-			rules := &Rules{id: appid.Arma3}
+			rules := &Rules{Layout: LayoutArma3, appID: appid.Arma3}
 			_ = rules.readA3SB(make([]byte, length))
 		})
 	}

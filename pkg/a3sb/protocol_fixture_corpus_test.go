@@ -25,7 +25,7 @@ func TestProtocolFixtureCorpusA3SBPayloads(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			rules := &Rules{id: test.game}
+			rules := &Rules{Layout: layoutForAppID(test.game), appID: test.game}
 			if err := rules.readA3SB(data); err != nil {
 				t.Fatalf("readA3SB() error = %v", err)
 			}

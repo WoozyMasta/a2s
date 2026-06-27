@@ -13,7 +13,7 @@ func FuzzReadA3SB(f *testing.F) {
 	f.Add([]byte{2, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		for _, game := range []uint64{appid.Arma3, appid.DayZ, appid.DayZExperimental, 0} {
-			rules := &Rules{id: game}
+			rules := &Rules{Layout: layoutForAppID(game), appID: game}
 			_ = rules.readA3SB(data)
 		}
 	})
@@ -47,7 +47,7 @@ func FuzzParseAutomaticRules(f *testing.F) {
 func FuzzParseRulesDayZ(f *testing.F) {
 	f.Add([]byte("allowedBuild"), []byte("123"))
 	f.Fuzz(func(t *testing.T, key, value []byte) {
-		rules := &Rules{id: appid.DayZ}
+		rules := &Rules{Layout: LayoutDayZ, appID: appid.DayZ}
 		_ = rules.parseRulesDayZ(a2s.Rules{{Name: string(key), Value: string(value)}})
 	})
 }

@@ -4,11 +4,14 @@ Package a3sb parses Arma 3 Server Browser Protocol responses carried by A2S_RULE
 Wrap an *a2s.Client in [Client] and use [Client.GetRules]
 to retrieve typed Arma 3 or DayZ data.
 
-A non-zero game AppID selects an explicit layout;
+A known non-zero game AppID selects its explicit layout;
 use constants from github.com/woozymasta/a2s/pkg/appid,
 such as appid.Arma3 or appid.DayZ.
 The [Client.GetRulesArma3] and [Client.GetRulesDayZ] helpers
 select the corresponding layouts directly.
+
+The parsed [Rules.Layout] records the selected binary layout.
+The [Rules.GetAppID] result remains the requested or inferred game identity.
 
 Pass game == 0 when the server's game is unknown.
 The response is classified from the A2S_RULES payload

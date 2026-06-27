@@ -18,8 +18,9 @@ const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
 
 // Rules contains parsed A3SB rules response data.
 //
-// When GetRules receives a non-zero game AppID,
-// the binary rules payload is parsed using the explicitly selected game layout.
+// When GetRules receives a known non-zero game AppID,
+// the binary rules payload is parsed using the corresponding explicit layout.
+// Unknown non-zero AppIDs retain their identity and use LayoutUnknown.
 // For automatic mode, the response is classified as either native A2S
 // or A3SB before the payload is parsed.
 //
@@ -54,6 +55,9 @@ type Rules struct {
 	// Platform is the normalized DayZ server platform name.
 	Platform string `json:"platform,omitempty"`
 
+	// PlatformRaw is the original DayZ platform rule value.
+	PlatformRaw string `json:"platform_raw,omitempty"`
+
 	// DLC contains the DLC entries reported by the server in protocol mask order.
 	// Each entry may include its protocol hash.
 	DLC []DLCInfo `json:"dlcs,omitempty"`
@@ -68,8 +72,12 @@ type Rules struct {
 	// Signatures contains the signature names reported by the server.
 	Signatures []string `json:"signatures,omitempty"`
 
-	// id is the Steam AppID used to select the A3SB layout and game-specific parsing rules.
-	id uint64 ``
+	// Layout identifies the binary layout used to decode the A3SB payload.
+	// It is LayoutUnknown for native A2S fallback results.
+	Layout Layout `json:"layout,omitempty"`
+
+	// appID identifies the game requested or inferred for this result.
+	appID uint64 `json:"-"`
 
 	// Language is the DayZ server language value.
 	Language types.ServerLang `json:"language,omitempty"`
@@ -89,10 +97,6 @@ type Rules struct {
 	// TimeLeft is the DayZ time-left value.
 	TimeLeft uint16 `json:"time_left,omitempty"`
 
-	// stats stores internal A3SB envelope statistics in the order
-	// raw, paged, blank, and overflow.
-	stats [4]byte ``
-
 	// Version is the A3SB binary protocol version.
 	// It is zero for a native A2S automatic fallback result.
 	Version byte `json:"version"`
@@ -107,9 +111,6 @@ type Rules struct {
 type a3sbEnvelope struct {
 	extraRules   a2s.Rules
 	encodedPages []byte
-	pageCount    byte
-	blankCount   byte
-	overflow     byte
 }
 
 // GetRulesArma3 returns A2S_RULES for Arma 3.
@@ -143,12 +144,14 @@ func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
 		return parseAutomatic(result)
 	}
 
+	layout := layoutForAppID(game)
+
 	envelope, err := buildPageEnvelope(result.Entries, result.Remaining, false)
 	if err != nil {
 		return nil, err
 	}
 
-	return parseA3SBEnvelope(envelope, game)
+	return parseA3SBEnvelope(envelope, layout, game)
 }
 
 // parseAutomatic classifies one already fetched A2S_RULES response.
@@ -167,24 +170,27 @@ func parseAutomatic(result a2srules.Result) (*Rules, error) {
 	}
 
 	version := envelope.encodedPages[0]
-	var firstGame, secondGame uint64
+	var firstLayout, secondLayout Layout
 	switch version {
 	case 1:
 		return nil, ErrProtoV1
+
 	case 2:
-		firstGame, secondGame = appid.DayZ, appid.Arma3
+		firstLayout, secondLayout = LayoutDayZ, LayoutArma3
+
 	case 3:
-		firstGame, secondGame = appid.Arma3, appid.DayZ
+		firstLayout, secondLayout = LayoutArma3, LayoutDayZ
+
 	default:
 		return nil, fmt.Errorf("%w: protocol version %d", ErrProtoNewest, version)
 	}
 
-	first, firstErr := parseA3SBEnvelope(envelope, firstGame)
+	first, firstErr := parseA3SBEnvelope(envelope, firstLayout, appIDForLayout(firstLayout))
 	if firstErr == nil {
 		return first, nil
 	}
 
-	second, secondErr := parseA3SBEnvelope(envelope, secondGame)
+	second, secondErr := parseA3SBEnvelope(envelope, secondLayout, appIDForLayout(secondLayout))
 	if secondErr == nil {
 		return second, nil
 	}
@@ -239,19 +245,12 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 
 	pageValues := make(map[byte][]byte)
 	var pageCount byte
-	var blankCount byte
-	var overflow byte
 	var rawRules a2s.Rules
 	pageOnePresent := false
 
 	for _, entry := range entries {
 		if len(entry.Key) == 0 {
-			blankCount++
 			continue
-		}
-
-		if len(entry.Value) > 127 {
-			overflow++
 		}
 
 		if len(entry.Key) != 2 {
@@ -312,29 +311,21 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 	return a3sbEnvelope{
 		encodedPages: appendEscapeSequences(nil, encodedPages),
 		extraRules:   rawRules,
-		pageCount:    pageCount,
-		blankCount:   blankCount,
-		overflow:     overflow,
 	}, nil
 }
 
 // parseA3SBEnvelope parses one validated payload with one explicit layout.
-func parseA3SBEnvelope(envelope a3sbEnvelope, game uint64) (*Rules, error) {
+func parseA3SBEnvelope(envelope a3sbEnvelope, layout Layout, game uint64) (*Rules, error) {
 	rules := &Rules{
-		id: game,
-		stats: [4]byte{
-			countByte(len(envelope.extraRules)),
-			envelope.pageCount,
-			envelope.blankCount,
-			envelope.overflow,
-		},
+		Layout: layout,
+		appID:  game,
 	}
 
 	if err := rules.readA3SB(envelope.encodedPages); err != nil {
 		return nil, err
 	}
 
-	if isDayZGame(game) {
+	if layout == LayoutDayZ {
 		if err := rules.parseRulesDayZ(envelope.extraRules); err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrRulesDayZ, err)
 		}
@@ -345,21 +336,32 @@ func parseA3SBEnvelope(envelope a3sbEnvelope, game uint64) (*Rules, error) {
 	return rules, nil
 }
 
-// isDayZGame identifies both stable and experimental DayZ AppIDs.
-func isDayZGame(game uint64) bool {
-	return game == appid.DayZ || game == appid.DayZExperimental
+// layoutForAppID identifies the known A3SB layout for a game AppID.
+func layoutForAppID(game uint64) Layout {
+	switch game {
+	case appid.Arma3:
+		return LayoutArma3
+
+	case appid.DayZ, appid.DayZExperimental:
+		return LayoutDayZ
+
+	default:
+		return LayoutUnknown
+	}
 }
 
-// countByte stores bounded parser statistics in the legacy byte-sized field.
-func countByte(value int) byte {
-	if value < 0 {
+// appIDForLayout returns the canonical AppID for automatic layout selection.
+func appIDForLayout(layout Layout) uint64 {
+	switch layout {
+	case LayoutArma3:
+		return appid.Arma3
+
+	case LayoutDayZ:
+		return appid.DayZ
+
+	default:
 		return 0
 	}
-	if value > 255 {
-		return 255
-	}
-
-	return byte(value)
 }
 
 // assemblePages orders one-based A3SB pages and concatenates their raw values.
@@ -443,12 +445,7 @@ func (r *Rules) readA3SB(data []byte) error {
 	return nil
 }
 
-// GetAppID returns the Steam AppID.
+// GetAppID returns the Steam AppID requested or inferred for the result.
 func (r *Rules) GetAppID() uint64 {
-	return r.id
-}
-
-// GetReaderStats returns parsing statistics: [raw, pager, blank, overflow].
-func (r *Rules) GetReaderStats() [4]byte {
-	return r.stats
+	return r.appID
 }
