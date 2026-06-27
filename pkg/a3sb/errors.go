@@ -21,6 +21,11 @@ var (
 	// ErrRulesDayZDedicated indicates an invalid DayZ dedicated value.
 	ErrRulesDayZDedicated = errors.New("A2S_RULES: invalid DayZ dedicated rule value")
 
+	// ErrEncode indicates that an A3SB binary response cannot be encoded.
+	ErrEncode = errors.New("A3SB: encode failed")
+	// ErrEncodeCreatorDLC indicates that the Creator DLC wire form is not supported by the encoder.
+	ErrEncodeCreatorDLC = errors.New("A3SB: Creator DLC encoding is unsupported")
+
 	// ErrProtoV1 indicates the unsupported legacy protocol version 1.
 	ErrProtoV1 = errors.New("got protocol version v1, this is the oldest version and it is not supported")
 	// ErrProtoV3 indicates a v3 response where DayZ v2 was expected.
