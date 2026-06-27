@@ -309,7 +309,7 @@ func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOn
 
 	// assemblePages returns an owned buffer, so escape decoding can reuse it.
 	return a3sbEnvelope{
-		encodedPages: appendEscapeSequences(nil, encodedPages),
+		encodedPages: appendDecodedEscapeSequences(nil, encodedPages),
 		extraRules:   rawRules,
 	}, nil
 }

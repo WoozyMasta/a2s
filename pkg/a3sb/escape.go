@@ -1,14 +1,37 @@
 package a3sb
 
-// appendEscapeSequences appends decoded A3SB escape sequences to dst.
+// AppendEscapeSequences appends A3SB-escaped data to dst.
 //
-//	{0x01, 0x01} -> 0x01
-//	{0x01, 0x02} -> 0x00
-//	{0x01, 0x03} -> 0xFF
+//	0x01 -> {0x01, 0x01}
+//	0x00 -> {0x01, 0x02}
+//	0xFF -> {0x01, 0x03}
+//
+// This encoder is the inverse of appendDecodedEscapeSequences.
+func AppendEscapeSequences(dst []byte, data []byte) []byte {
+	for _, value := range data {
+		switch value {
+		case 0x01:
+			dst = append(dst, 0x01, 0x01)
+
+		case 0x00:
+			dst = append(dst, 0x01, 0x02)
+
+		case 0xFF:
+			dst = append(dst, 0x01, 0x03)
+
+		default:
+			dst = append(dst, value)
+		}
+	}
+
+	return dst
+}
+
+// appendDecodedEscapeSequences appends decoded A3SB escape sequences to dst.
 //
 // Unknown and incomplete escape sequences are preserved byte-for-byte.
 // When dst is nil, data is decoded in place and must be owned by the caller.
-func appendEscapeSequences(dst []byte, data []byte) []byte {
+func appendDecodedEscapeSequences(dst []byte, data []byte) []byte {
 	if dst == nil {
 		return decodeEscapeSequencesInPlace(data)
 	}
