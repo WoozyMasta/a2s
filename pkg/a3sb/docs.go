@@ -14,6 +14,8 @@ The parsed [Rules.Layout] records the selected binary layout.
 The [Rules.GetAppID] result remains the requested or inferred game identity.
 Use [AppendBinary] for the inner binary payload;
 it does not perform A3SB escaping or A2S_RULES page generation.
+Use [AppendEscapeSequences] before [EncodePages] to build ordered A2S_RULES page entries;
+a page size of zero selects [DefaultPageSize].
 
 Pass game == 0 when the server's game is unknown.
 The response is classified from the A2S_RULES payload

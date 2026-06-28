@@ -25,6 +25,12 @@ var (
 	ErrEncode = errors.New("A3SB: encode failed")
 	// ErrEncodeCreatorDLC indicates that the Creator DLC wire form is not supported by the encoder.
 	ErrEncodeCreatorDLC = errors.New("A3SB: Creator DLC encoding is unsupported")
+	// ErrPageEncode indicates that escaped A3SB data cannot be paged.
+	ErrPageEncode = errors.New("A3SB: page encode failed")
+	// ErrPageSize indicates an invalid configured A3SB page size.
+	ErrPageSize = errors.New("A3SB: invalid page size")
+	// ErrPageCount indicates that the A3SB page count field would overflow.
+	ErrPageCount = errors.New("A3SB: page count overflow")
 
 	// ErrProtoV1 indicates the unsupported legacy protocol version 1.
 	ErrProtoV1 = errors.New("got protocol version v1, this is the oldest version and it is not supported")

@@ -13,18 +13,19 @@ in messages formatted as described below.
 During decoding,
 the parser replaces these escape pairs with their original bytes:
 
-* `{0x01, 0x01}` → `0x01`
-* `{0x01, 0x02}` → `0x00`
-* `{0x01, 0x03}` → `0xFF`
+* `{0x01, 0x01}` -> `0x01`
+* `{0x01, 0x02}` -> `0x00`
+* `{0x01, 0x03}` -> `0xFF`
 
 During encoding, [AppendEscapeSequences] applies the inverse mapping:
 
-* `0x01` → `{0x01, 0x01}`
-* `0x00` → `{0x01, 0x02}`
-* `0xFF` → `{0x01, 0x03}`
+* `0x01` -> `{0x01, 0x01}`
+* `0x00` -> `{0x01, 0x02}`
+* `0xFF` -> `{0x01, 0x03}`
 
-The later paging stage splits the escaped message into fragments
+After escaping, [EncodePages] splits the message into ordered fragments
 and places them into `A2S_RULES` key-value pairs.
+A page size of zero selects the documented default of `124` bytes.
 
 If the entire message exceeds `1400` bytes
 (the maximum size of a single UDP packet in the Steam API),
@@ -44,3 +45,4 @@ Background information:
 ![DayZ](dzsb.png)
 
 [AppendEscapeSequences]: https://pkg.go.dev/github.com/WoozyMasta/a2s/pkg/a3sb#AppendEscapeSequences
+[EncodePages]: https://pkg.go.dev/github.com/WoozyMasta/a2s/pkg/a3sb#EncodePages
