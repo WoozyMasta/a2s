@@ -91,6 +91,9 @@ func TestNormalizeResponseAllowsProtocolPackets(t *testing.T) {
 		query        a2s.QueryType
 		responseType a2s.ResponseType
 	}{
+		{query: a2s.InfoRequest, responseType: a2s.ResponseChallenge},
+		{query: a2s.PlayerRequest, responseType: a2s.ResponseChallenge},
+		{query: a2s.RulesRequest, responseType: a2s.ResponseChallenge},
 		{query: a2s.ChallengeRequest, responseType: a2s.ResponseChallenge},
 		{query: a2s.PingRequest, responseType: a2s.ResponsePing},
 	}

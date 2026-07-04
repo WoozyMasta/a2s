@@ -12,6 +12,9 @@ var (
 	// ErrChallengeProvider identifies failure to initialize a challenge provider.
 	ErrChallengeProvider = errors.New("a2s server: challenge provider initialization failed")
 
+	// ErrChallengeGate identifies invalid challenge gate configuration or use.
+	ErrChallengeGate = errors.New("a2s server: challenge gate failed")
+
 	// ErrDrop tells the server to discard the request without sending a response.
 	// It is not a server failure and should not be reported
 	// as one by the transport implementation.

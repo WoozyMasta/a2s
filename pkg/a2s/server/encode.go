@@ -128,13 +128,15 @@ func validateResponseQuery(query a2s.QueryType, response a2s.ResponseType) error
 	valid := false
 	switch query {
 	case a2s.InfoRequest:
-		valid = response == a2s.ResponseInfo || response == a2s.ResponseInfoGoldSource
+		valid = response == a2s.ResponseInfo ||
+			response == a2s.ResponseInfoGoldSource ||
+			response == a2s.ResponseChallenge
 
 	case a2s.PlayerRequest:
-		valid = response == a2s.ResponsePlayers
+		valid = response == a2s.ResponsePlayers || response == a2s.ResponseChallenge
 
 	case a2s.RulesRequest:
-		valid = response == a2s.ResponseRules
+		valid = response == a2s.ResponseRules || response == a2s.ResponseChallenge
 
 	case a2s.ChallengeRequest:
 		valid = response == a2s.ResponseChallenge

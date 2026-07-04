@@ -9,5 +9,6 @@ when implementing a custom transport or packetizer.
 
 Use SecureChallengePolicy by default for Internet-facing servers;
 LegacyChallengePolicy and NoChallengePolicy are explicit alternatives.
+NewChallengeGate applies a policy and provider before a handler receives a request.
 */
 package server
