@@ -1,8 +1,9 @@
 /*
 Package server defines transport-independent contracts for an A2S server.
 
-The package contains request, handler, middleware, and response types only.
-A UDP listener and protocol dispatch are implemented separately.
+The package contains request, handler, middleware, response, and UDP runtime types.
+Server workers decode requests, apply challenge handling,
+dispatch the handler, encode responses, and packetize Source responses.
 
 Use NormalizeResponse to turn a handler response into a logical A2S packet
 when implementing a custom transport or packetizer.

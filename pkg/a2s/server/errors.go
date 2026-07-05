@@ -30,6 +30,9 @@ var (
 	// ErrPacketizerFragmentCount identifies a response requiring too many fragments.
 	ErrPacketizerFragmentCount = errors.New("a2s server: too many Source response fragments")
 
+	// ErrServer identifies invalid server configuration or transport setup.
+	ErrServer = errors.New("a2s server: server failure")
+
 	// ErrDrop tells the server to discard the request without sending a response.
 	// It is not a server failure and should not be reported
 	// as one by the transport implementation.
