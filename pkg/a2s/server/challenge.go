@@ -28,8 +28,8 @@ type ChallengeProvider interface {
 // remote endpoint, and short time bucket.
 // It stores no per-client state.
 type statelessChallengeProvider struct {
-	secret [challengeSecretSize]byte
 	now    func() time.Time
+	secret [challengeSecretSize]byte
 }
 
 // NewStatelessChallengeProvider creates a provider with a cryptographically random secret.
