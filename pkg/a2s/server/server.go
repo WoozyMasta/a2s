@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
@@ -27,8 +28,10 @@ type Server struct {
 	Handler Handler
 
 	packetizer     *SourcePacketizer // Encodes logical responses into UDP datagrams.
+	run            *serverRun        // Active serve loop, if any.
 	workers        int               // Fixed number of concurrent UDP workers.
 	maxRequestSize int               // Maximum accepted request datagram size.
+	lifecycleMu    sync.Mutex        // Serializes server lifecycle transitions.
 }
 
 type serverConfig struct {
@@ -37,6 +40,38 @@ type serverConfig struct {
 	packetizer     *SourcePacketizer // Source response packetizer.
 	workers        int               // Fixed worker count.
 	maxRequestSize int               // Maximum accepted request size.
+}
+
+// serverRun owns the state of one active ServeContext invocation.
+type serverRun struct {
+	ctx      context.Context    // Context shared by active handler calls.
+	conn     net.PacketConn     // PacketConn owned by the caller.
+	reason   error              // First reason the serve loop was stopped.
+	cancel   context.CancelFunc // Cancels the active serve loop and handlers.
+	done     chan struct{}      // Closed after all workers and cleanup finish.
+	stopOnce sync.Once          // Makes shutdown signaling idempotent.
+	reasonMu sync.Mutex         // Protects reason during concurrent shutdown.
+}
+
+// stop records the first termination reason, cancels handlers, and wakes reads.
+func (r *serverRun) stop(reason error) {
+	r.stopOnce.Do(func() {
+		r.reasonMu.Lock()
+		r.reason = reason
+		r.reasonMu.Unlock()
+		r.cancel()
+		// PacketConn has no context-aware ReadFrom. A temporary deadline is
+		// the portable way to wake workers without taking ownership of conn.
+		_ = r.conn.SetReadDeadline(time.Now())
+	})
+}
+
+// stopReason returns the first recorded termination reason.
+func (r *serverRun) stopReason() error {
+	r.reasonMu.Lock()
+	defer r.reasonMu.Unlock()
+
+	return r.reason
 }
 
 // Option configures a Server during construction.
@@ -179,10 +214,26 @@ func (s *Server) ListenAndServe(addr string) error {
 }
 
 // Serve reads and handles UDP datagrams using a fixed worker pool.
+//
+// Use Shutdown to stop Serve.
 // The supplied PacketConn remains owned by the caller and is not closed.
+// Serve returns ErrServerClosed after Shutdown.
 func (s *Server) Serve(conn net.PacketConn) error {
+	return s.ServeContext(context.Background(), conn)
+}
+
+// ServeContext reads and handles UDP datagrams until the context is canceled,
+// Shutdown is called, or the PacketConn reports an unexpected error.
+//
+// The supplied PacketConn remains owned by the caller and is not closed.
+// During cancellation the server temporarily sets its read deadline
+// to wake blocked workers, then clears that deadline before returning.
+func (s *Server) ServeContext(ctx context.Context, conn net.PacketConn) error {
 	if s == nil {
 		return fmt.Errorf("%w: server is nil", ErrServer)
+	}
+	if ctx == nil {
+		return fmt.Errorf("%w: context is nil", ErrServer)
 	}
 	if conn == nil {
 		return fmt.Errorf("%w: packet connection is nil", ErrServer)
@@ -191,32 +242,103 @@ func (s *Server) Serve(conn net.PacketConn) error {
 		return fmt.Errorf("%w: server is not initialized", ErrServer)
 	}
 
+	serveCtx, cancel := context.WithCancel(ctx)
+	run := &serverRun{
+		ctx:    serveCtx,
+		cancel: cancel,
+		conn:   conn,
+		done:   make(chan struct{}),
+	}
+
+	s.lifecycleMu.Lock()
+	if s.run != nil {
+		s.lifecycleMu.Unlock()
+		cancel()
+		return fmt.Errorf("%w: %w", ErrServer, ErrServerRunning)
+	}
+	s.run = run
+	s.lifecycleMu.Unlock()
+
+	defer func() {
+		cancel()
+		_ = conn.SetReadDeadline(time.Time{})
+		s.lifecycleMu.Lock()
+		if s.run == run {
+			s.run = nil
+		}
+		s.lifecycleMu.Unlock()
+		close(run.done)
+	}()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			run.stop(ctx.Err())
+		case <-run.done:
+		}
+	}()
+	if err := ctx.Err(); err != nil {
+		run.stop(err)
+	}
+
 	var workers sync.WaitGroup
-	errorsCh := make(chan error, s.workers)
 	workers.Add(s.workers)
 	for range s.workers {
 		go func() {
 			defer workers.Done()
-			s.serveWorker(conn, errorsCh)
+			s.serveWorker(run)
 		}()
 	}
 
 	workers.Wait()
-	close(errorsCh)
-	for err := range errorsCh {
-		return err
+	if run.stopReason() == nil {
+		if err := ctx.Err(); err != nil {
+			run.stop(err)
+		} else {
+			run.stop(ErrServer)
+		}
 	}
 
-	return nil
+	return run.stopReason()
 }
 
-// serveWorker handles datagrams until ReadFrom reports a connection error.
-func (s *Server) serveWorker(conn net.PacketConn, errorsCh chan<- error) {
+// Shutdown stops the active serve loop and waits for its workers to exit.
+// It is safe to call Shutdown more than once. A nil context is rejected.
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s == nil {
+		return fmt.Errorf("%w: server is nil", ErrServer)
+	}
+	if ctx == nil {
+		return fmt.Errorf("%w: context is nil", ErrServer)
+	}
+
+	s.lifecycleMu.Lock()
+	run := s.run
+	s.lifecycleMu.Unlock()
+	if run == nil {
+		return nil
+	}
+
+	run.stop(ErrServerClosed)
+	select {
+	case <-run.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// serveWorker handles datagrams until the serve context is canceled or
+// ReadFrom reports a connection error.
+func (s *Server) serveWorker(run *serverRun) {
+	conn := run.conn
 	buffer := make([]byte, s.maxRequestSize+1)
 	for {
 		n, remote, err := conn.ReadFrom(buffer)
 		if err != nil {
-			errorsCh <- err
+			if run.ctx.Err() == nil {
+				run.stop(err)
+			}
 			return
 		}
 		if n > s.maxRequestSize {
@@ -233,7 +355,7 @@ func (s *Server) serveWorker(conn net.PacketConn, errorsCh chan<- error) {
 		}
 
 		serverRequest := &Request{Remote: remoteAddr, Query: request}
-		response, err := s.Handler.Handle(context.Background(), serverRequest)
+		response, err := s.Handler.Handle(run.ctx, serverRequest)
 		if err != nil || response == nil {
 			continue
 		}

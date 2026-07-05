@@ -33,6 +33,12 @@ var (
 	// ErrServer identifies invalid server configuration or transport setup.
 	ErrServer = errors.New("a2s server: server failure")
 
+	// ErrServerRunning identifies an attempt to serve with an already running server.
+	ErrServerRunning = errors.New("a2s server: server is already running")
+
+	// ErrServerClosed identifies a serve loop stopped by Shutdown.
+	ErrServerClosed = errors.New("a2s server: server is closed")
+
 	// ErrDrop tells the server to discard the request without sending a response.
 	// It is not a server failure and should not be reported
 	// as one by the transport implementation.

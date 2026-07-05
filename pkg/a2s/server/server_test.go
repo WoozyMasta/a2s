@@ -234,3 +234,156 @@ func TestNewServerRejectsInvalidOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestServerShutdownCancelsHandlersAndKeepsConnectionOpen(t *testing.T) {
+	started := make(chan struct{})
+	server, err := New(
+		HandlerFunc(func(ctx context.Context, _ *Request) (Response, error) {
+			close(started)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := net.DialUDP("udp", nil, conn.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("DialUDP() error = %v", err)
+	}
+	defer client.Close()
+	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	if err != nil {
+		t.Fatalf("AppendRequest() error = %v", err)
+	}
+	if _, err := client.Write(request); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("handler did not start")
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("second Shutdown() error = %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn was closed by Serve: %v", err)
+	}
+}
+
+func TestServerContextCancellationStopsServe(t *testing.T) {
+	server, err := New(
+		HandlerFunc(func(context.Context, *Request) (Response, error) {
+			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.ServeContext(ctx, conn) }()
+
+	cancel()
+	if err := <-serveErr; !errors.Is(err, context.Canceled) {
+		t.Fatalf("ServeContext() error = %v, want context.Canceled", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn was closed by ServeContext: %v", err)
+	}
+}
+
+func TestServerRejectsConcurrentServe(t *testing.T) {
+	started := make(chan struct{})
+	server, err := New(
+		HandlerFunc(func(context.Context, *Request) (Response, error) {
+			close(started)
+			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	first, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket(first) error = %v", err)
+	}
+	firstErr := make(chan error, 1)
+	go func() { firstErr <- server.Serve(first) }()
+	client, err := net.DialUDP("udp", nil, first.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		_ = first.Close()
+		<-firstErr
+		t.Fatalf("DialUDP() error = %v", err)
+	}
+	defer client.Close()
+	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	if err != nil {
+		_ = first.Close()
+		<-firstErr
+		t.Fatalf("AppendRequest() error = %v", err)
+	}
+	if _, err := client.Write(request); err != nil {
+		_ = first.Close()
+		<-firstErr
+		t.Fatalf("Write() error = %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		_ = first.Close()
+		<-firstErr
+		t.Fatal("first server did not start")
+	}
+
+	second, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		_ = first.Close()
+		<-firstErr
+		t.Fatalf("ListenPacket(second) error = %v", err)
+	}
+	defer second.Close()
+	if err := server.Serve(second); !errors.Is(err, ErrServerRunning) {
+		t.Fatalf("second Serve() error = %v, want ErrServerRunning", err)
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := <-firstErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("first Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := first.Close(); err != nil {
+		t.Fatalf("first PacketConn close error = %v", err)
+	}
+}
