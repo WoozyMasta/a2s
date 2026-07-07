@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ type Server struct {
 	Handler Handler
 
 	packetizer     *SourcePacketizer // Encodes logical responses into UDP datagrams.
+	panicReporter  PanicReporter     // Receives recovered handler panics.
 	run            *serverRun        // Active serve loop, if any.
 	workers        int               // Fixed number of concurrent UDP workers.
 	maxRequestSize int               // Maximum accepted request datagram size.
@@ -38,6 +40,7 @@ type serverConfig struct {
 	policy         ChallengePolicy   // Challenge requirement policy.
 	provider       ChallengeProvider // Challenge token issuer and validator.
 	packetizer     *SourcePacketizer // Source response packetizer.
+	panicReporter  PanicReporter     // Receives recovered handler panics.
 	workers        int               // Fixed worker count.
 	maxRequestSize int               // Maximum accepted request size.
 }
@@ -119,10 +122,20 @@ func New(handler Handler, options ...Option) (*Server, error) {
 
 	return &Server{
 		Handler:        gate,
+		panicReporter:  config.panicReporter,
 		workers:        config.workers,
 		maxRequestSize: config.maxRequestSize,
 		packetizer:     config.packetizer,
 	}, nil
+}
+
+// WithPanicReporter configures the callback used for recovered handler panics.
+// Passing nil disables reporting and is safe.
+func WithPanicReporter(reporter PanicReporter) Option {
+	return func(config *serverConfig) error {
+		config.panicReporter = reporter
+		return nil
+	}
 }
 
 // DefaultWorkerCount returns the default number of concurrent UDP workers.
@@ -355,7 +368,7 @@ func (s *Server) serveWorker(run *serverRun) {
 		}
 
 		serverRequest := &Request{Remote: remoteAddr, Query: request}
-		response, err := s.Handler.Handle(run.ctx, serverRequest)
+		response, err := s.handle(run.ctx, serverRequest)
 		if err != nil || response == nil {
 			continue
 		}
@@ -378,6 +391,37 @@ func (s *Server) serveWorker(run *serverRun) {
 			}
 		}
 	}
+}
+
+// handle invokes the configured handler and converts a panic
+// into a dropped response after notifying the optional reporter.
+func (s *Server) handle(ctx context.Context, request *Request) (response Response, err error) {
+	defer func() {
+		if value := recover(); value != nil {
+			s.reportPanic(ctx, PanicReport{
+				Request: request,
+				Value:   value,
+				Stack:   debug.Stack(),
+			})
+			response = nil
+			err = nil
+		}
+	}()
+
+	return s.Handler.Handle(ctx, request)
+}
+
+// reportPanic invokes the configured reporter
+// without allowing reporter failures to terminate the serving worker.
+func (s *Server) reportPanic(ctx context.Context, report PanicReport) {
+	if s.panicReporter == nil {
+		return
+	}
+
+	defer func() {
+		_ = recover()
+	}()
+	s.panicReporter(ctx, report)
 }
 
 // addrPort converts the standard UDP address returned by PacketConn

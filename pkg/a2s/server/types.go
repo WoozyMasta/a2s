@@ -7,6 +7,16 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
+// PanicReport describes a panic recovered at the handler boundary.
+type PanicReport struct {
+	// Request is the request being processed when the panic occurred.
+	Request *Request
+	// Value is the value supplied to panic.
+	Value any
+	// Stack contains the recovered goroutine's stack trace.
+	Stack []byte
+}
+
 // Request contains the remote endpoint and decoded query received by a server handler.
 type Request struct {
 	// Remote is the endpoint from which the query was received.
@@ -62,6 +72,9 @@ type HandlerFunc func(context.Context, *Request) (Response, error)
 func (f HandlerFunc) Handle(ctx context.Context, req *Request) (Response, error) {
 	return f(ctx, req)
 }
+
+// PanicReporter receives recovered handler panics.
+type PanicReporter func(context.Context, PanicReport)
 
 // Middleware wraps a Handler with additional request or response behavior.
 type Middleware func(Handler) Handler

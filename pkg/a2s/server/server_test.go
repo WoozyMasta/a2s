@@ -387,3 +387,130 @@ func TestServerRejectsConcurrentServe(t *testing.T) {
 		t.Fatalf("first PacketConn close error = %v", err)
 	}
 }
+
+func TestServerRecoversHandlerPanicAndContinues(t *testing.T) {
+	var calls atomic.Int32
+	reports := make(chan PanicReport, 1)
+	server, err := New(
+		HandlerFunc(func(context.Context, *Request) (Response, error) {
+			if calls.Add(1) == 1 {
+				panic("handler failure")
+			}
+			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithPanicReporter(func(_ context.Context, report PanicReport) {
+			reports <- report
+		}),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := net.DialUDP("udp", nil, conn.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("DialUDP() error = %v", err)
+	}
+	defer client.Close()
+	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	if err != nil {
+		t.Fatalf("AppendRequest() error = %v", err)
+	}
+	if _, err := client.Write(request); err != nil {
+		t.Fatalf("Write(first) error = %v", err)
+	}
+
+	select {
+	case report := <-reports:
+		if report.Value != "handler failure" {
+			t.Fatalf("panic value = %#v", report.Value)
+		}
+		if len(report.Stack) == 0 {
+			t.Fatal("panic stack is empty")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("panic was not reported")
+	}
+
+	if _, err := client.Write(request); err != nil {
+		t.Fatalf("Write(second) error = %v", err)
+	}
+	if err := client.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() error = %v", err)
+	}
+	buffer := make([]byte, 128)
+	if _, err := client.Read(buffer); err != nil {
+		t.Fatalf("Read(second response) error = %v", err)
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn close error = %v", err)
+	}
+}
+
+func TestServerDefaultPanicReporterIsSafe(t *testing.T) {
+	server, err := New(
+		HandlerFunc(func(context.Context, *Request) (Response, error) {
+			panic("unreported failure")
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := net.DialUDP("udp", nil, conn.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("DialUDP() error = %v", err)
+	}
+	defer client.Close()
+	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	if err != nil {
+		t.Fatalf("AppendRequest() error = %v", err)
+	}
+	if _, err := client.Write(request); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := client.SetReadDeadline(time.Now().Add(500 * time.Millisecond)); err != nil {
+		t.Fatalf("SetReadDeadline() error = %v", err)
+	}
+	if _, err := client.Read(make([]byte, 128)); err == nil {
+		t.Fatal("Read() unexpectedly received a response")
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn close error = %v", err)
+	}
+}
