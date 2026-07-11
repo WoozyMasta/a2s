@@ -39,6 +39,12 @@ var (
 	// ErrServerClosed identifies a serve loop stopped by Shutdown.
 	ErrServerClosed = errors.New("a2s server: server is closed")
 
+	// ErrState identifies a State storage or encoding failure.
+	ErrState = errors.New("a2s server: state failure")
+
+	// ErrStateUnavailable identifies a response that is not present in State.
+	ErrStateUnavailable = errors.New("a2s server: state response is unavailable")
+
 	// ErrDrop tells the server to discard the request without sending a response.
 	// It is not a server failure and should not be reported
 	// as one by the transport implementation.
