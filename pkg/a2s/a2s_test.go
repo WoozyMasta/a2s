@@ -45,8 +45,17 @@ func readTestServers() ([]string, error) {
 	return servers, nil
 }
 
+// requireLiveTest skips tests that query public servers in short mode.
+func requireLiveTest(t testing.TB) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping live server test in short mode")
+	}
+}
+
 // getFirstTestServer returns the first server from test_servers.conf
 func getFirstTestServer(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -189,6 +198,7 @@ func TestPlayersSingle(t *testing.T) {
 
 // TestInfoMultiple tests A2S_INFO query on all servers from test_servers.conf
 func TestInfoMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -225,6 +235,7 @@ func TestInfoMultiple(t *testing.T) {
 
 // TestRulesMultiple tests A2S_RULES query on all servers from test_servers.conf
 func TestRulesMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -260,6 +271,7 @@ func TestRulesMultiple(t *testing.T) {
 
 // TestPlayersMultiple tests A2S_PLAYER query on all servers from test_servers.conf
 func TestPlayersMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)

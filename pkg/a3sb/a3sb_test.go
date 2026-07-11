@@ -59,6 +59,14 @@ func readTestServers() ([]string, error) {
 	return servers, nil
 }
 
+// requireLiveTest skips tests that query public servers in short mode.
+func requireLiveTest(t testing.TB) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping live server test in short mode")
+	}
+}
+
 // readTestServersArma3 reads Arma 3 server addresses from test_servers.json
 func readTestServersArma3() ([]string, error) {
 	config, err := readTestServersJSON()
@@ -79,6 +87,7 @@ func readTestServersDayZ() ([]string, error) {
 
 // getFirstTestServer returns the first server from test_servers.json (all servers combined)
 func getFirstTestServer(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -225,6 +234,7 @@ func TestRulesDayZSingle(t *testing.T) {
 
 // TestRulesMultiple tests A2S_RULES query on all servers from test_servers.json
 func TestRulesMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -275,6 +285,7 @@ func TestRulesMultiple(t *testing.T) {
 
 // TestRulesArma3Multiple tests A2S_RULES for Arma 3 on all servers
 func TestRulesArma3Multiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServersArma3()
 	if err != nil {
 		t.Skipf("Cannot read Arma 3 test servers file: %v", err)
@@ -311,6 +322,7 @@ func TestRulesArma3Multiple(t *testing.T) {
 
 // TestRulesDayZMultiple tests A2S_RULES for DayZ on all servers
 func TestRulesDayZMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServersDayZ()
 	if err != nil {
 		t.Skipf("Cannot read DayZ test servers file: %v", err)
@@ -347,6 +359,7 @@ func TestRulesDayZMultiple(t *testing.T) {
 
 // getFirstTestServerArma3 returns the first Arma 3 server from test_servers.json
 func getFirstTestServerArma3(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServersArma3()
 	if err != nil {
 		t.Skipf("Cannot read Arma 3 test servers file: %v", err)
@@ -359,6 +372,7 @@ func getFirstTestServerArma3(t testing.TB) string {
 
 // getFirstTestServerDayZ returns the first DayZ server from test_servers.json
 func getFirstTestServerDayZ(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServersDayZ()
 	if err != nil {
 		t.Skipf("Cannot read DayZ test servers file: %v", err)

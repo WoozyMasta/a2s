@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -83,6 +85,132 @@ func TestServerServesTypedQueriesThroughA2SClient(t *testing.T) {
 	}
 	if err := <-serveErr; err == nil {
 		t.Fatal("Serve() returned nil after connection close")
+	}
+}
+
+func TestServerServesQueriesWithLegacyChallengePolicy(t *testing.T) {
+	server, err := New(
+		HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
+			switch request.Query.Type {
+			case a2s.InfoRequest:
+				return InfoResponse{Info: a2s.Info{
+					Format:  a2s.InfoFormat(a2s.ResponseInfo),
+					Name:    "legacy server",
+					Map:     "legacy_map",
+					Folder:  "test",
+					Version: "1.0",
+				}}, nil
+
+			case a2s.PlayerRequest:
+				return PlayersResponse{Players: []a2s.Player{{Name: "player"}}}, nil
+
+			case a2s.RulesRequest:
+				return RulesResponse{Rules: a2s.Rules{{Name: "mode", Value: "legacy"}}}, nil
+
+			default:
+				return nil, ErrDrop
+			}
+		}),
+		WithChallengePolicy(LegacyChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := a2s.NewWithAddr(conn.LocalAddr().(*net.UDPAddr), a2s.WithTimeout(time.Second))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("NewWithAddr() error = %v", err)
+	}
+	defer client.Close()
+	if info, err := client.GetInfo(context.Background()); err != nil {
+		t.Fatalf("GetInfo() error = %v", err)
+	} else if info.Name != "legacy server" {
+		t.Fatalf("GetInfo() = %#v", info)
+	}
+	if players, err := client.GetPlayers(context.Background()); err != nil {
+		t.Fatalf("GetPlayers() error = %v", err)
+	} else if len(players) != 1 {
+		t.Fatalf("GetPlayers() = %#v", players)
+	}
+	if rules, err := client.GetRules(context.Background()); err != nil {
+		t.Fatalf("GetRules() error = %v", err)
+	} else if len(rules) != 1 || rules[0].Value != "legacy" {
+		t.Fatalf("GetRules() = %#v", rules)
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn close error = %v", err)
+	}
+}
+
+func TestServerServesLargeRulesThroughSourceSplit(t *testing.T) {
+	rules := make(a2s.Rules, 0, 64)
+	for index := 0; index < 64; index++ {
+		rules = append(rules, a2s.Rule{
+			Name:  fmt.Sprintf("rule_%02d", index),
+			Value: strings.Repeat("value", 32),
+		})
+	}
+
+	server, err := New(
+		HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
+			if request.Query.Type != a2s.RulesRequest {
+				return nil, ErrDrop
+			}
+			return RulesResponse{Rules: rules}, nil
+		}),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := a2s.NewWithAddr(conn.LocalAddr().(*net.UDPAddr), a2s.WithTimeout(time.Second))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("NewWithAddr() error = %v", err)
+	}
+	defer client.Close()
+	got, err := client.GetRules(context.Background())
+	if err != nil {
+		t.Fatalf("GetRules() error = %v", err)
+	}
+	if len(got) != len(rules) || got[63].Value != rules[63].Value {
+		t.Fatalf("GetRules() returned %d rules, want %d", len(got), len(rules))
+	}
+
+	if err := server.Shutdown(context.Background()); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Serve() error = %v, want ErrServerClosed", err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatalf("PacketConn close error = %v", err)
 	}
 }
 
