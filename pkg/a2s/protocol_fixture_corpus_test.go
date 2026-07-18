@@ -149,6 +149,9 @@ func TestProtocolFixtureCorpusGoldSourceSplitHeader(t *testing.T) {
 	if !header.goldSrc {
 		t.Fatal("GoldSource fixture classified as Source")
 	}
+	if header.compressed {
+		t.Fatal("GoldSource fixture incorrectly classified as compressed")
+	}
 	if header.id != 0xD9D51BBC || header.count != 2 || header.index != 1 {
 		t.Fatalf("header = %+v, want ID 0xD9D51BBC, count 2, index 1", header)
 	}

@@ -3,7 +3,7 @@ Package server defines transport-independent contracts for an A2S server.
 
 The package contains request, handler, middleware, response, and UDP runtime types.
 Server workers decode requests, apply challenge handling,
-dispatch the handler, encode responses, and packetize Source responses.
+dispatch the handler, encode responses, and packetize configured response frames.
 
 State provides an atomic pre-encoded handler
 for static or periodically updated INFO, PLAYER, and RULES responses.

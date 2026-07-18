@@ -99,7 +99,9 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 
 	// Compression metadata belongs to fragment zero.
 	// Other fragments carry only the base split header and must be retained from that offset.
-	if (packetID & 0x80000000) != 0 {
+	// Only Source uses the high ID bit as a compression flag.
+	// GoldSource IDs are opaque and may legitimately have the high bit set.
+	if !useGold && (packetID&0x80000000) != 0 {
 		info.compressed = true
 		if info.index == 0 {
 			if len(data) < baseHeaderSize+8 {

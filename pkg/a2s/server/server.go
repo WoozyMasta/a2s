@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"reflect"
 	"runtime"
 	"runtime/debug"
 	"sync"
@@ -28,18 +29,18 @@ type Server struct {
 	// Handler is the configured handler wrapped by the challenge gate.
 	Handler Handler
 
-	packetizer     *SourcePacketizer // Encodes logical responses into UDP datagrams.
-	panicReporter  PanicReporter     // Receives recovered handler panics.
-	run            *serverRun        // Active serve loop, if any.
-	workers        int               // Fixed number of concurrent UDP workers.
-	maxRequestSize int               // Maximum accepted request datagram size.
-	lifecycleMu    sync.Mutex        // Serializes server lifecycle transitions.
+	packetizer     Packetizer    // Encodes logical responses into UDP datagrams.
+	panicReporter  PanicReporter // Receives recovered handler panics.
+	run            *serverRun    // Active serve loop, if any.
+	workers        int           // Fixed number of concurrent UDP workers.
+	maxRequestSize int           // Maximum accepted request datagram size.
+	lifecycleMu    sync.Mutex    // Serializes server lifecycle transitions.
 }
 
 type serverConfig struct {
 	policy         ChallengePolicy   // Challenge requirement policy.
 	provider       ChallengeProvider // Challenge token issuer and validator.
-	packetizer     *SourcePacketizer // Source response packetizer.
+	packetizer     Packetizer        // Response packetizer.
 	panicReporter  PanicReporter     // Receives recovered handler panics.
 	workers        int               // Fixed worker count.
 	maxRequestSize int               // Maximum accepted request size.
@@ -198,13 +199,50 @@ func WithChallengeProvider(provider ChallengeProvider) Option {
 
 // WithSourcePacketizer replaces the default Source packetizer.
 func WithSourcePacketizer(packetizer *SourcePacketizer) Option {
+	if packetizer == nil {
+		return func(*serverConfig) error {
+			return fmt.Errorf("%w: packetizer is nil", ErrServer)
+		}
+	}
+
+	return WithPacketizer(packetizer)
+}
+
+// WithGoldSourcePacketizer configures legacy GoldSource response framing.
+func WithGoldSourcePacketizer(packetizer *GoldSourcePacketizer) Option {
+	if packetizer == nil {
+		return func(*serverConfig) error {
+			return fmt.Errorf("%w: packetizer is nil", ErrServer)
+		}
+	}
+
+	return WithPacketizer(packetizer)
+}
+
+// WithPacketizer replaces the default response packetizer.
+func WithPacketizer(packetizer Packetizer) Option {
 	return func(config *serverConfig) error {
-		if packetizer == nil {
+		if isNilPacketizer(packetizer) {
 			return fmt.Errorf("%w: packetizer is nil", ErrServer)
 		}
 
 		config.packetizer = packetizer
 		return nil
+	}
+}
+
+// isNilPacketizer handles both a nil interface and an interface containing a typed nil pointer.
+func isNilPacketizer(packetizer Packetizer) bool {
+	if packetizer == nil {
+		return true
+	}
+
+	value := reflect.ValueOf(packetizer)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
 	}
 }
 

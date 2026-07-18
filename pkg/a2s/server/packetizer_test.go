@@ -50,8 +50,8 @@ func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 		if len(packet) > splitSize {
 			t.Fatalf("packet %d size = %d, want <= %d", index, len(packet), splitSize)
 		}
-		if got := binary.LittleEndian.Uint32(packet[:4]); got != sourceSplitMarker {
-			t.Fatalf("packet %d marker = 0x%X, want 0x%X", index, got, sourceSplitMarker)
+		if got := binary.LittleEndian.Uint32(packet[:4]); got != splitMarker {
+			t.Fatalf("packet %d marker = 0x%X, want 0x%X", index, got, splitMarker)
 		}
 		if got := binary.LittleEndian.Uint32(packet[4:8]); got != 0x01234567 {
 			t.Fatalf("packet %d ID = 0x%X, want 0x01234567", index, got)
@@ -63,6 +63,43 @@ func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 			t.Fatalf("packet %d split size = %d, want %d", index, got, splitSize)
 		}
 		rebuilt = append(rebuilt, packet[sourceSplitHeaderSize:]...)
+	}
+
+	if !bytes.Equal(rebuilt, data) {
+		t.Fatalf("rebuilt logical packet = %X, want %X", rebuilt, data)
+	}
+}
+
+func TestGoldSourcePacketizerSplitsLogicalPacket(t *testing.T) {
+	const splitSize = 18
+	data := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), 25))
+	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
+	packetizer.SplitSize = splitSize
+
+	packets, err := packetizer.Packetize(data)
+	if err != nil {
+		t.Fatalf("Packetize() error = %v", err)
+	}
+	if len(packets) != 4 {
+		t.Fatalf("packet count = %d, want 4", len(packets))
+	}
+
+	var rebuilt []byte
+	for index, packet := range packets {
+		if len(packet) > splitSize {
+			t.Fatalf("packet %d size = %d, want <= %d", index, len(packet), splitSize)
+		}
+		if got := binary.LittleEndian.Uint32(packet[:4]); got != splitMarker {
+			t.Fatalf("packet %d marker = 0x%X, want 0x%X", index, got, splitMarker)
+		}
+		if got := binary.LittleEndian.Uint32(packet[4:8]); got != 0xD9D51BBC {
+			t.Fatalf("packet %d ID = 0x%X, want 0xD9D51BBC", index, got)
+		}
+		wantMetadata := byte(index<<4) | byte(len(packets))
+		if packet[8] != wantMetadata {
+			t.Fatalf("packet %d metadata = 0x%X, want 0x%X", index, packet[8], wantMetadata)
+		}
+		rebuilt = append(rebuilt, packet[goldSourceSplitHeaderSize:]...)
 	}
 
 	if !bytes.Equal(rebuilt, data) {
@@ -123,6 +160,18 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 	}
 }
 
+func TestGoldSourcePacketizerRejectsFragmentCountOverflow(t *testing.T) {
+	packetizer := testGoldSourcePacketizer(func() uint32 { return 1 })
+	packetizer.SplitSize = goldSourceSplitHeaderSize + 1
+
+	_, err := packetizer.Packetize(
+		logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), goldSourceSplitCountMax)),
+	)
+	if !errors.Is(err, ErrPacketizerFragmentCount) {
+		t.Fatalf("Packetize() error = %v, want %v", err, ErrPacketizerFragmentCount)
+	}
+}
+
 func TestNewSourcePacketizer(t *testing.T) {
 	packetizer, err := NewSourcePacketizer()
 	if err != nil {
@@ -130,6 +179,19 @@ func TestNewSourcePacketizer(t *testing.T) {
 	}
 	if packetizer.SplitSize != DefaultSourceSplitSize {
 		t.Fatalf("SplitSize = %d, want %d", packetizer.SplitSize, DefaultSourceSplitSize)
+	}
+	if packetizer.MaxResponseSize != DefaultSourceMaxResponseSize {
+		t.Fatalf("MaxResponseSize = %d, want %d", packetizer.MaxResponseSize, DefaultSourceMaxResponseSize)
+	}
+}
+
+func TestNewGoldSourcePacketizer(t *testing.T) {
+	packetizer, err := NewGoldSourcePacketizer()
+	if err != nil {
+		t.Fatalf("NewGoldSourcePacketizer() error = %v", err)
+	}
+	if packetizer.SplitSize != DefaultGoldSourceSplitSize {
+		t.Fatalf("SplitSize = %d, want %d", packetizer.SplitSize, DefaultGoldSourceSplitSize)
 	}
 	if packetizer.MaxResponseSize != DefaultSourceMaxResponseSize {
 		t.Fatalf("MaxResponseSize = %d, want %d", packetizer.MaxResponseSize, DefaultSourceMaxResponseSize)
@@ -201,6 +263,58 @@ func TestSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 	}
 }
 
+func TestGoldSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
+	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatalf("ListenUDP() error = %v", err)
+	}
+	defer conn.Close()
+
+	client, err := a2s.NewWithAddr(conn.LocalAddr().(*net.UDPAddr), a2s.WithTimeout(time.Second))
+	if err != nil {
+		t.Fatalf("NewWithAddr() error = %v", err)
+	}
+	defer client.Close()
+
+	logical := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("payload"), 8))
+	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
+	packetizer.SplitSize = 18
+
+	serverErr := make(chan error, 1)
+	go func() {
+		buffer := make([]byte, 2048)
+		_, remote, readErr := conn.ReadFromUDP(buffer)
+		if readErr != nil {
+			serverErr <- readErr
+			return
+		}
+
+		packets, packetizeErr := packetizer.Packetize(logical)
+		if packetizeErr != nil {
+			serverErr <- packetizeErr
+			return
+		}
+		for _, packet := range packets {
+			if _, writeErr := conn.WriteToUDP(packet, remote); writeErr != nil {
+				serverErr <- writeErr
+				return
+			}
+		}
+		serverErr <- nil
+	}()
+
+	got, _, err := client.Query(context.Background(), a2s.RulesRequest)
+	if err != nil {
+		t.Fatalf("Query() error = %v", err)
+	}
+	if got.Type != a2s.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
+		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, a2s.ResponseRules, logical[5:])
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatalf("UDP server error = %v", err)
+	}
+}
+
 func logicalPacket(responseType a2s.ResponseType, payload []byte) []byte {
 	packet := make([]byte, 5+len(payload))
 	binary.LittleEndian.PutUint32(packet[:4], ^uint32(0))
@@ -212,6 +326,14 @@ func logicalPacket(responseType a2s.ResponseType, payload []byte) []byte {
 func testSourcePacketizer(nextID func() uint32) *SourcePacketizer {
 	return &SourcePacketizer{
 		SplitSize:       DefaultSourceSplitSize,
+		MaxResponseSize: DefaultSourceMaxResponseSize,
+		nextID:          nextID,
+	}
+}
+
+func testGoldSourcePacketizer(nextID func() uint32) *GoldSourcePacketizer {
+	return &GoldSourcePacketizer{
+		SplitSize:       DefaultGoldSourceSplitSize,
 		MaxResponseSize: DefaultSourceMaxResponseSize,
 		nextID:          nextID,
 	}

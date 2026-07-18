@@ -15,20 +15,20 @@ var (
 	// ErrChallengeGate identifies invalid challenge gate configuration or use.
 	ErrChallengeGate = errors.New("a2s server: challenge gate failed")
 
-	// ErrPacketizer identifies a Source packetizer configuration or runtime failure.
+	// ErrPacketizer identifies a response packetizer configuration or runtime failure.
 	ErrPacketizer = errors.New("a2s server: packetizer failed")
 
 	// ErrPacketizerInput identifies invalid logical response framing.
 	ErrPacketizerInput = errors.New("a2s server: invalid packetizer input")
 
-	// ErrPacketizerSplitSize identifies an invalid Source split size.
-	ErrPacketizerSplitSize = errors.New("a2s server: invalid Source split size")
+	// ErrPacketizerSplitSize identifies an invalid split size.
+	ErrPacketizerSplitSize = errors.New("a2s server: invalid split size")
 
 	// ErrPacketizerResponseSize identifies an oversized logical response.
 	ErrPacketizerResponseSize = errors.New("a2s server: logical response exceeds packetizer limit")
 
 	// ErrPacketizerFragmentCount identifies a response requiring too many fragments.
-	ErrPacketizerFragmentCount = errors.New("a2s server: too many Source response fragments")
+	ErrPacketizerFragmentCount = errors.New("a2s server: too many response fragments")
 
 	// ErrServer identifies invalid server configuration or transport setup.
 	ErrServer = errors.New("a2s server: server failure")
