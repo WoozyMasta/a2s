@@ -136,6 +136,24 @@ func TestProtocolFixtureCorpusSourceSplitHeaders(t *testing.T) {
 	}
 }
 
+func TestProtocolFixtureCorpusGoldSourceSplitHeader(t *testing.T) {
+	// The fixture header is copied from the real datagram published in
+	// https://github.com/ValveSoftware/halflife/issues/2406.
+	// Its 0x12 control byte is documented there as fragment 2 of 2.
+	packet := readProtocolFixture(t, "goldsource_split_packet_1.hex")
+	header, err := parseSplitHeader(packet)
+	if err != nil {
+		t.Fatalf("parseSplitHeader() error = %v", err)
+	}
+
+	if !header.goldSrc {
+		t.Fatal("GoldSource fixture classified as Source")
+	}
+	if header.id != 0xD9D51BBC || header.count != 2 || header.index != 1 {
+		t.Fatalf("header = %+v, want ID 0xD9D51BBC, count 2, index 1", header)
+	}
+}
+
 func readProtocolFixture(t *testing.T, name string) []byte {
 	t.Helper()
 
