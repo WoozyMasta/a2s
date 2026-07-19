@@ -270,6 +270,69 @@ func TestServerDropsOversizedDatagrams(t *testing.T) {
 	<-serveErr
 }
 
+func TestServerIgnoresMalformedDatagrams(t *testing.T) {
+	var calls atomic.Int32
+	server, err := New(
+		HandlerFunc(func(context.Context, *Request) (Response, error) {
+			calls.Add(1)
+			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+		}),
+		WithChallengePolicy(NoChallengePolicy()),
+		WithWorkers(1),
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(conn) }()
+
+	client, err := net.DialUDP("udp", nil, conn.LocalAddr().(*net.UDPAddr))
+	if err != nil {
+		_ = conn.Close()
+		<-serveErr
+		t.Fatalf("DialUDP() error = %v", err)
+	}
+	defer client.Close()
+
+	malformed := [][]byte{
+		{0x00},
+		{0xFF, 0xFF, 0xFF, 0xFF},
+		{0xFF, 0xFF, 0xFF, 0xFF, 0x00},
+	}
+	for index, packet := range malformed {
+		if _, err := client.Write(packet); err != nil {
+			t.Fatalf("Write(malformed %d) error = %v", index, err)
+		}
+	}
+
+	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	if err != nil {
+		t.Fatalf("AppendRequest() error = %v", err)
+	}
+	if _, err := client.Write(request); err != nil {
+		t.Fatalf("Write(valid) error = %v", err)
+	}
+
+	buffer := make([]byte, 128)
+	if err := client.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("SetReadDeadline() error = %v", err)
+	}
+	if _, err := client.Read(buffer); err != nil {
+		t.Fatalf("Read(response) error = %v", err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("handler calls = %d, want 1", got)
+	}
+
+	_ = conn.Close()
+	<-serveErr
+}
+
 func TestServerInvokesHandlerConcurrently(t *testing.T) {
 	entered := make(chan struct{}, 2)
 	release := make(chan struct{})
