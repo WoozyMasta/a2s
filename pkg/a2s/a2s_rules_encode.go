@@ -3,6 +3,7 @@ package a2s
 import (
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -17,6 +18,7 @@ func AppendRules(dst []byte, rules Rules) ([]byte, error) {
 		return dst, err
 	}
 
+	dst = slices.Grow(dst, rulesEncodedSize(rules))
 	dst = appendPacketHeader(dst, ResponseRules)
 	// #nosec G115 -- count is validated to fit uint16.
 	dst = binary.LittleEndian.AppendUint16(dst, uint16(len(rules)))
@@ -28,6 +30,16 @@ func AppendRules(dst []byte, rules Rules) ([]byte, error) {
 	}
 
 	return dst, nil
+}
+
+// rulesEncodedSize returns the number of bytes appended by AppendRules.
+func rulesEncodedSize(rules Rules) int {
+	size := packetHeaderSize + 2
+	for _, rule := range rules {
+		size += len(rule.Name) + len(rule.Value) + 2
+	}
+
+	return size
 }
 
 // validateRulesForEncoding rejects rule strings that cannot be represented as C strings.
