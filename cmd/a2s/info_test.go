@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -29,15 +30,16 @@ func TestFormatAppID(t *testing.T) {
 }
 
 func TestPrintInfoJSONPreservesGenericKeywords(t *testing.T) {
-	output := captureRulesStdout(t, func() {
-		printInfoJSON(&a2s.Info{
-			AppID:    1337,
-			Keywords: []string{"foo", "bar"},
-		}, NewFormatter("json"))
-	})
+	var output bytes.Buffer
+	if err := printInfoJSON(&a2s.Info{
+		AppID:    1337,
+		Keywords: []string{"foo", "bar"},
+	}, NewFormatter("json", &output)); err != nil {
+		t.Fatalf("printInfoJSON() error = %v", err)
+	}
 
 	var result map[string]any
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatalf("unmarshal output: %v", err)
 	}
 
@@ -76,13 +78,17 @@ func TestPrintInfoJSONUsesTypedKeywordsForSupportedGames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			output := captureRulesStdout(t, func() {
-				gameID := tt.id
-				printInfoJSON(&a2s.Info{GameID: &gameID, Keywords: tt.keywords}, NewFormatter("json"))
-			})
+			var output bytes.Buffer
+			gameID := tt.id
+			if err := printInfoJSON(
+				&a2s.Info{GameID: &gameID, Keywords: tt.keywords},
+				NewFormatter("json", &output),
+			); err != nil {
+				t.Fatalf("printInfoJSON() error = %v", err)
+			}
 
 			var result map[string]any
-			if err := json.Unmarshal([]byte(output), &result); err != nil {
+			if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 				t.Fatalf("unmarshal output: %v", err)
 			}
 

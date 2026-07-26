@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
@@ -30,41 +29,37 @@ func gameToAppID(game string) uint64 {
 
 // executeRules selects the standard or automatic A3SB rules parser and renders its output.
 // Automatic mode uses one A2S_RULES request and does not require A2S_INFO merely to choose a parser.
-func executeRules(cmd *RulesCommand) {
-	if cmd.Args.Host == "" {
-		fatal("Host must be provided")
+func executeRules(app *Application, cmd *RulesCommand) error {
+	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+	if err != nil {
+		return err
 	}
+	defer closeClient(app, client)
 
-	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer closeClient(client)
-
-	formatter := NewFormatter(cmd.Format)
+	formatter := NewFormatter(cmd.Format, app.Out)
 	ctx := context.Background()
 
 	if cmd.Game != "" {
 		appID := gameToAppID(cmd.Game)
 		if appID == 0 {
-			fatalf("Unknown game: %s. Supported games: arma3, dayz", cmd.Game)
+			return fmt.Errorf("unknown game: %s. Supported games: arma3, dayz", cmd.Game)
 		}
 		if cmd.Raw {
-			executeRulesStandard(ctx, client, true, formatter)
-			return
+			return executeRulesStandard(app, ctx, client, true, formatter)
 		}
 
-		executeRulesA3SB(ctx, client, appID, formatter)
-		return
+		return executeRulesA3SB(app, ctx, client, appID, formatter)
 	}
 
 	if cmd.Raw {
-		executeRulesStandard(ctx, client, cmd.Raw, formatter)
-		return
+		return executeRulesStandard(app, ctx, client, cmd.Raw, formatter)
 	}
 
-	executeRulesA3SB(ctx, client, 0, formatter)
+	return executeRulesA3SB(app, ctx, client, 0, formatter)
 }
 
 // executeRulesStandard retrieves and renders ordinary A2S_RULES values.
-func executeRulesStandard(ctx context.Context, client *a2s.Client, raw bool, formatter *Formatter) {
+func executeRulesStandard(app *Application, ctx context.Context, client *a2s.Client, raw bool, formatter *Formatter) error {
 	var rules map[string]any
 	var err error
 
@@ -80,24 +75,20 @@ func executeRulesStandard(ctx context.Context, client *a2s.Client, raw bool, for
 	}
 
 	if err != nil {
-		fatalf("Failed to get rules: %s", err)
+		return friendlyQueryError("failed to get rules", err, client.Timeout())
 	}
 
-	printRules(rules, client, formatter)
+	return printRules(app, rules, client, formatter)
 }
 
 // printRules renders an already fetched rules map using the normal A2S output shape.
 // Values remain typed for JSON and are formatted as text in tables.
-func printRules(rules map[string]any, client *a2s.Client, formatter *Formatter) {
+func printRules(app *Application, rules map[string]any, client *a2s.Client, formatter *Formatter) error {
 	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(rules)
-		return
+		return formatter.PrintJSON(rules)
 	}
 
 	t := table.NewWriter()
-	if formatter.IsTableFormat() {
-		t.SetOutputMirror(os.Stdout)
-	}
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Rule", "Value"})
 
@@ -111,39 +102,38 @@ func printRules(rules map[string]any, client *a2s.Client, formatter *Formatter) 
 		t.AppendRow(table.Row{k, rules[k]})
 	}
 
-	formatter.PrintTable(t)
-	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Addr())
+	if err := formatter.PrintTable(t); err != nil {
+		return err
 	}
+	if formatter.IsTableFormat() {
+		_, _ = fmt.Fprintf(app.Out, "A2S_RULES response for %s\n", client.Addr())
+	}
+
+	return nil
 }
 
 // executeRulesA3SB retrieves and renders Arma 3/DayZ server-browser rules.
-func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, formatter *Formatter) {
+func executeRulesA3SB(app *Application, ctx context.Context, client *a2s.Client, appID uint64, formatter *Formatter) error {
 	a3sbClient := &a3sb.Client{Client: client}
 
 	rules, err := a3sbClient.GetRules(ctx, appID)
 	if err != nil {
-		fatalf("Failed to get server rules: %s", err)
+		return friendlyQueryError("failed to get server rules", err, client.Timeout())
 	}
 
 	if rules.Version == 0 {
 		parsed := a2s.ParseRuleValues(rules.ExtraRules)
-		printRules(parsed, client, formatter)
-		return
+		return printRules(app, parsed, client, formatter)
 	}
 
 	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(rules)
-		return
+		return formatter.PrintJSON(rules)
 	}
 
 	// Print Island/Description info (DayZ specific)
 	if rules.Island != "" {
 		formatter.PrintSectionHeader("Server Information")
 		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
 		t.SetStyle(table.StyleRounded)
 		t.AppendHeader(table.Row{"Option", "Value"})
 
@@ -163,16 +153,15 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 			{"TimeLeft:", fmt.Sprintf("%d", rules.TimeLeft)},
 		})
 
-		formatter.PrintTable(t)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Print Difficulty (Arma3 specific)
 	if rules.Difficulty != nil {
 		formatter.PrintSectionHeader("Difficulty Settings")
 		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
 		t.SetStyle(table.StyleRounded)
 		t.AppendHeader(table.Row{"Option", "Value"})
 		t.AppendRows([]table.Row{
@@ -182,16 +171,15 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 			{"Third Person:", fmt.Sprintf("%t", rules.Difficulty.ThirdPerson)},
 			{"Crosshair:", fmt.Sprintf("%t", rules.Difficulty.Crosshair)},
 		})
-		formatter.PrintTable(t)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Print DLC
 	if len(rules.DLC) > 0 {
 		formatter.PrintSectionHeader("DLC")
 		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
 		t.SetStyle(table.StyleRounded)
 		t.AppendHeader(table.Row{"#", "DLC Name", "DLC URL"})
 
@@ -203,16 +191,15 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 			})
 		}
 
-		formatter.PrintTable(t)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Print Creator DLC
 	if len(rules.CreatorDLC) > 0 {
 		formatter.PrintSectionHeader("Creator DLC")
 		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
 		t.SetStyle(table.StyleRounded)
 		t.AppendHeader(table.Row{"#", "Creator DLC Name", "Creator DLC URL"})
 
@@ -224,16 +211,15 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 			})
 		}
 
-		formatter.PrintTable(t)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Print Mods
 	if len(rules.Mods) > 0 {
 		formatter.PrintSectionHeader("Mods")
 		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
 		t.SetStyle(table.StyleRounded)
 		t.AppendHeader(table.Row{"#", "Mod Name", "Mod URL"})
 
@@ -245,11 +231,15 @@ func executeRulesA3SB(ctx context.Context, client *a2s.Client, appID uint64, for
 			})
 		}
 
-		formatter.PrintTable(t)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Addr())
+		_, _ = fmt.Fprintf(app.Out, "A2S_RULES response for %s\n", client.Addr())
 	}
+
+	return nil
 }

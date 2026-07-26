@@ -139,3 +139,52 @@ func TestGetContextDeadlineCoversQueryQueue(t *testing.T) {
 		t.Fatalf("UDP server error: %v", err)
 	}
 }
+
+func TestGetContextCancellationInterruptsRead(t *testing.T) {
+	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatalf("listen UDP server: %v", err)
+	}
+	defer server.Close()
+
+	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(5*time.Second))
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	requestSeen := make(chan struct{})
+	go func() {
+		buffer := make([]byte, 64*1024)
+		_, _, _ = server.ReadFromUDP(buffer)
+		close(requestSeen)
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errorDone := make(chan error, 1)
+	go func() {
+		_, _, _, queryErr := client.Get(ctx, InfoRequest)
+		errorDone <- queryErr
+	}()
+
+	select {
+	case <-requestSeen:
+	case <-time.After(time.Second):
+		t.Fatal("server did not observe request")
+	}
+
+	started := time.Now()
+	cancel()
+	select {
+	case queryErr := <-errorDone:
+		if !errors.Is(queryErr, context.Canceled) {
+			t.Fatalf("Get error = %v, want context.Canceled", queryErr)
+		}
+		if elapsed := time.Since(started); elapsed >= 500*time.Millisecond {
+			t.Fatalf("Get cancellation took too long: %s", elapsed)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Get did not stop after context cancellation")
+	}
+}

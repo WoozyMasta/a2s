@@ -245,6 +245,18 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 		return Packet{}, QueryMeta{}, ErrClientClosed
 	}
 
+	conn := c.conn
+	readDeadlineDone := make(chan struct{})
+	stopReadDeadline := context.AfterFunc(effectiveCtx, func() {
+		defer close(readDeadlineDone)
+		_ = conn.SetReadDeadline(time.Now())
+	})
+	defer func() {
+		if !stopReadDeadline() {
+			<-readDeadlineDone
+		}
+	}()
+
 	started := time.Now()
 
 	var (

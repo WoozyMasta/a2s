@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/woozymasta/a2s/pkg/a2s"
@@ -13,32 +12,27 @@ import (
 )
 
 // executeInfo queries A2S_INFO and renders the result in the requested format.
-func executeInfo(cmd *InfoCommand) {
-	if cmd.Args.Host == "" {
-		fatal("Host must be provided")
+func executeInfo(app *Application, cmd *InfoCommand) error {
+	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+	if err != nil {
+		return err
 	}
-
-	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer closeClient(client)
+	defer closeClient(app, client)
 
 	info, meta, err := client.GetInfoWithMeta(context.Background())
 	if err != nil {
-		fatalf("Failed to get server info: %s", err)
+		return friendlyQueryError("failed to get server info", err, client.Timeout())
 	}
 
-	formatter := NewFormatter(cmd.Format)
+	formatter := NewFormatter(cmd.Format, app.Out)
 
 	if formatter.ShouldUseJSON() {
-		printInfoJSON(info, formatter)
-		return
+		return printInfoJSON(info, formatter)
 	}
 
 	// JSON output uses Info's own schema and does not need table-specific fields.
 	// All other formats share the table assembly below.
 	t := table.NewWriter()
-	if formatter.IsTableFormat() {
-		t.SetOutputMirror(os.Stdout)
-	}
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row{"Property", "Value"})
 
@@ -147,12 +141,16 @@ func executeInfo(cmd *InfoCommand) {
 
 	t.AppendRow(table.Row{"Server ping:", fmt.Sprintf("%d ms", meta.Duration.Milliseconds())})
 
-	formatter.PrintTable(t)
+	if err := formatter.PrintTable(t); err != nil {
+		return err
+	}
 
 	// Only print footer message for table format
 	if cmd.Format == "table" || cmd.Format == "" {
-		fmt.Printf("A2S_INFO response for %s\n", client.Addr())
+		_, _ = fmt.Fprintf(app.Out, "A2S_INFO response for %s\n", client.Addr())
 	}
+
+	return nil
 }
 
 // formatAppID returns a known game name with its numeric effective ID,
@@ -170,19 +168,19 @@ func formatAppID(id uint64) string {
 // with the existing typed representation for the supported Arma 3 and DayZ formats.
 // The replacement is intentional for those two game-specific schemas;
 // unsupported games keep the wire-level keyword list unchanged.
-func printInfoJSON(info *a2s.Info, formatter *Formatter) {
+func printInfoJSON(info *a2s.Info, formatter *Formatter) error {
 	// Create a map to hold the JSON structure
 	jsonMap := make(map[string]any)
 
 	// Marshal info to JSON first
 	jsonData, err := json.Marshal(info)
 	if err != nil {
-		fatalf("Failed to marshal Info: %v", err)
+		return fmt.Errorf("failed to marshal Info: %w", err)
 	}
 
 	// Unmarshal into a map to add custom fields
 	if err := json.Unmarshal(jsonData, &jsonMap); err != nil {
-		fatalf("Failed to unmarshal JSON: %v", err)
+		return fmt.Errorf("failed to unmarshal Info JSON: %w", err)
 	}
 
 	switch info.EffectiveID() {
@@ -197,5 +195,5 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) {
 		jsonMap["keywords"] = dayZData
 	}
 
-	formatter.PrintJSON(jsonMap)
+	return formatter.PrintJSON(jsonMap)
 }

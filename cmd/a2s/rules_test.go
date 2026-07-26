@@ -1,26 +1,27 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
-	"io"
-	"os"
 	"testing"
 )
 
 func TestPrintRulesKeepsNativeA2SJSONShape(t *testing.T) {
-	output := captureRulesStdout(t, func() {
-		printRules(
-			map[string]any{
-				"hostname": "test server",
-				"players":  2,
-			},
-			nil,
-			NewFormatter("json"),
-		)
-	})
+	var output bytes.Buffer
+	if err := printRules(
+		NewApplication(&output, nil),
+		map[string]any{
+			"hostname": "test server",
+			"players":  2,
+		},
+		nil,
+		NewFormatter("json", &output),
+	); err != nil {
+		t.Fatalf("printRules() error = %v", err)
+	}
 
 	var result map[string]any
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatalf("unmarshal output: %v", err)
 	}
 	if result["hostname"] != "test server" {
@@ -35,31 +36,4 @@ func TestPrintRulesKeepsNativeA2SJSONShape(t *testing.T) {
 	if _, ok := result["extra_rules"]; ok {
 		t.Fatal("native A2S output unexpectedly contains an extra_rules wrapper")
 	}
-}
-
-func captureRulesStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("create stdout pipe: %v", err)
-	}
-
-	original := os.Stdout
-	os.Stdout = writer
-	fn()
-	if err := writer.Close(); err != nil {
-		t.Fatalf("close stdout writer: %v", err)
-	}
-	os.Stdout = original
-
-	output, err := io.ReadAll(reader)
-	if err != nil {
-		t.Fatalf("read captured stdout: %v", err)
-	}
-	if err := reader.Close(); err != nil {
-		t.Fatalf("close stdout reader: %v", err)
-	}
-
-	return string(output)
 }

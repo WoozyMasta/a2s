@@ -5,9 +5,9 @@ package ping
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -19,14 +19,11 @@ import (
 // then prints statistics for successful responses.
 func Start(client *a2s.Client, count, period int) {
 	var errorCount int
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	// Create a ring buffer
 	buffer := NewBuffer()
-
-	// Channel for receiving the completion signal
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	done := make(chan bool)
 
 	if count != 0 {
 		fmt.Printf("Start %d times ping %s with %ds period\n\n", count, client.Addr(), period)
@@ -34,34 +31,36 @@ func Start(client *a2s.Client, count, period int) {
 		fmt.Printf("Start infinity ping %s with %ds period\n\n", client.Addr(), period)
 	}
 
-	// Starting the main ping loop in a goroutine
-	go func() {
-		for i := 0; count == 0 || i < count; i++ {
-			info, meta, err := client.GetInfoWithMeta(context.Background())
-			if err != nil {
-				log.Printf("Failed to get ping: %v", err)
-				errorCount++
-				continue
+	interrupted := false
+	for i := 0; count == 0 || i < count; i++ {
+		info, meta, err := client.GetInfoWithMeta(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				interrupted = true
+				break
 			}
 
-			// Write ping to the ring buffer
-			pingDuration := meta.Duration
-			buffer.Add(pingDuration)
-
-			fmt.Printf(
-				"A2S_INFO response server=%s folder=\"%s\" name=\"%s\" time=%s\n",
-				client.Addr(), info.Folder, info.Name, pingDuration)
-
-			time.Sleep(time.Duration(period) * time.Second)
+			log.Printf("Failed to get ping: %s", formatPingError(err))
+			errorCount++
+			continue
 		}
-		done <- true
-	}()
 
-	// Waiting for the completion signal
-	select {
-	case <-signalChan:
+		// Write the ping result to the ring buffer.
+		pingDuration := meta.Duration
+		buffer.Add(pingDuration)
+
+		fmt.Printf(
+			"A2S_INFO response server=%s folder=\"%s\" name=\"%s\" time=%s\n",
+			client.Addr(), info.Folder, info.Name, pingDuration)
+
+		if !waitPeriod(ctx, period) {
+			interrupted = true
+			break
+		}
+	}
+
+	if interrupted {
 		fmt.Println("Received signal, stopping...")
-	case <-done:
 	}
 
 	// Calculating statistics from the ring buffer
@@ -77,4 +76,26 @@ func Start(client *a2s.Client, count, period int) {
 	}
 
 	fmt.Printf("Min=%s Max=%s Avg=%s\n", stats.Min, stats.Max, stats.Avg)
+}
+
+// waitPeriod waits between ping requests while remaining interruptible.
+func waitPeriod(ctx context.Context, period int) bool {
+	timer := time.NewTimer(time.Duration(period) * time.Second)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
+}
+
+// formatPingError shortens expected timeout diagnostics while preserving other errors.
+func formatPingError(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "timeout"
+	}
+
+	return err.Error()
 }

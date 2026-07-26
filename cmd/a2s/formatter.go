@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -12,69 +12,80 @@ import (
 
 // Formatter handles output formatting in different formats.
 type Formatter struct {
+	out    io.Writer
 	format string
 }
 
 // NewFormatter creates a new formatter with the specified format.
-func NewFormatter(format string) *Formatter {
+func NewFormatter(format string, out io.Writer) *Formatter {
 	normalized := format
 	if normalized == "" {
 		normalized = "table"
 	}
 	normalized = strings.ToLower(normalized)
 
-	return &Formatter{format: normalized}
+	if out == nil {
+		out = io.Discard
+	}
+
+	return &Formatter{format: normalized, out: out}
 }
 
 // PrintTable prints data as a table in the specified format.
-func (f *Formatter) PrintTable(t table.Writer) {
+func (f *Formatter) PrintTable(t table.Writer) error {
+	t.SetOutputMirror(f.out)
+
 	switch f.format {
 	case "json":
-		fmt.Println("{}")
+		_, _ = fmt.Fprintln(f.out, "{}")
+
 	case "raw":
 		t.Style().Format.Header = text.FormatDefault
 		t.Style().Format.Footer = text.FormatDefault
 		t.Render()
+
 	case "md", "markdown":
-		fmt.Println(t.RenderMarkdown())
+		_, _ = fmt.Fprintln(f.out, t.RenderMarkdown())
+
 	case "html":
-		fmt.Println(t.RenderHTML())
+		_, _ = fmt.Fprintln(f.out, t.RenderHTML())
+
 	case "table":
 		fallthrough
+
 	default:
 		t.Render()
 	}
+
+	return nil
 }
 
 // PrintJSON prints data as JSON.
-func (f *Formatter) PrintJSON(data any) {
+func (f *Formatter) PrintJSON(data any) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fatalf("Failed to marshal JSON: %v", err)
+		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	fmt.Println(string(jsonData))
+	_, _ = fmt.Fprintln(f.out, string(jsonData))
+
+	return nil
 }
 
 // PrintRaw prints raw data (for rules).
-func (f *Formatter) PrintRaw(data map[string]string) {
+func (f *Formatter) PrintRaw(data map[string]string) error {
 	if f.format == "json" {
-		f.PrintJSON(data)
-		return
+		return f.PrintJSON(data)
 	}
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-
-	if f.format != "md" && f.format != "markdown" && f.format != "html" {
-		t.SetOutputMirror(os.Stdout)
-	}
 	t.AppendHeader(table.Row{"Rule", "Value"})
 
 	for k, v := range data {
 		t.AppendRow(table.Row{k, v})
 	}
 
-	f.PrintTable(t)
+	return f.PrintTable(t)
 }
 
 // ShouldUseJSON returns true if the format is JSON.
@@ -96,8 +107,9 @@ func (f *Formatter) IsTableFormat() bool {
 func (f *Formatter) PrintSectionHeader(title string) {
 	switch f.format {
 	case "md", "markdown":
-		fmt.Printf("\n## %s\n\n", title)
+		_, _ = fmt.Fprintf(f.out, "\n## %s\n\n", title)
+
 	case "html":
-		fmt.Printf("<h2>%s</h2>\n", title)
+		_, _ = fmt.Fprintf(f.out, "<h2>%s</h2>\n", title)
 	}
 }

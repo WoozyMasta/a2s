@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning][].
 
 ### Changed
 
+* project requires Go 1.25 or newer
+* `CLI` uses strict command/argument validation and unified version metadata
 * `a2s` separate request and response type bytes
   into `QueryType` and `ResponseType`, removing the ambiguous `Flag` API
 * `a2s` expose ordered, duplicate-safe A2S_RULES entries through `Rules`,
@@ -52,7 +54,8 @@ and this project adheres to [Semantic Versioning][].
 
 ### Fixed
 
-* CLI preserve generic A2S_INFO keywords in JSON output
+* `CLI` preserve generic A2S_INFO keywords in JSON output
+* `CLI` stops an active ping query on interrupt before printing final statistics
 * `a3sb` assemble one-based rule pages by page number
   and reject inconsistent, missing, or conflicting pages
 * `a2s` and `a3sb` reject malformed and truncated UDP responses without panics

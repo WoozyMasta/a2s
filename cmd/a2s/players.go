@@ -3,35 +3,32 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 // executePlayers queries A2S_PLAYER and renders the available player fields.
-func executePlayers(cmd *PlayersCommand) {
-	if cmd.Args.Host == "" {
-		fatal("Host must be provided")
+func executePlayers(app *Application, cmd *PlayersCommand) error {
+	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+	if err != nil {
+		return err
 	}
-
-	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer closeClient(client)
+	defer closeClient(app, client)
 
 	players, err := client.GetPlayers(context.Background())
 	if err != nil {
-		fatalf("Failed to get players: %s", err)
+		return friendlyQueryError("failed to get players", err, client.Timeout())
 	}
 
-	formatter := NewFormatter(cmd.Format)
+	formatter := NewFormatter(cmd.Format, app.Out)
 
 	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(players)
-		return
+		return formatter.PrintJSON(players)
 	}
 
 	if len(players) == 0 {
-		fmt.Println("The server is empty and there are no players to print ...")
-		return
+		_, _ = fmt.Fprintln(app.Out, "The server is empty and there are no players to print ...")
+		return nil
 	}
 
 	// Show only columns containing at least one non-zero value
@@ -67,9 +64,6 @@ func executePlayers(cmd *PlayersCommand) {
 	}
 
 	t := table.NewWriter()
-	if formatter.IsTableFormat() {
-		t.SetOutputMirror(os.Stdout)
-	}
 	t.SetStyle(table.StyleRounded)
 	t.AppendHeader(table.Row(columns))
 
@@ -92,10 +86,14 @@ func executePlayers(cmd *PlayersCommand) {
 		t.AppendRow(table.Row(row))
 	}
 
-	formatter.PrintTable(t)
+	if err := formatter.PrintTable(t); err != nil {
+		return err
+	}
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_PLAYERS response for %s\n", client.Addr())
+		_, _ = fmt.Fprintf(app.Out, "A2S_PLAYERS response for %s\n", client.Addr())
 	}
+
+	return nil
 }
