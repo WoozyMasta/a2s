@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning][].
 
 ### Added
 
+* `a2s/server` provides a UDP A2S server
+  with secure challenge-by-default handling,
+  bounded Source/GoldSource packetization, controlled shutdown,
+  panic isolation, atomic snapshots, middleware, and proxy composition
 * `appid` exposes the curated Steam AppID registry for A2S-compatible games
 * `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
 * `a2s` exposes protocol-faithful `AppID` and `GameID` fields,
