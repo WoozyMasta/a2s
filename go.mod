@@ -3,7 +3,7 @@ module github.com/woozymasta/a2s
 go 1.25.0
 
 require (
-	github.com/jedib0t/go-pretty/v6 v6.7.8
+	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/woozymasta/flags v0.14.1
 )
 
