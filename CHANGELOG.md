@@ -56,18 +56,20 @@ and this project adheres to [Semantic Versioning][].
 
 * `CLI` preserve generic A2S_INFO keywords in JSON output
 * `CLI` stops an active ping query on interrupt before printing final statistics
-* `a3sb` assemble one-based rule pages by page number
-  and reject inconsistent, missing, or conflicting pages
 * `a2s` and `a3sb` reject malformed and truncated UDP responses without panics
 * `a2s` assemble reordered split responses using metadata from fragment zero
 * `a2s` reject inconsistent split fragments and bound response allocations
 * `a2s` handle challenge responses through bounded transactions
   and keep deprecated `GetChallenge` path from retrying its final response
 * `a2s` serialize concurrent query transactions on one client
-* `a3sb` preserve deterministic DLC bit and hash ordering
-* `a3sb` parse the DayZ `dedicated` rule according to its wire value
 * `a2s` align response models with A2S wire and JSON contracts,
   including SourceTV fields, server type/visibility keys, and signed scores
+* `a2s` accepts empty A2A_PING acknowledgements
+  while retaining textual payload support
+* `a3sb` preserve deterministic DLC bit and hash ordering
+* `a3sb` parse the DayZ `dedicated` rule according to its wire value
+* `a3sb` assemble one-based rule pages by page number
+  and reject inconsistent, missing, or conflicting pages
 * `keywords` preserve unknown enum values
   instead of mapping them to known defaults
 
@@ -77,7 +79,6 @@ and this project adheres to [Semantic Versioning][].
 * `a2s` removes transport-only `Info.Ping` from the A2S_INFO model and JSON
 * remove the redundant `--skip-info` rules option
   after rules detection stopped requiring `A2S_INFO`
-
 * remove the `github.com/woozymasta/steam` dependency
   in favor of a curated local A2S AppID registry
 

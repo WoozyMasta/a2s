@@ -25,6 +25,10 @@ func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
 
 // parsePing validates the payload of an A2A_PING response.
 func parsePing(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+
 	decoder := wire.NewDecoder(data)
 	if _, err := decoder.CString(); err != nil {
 		return fmt.Errorf("%w payload: %w", ErrPingRead, err)
