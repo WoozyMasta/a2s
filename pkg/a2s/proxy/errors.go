@@ -1,0 +1,17 @@
+package proxy
+
+import "errors"
+
+var (
+	// ErrCache identifies a cache operation or configuration failure.
+	ErrCache = errors.New("a2s proxy: cache failure")
+
+	// ErrCacheQuery identifies a query type that cannot be cached.
+	ErrCacheQuery = errors.New("a2s proxy: unsupported cache query")
+
+	// ErrCacheDisabled identifies a supported query that is not enabled in a cache.
+	ErrCacheDisabled = errors.New("a2s proxy: cache query is disabled")
+
+	// ErrCachePacket identifies a response packet that cannot answer its query.
+	ErrCachePacket = errors.New("a2s proxy: invalid cache packet")
+)
