@@ -10,8 +10,8 @@ import (
 // userFacingError keeps the low-level cause available to callers
 // while exposing a concise diagnostic suitable for CLI users.
 type userFacingError struct {
-	message string
 	cause   error
+	message string
 }
 
 func (e *userFacingError) Error() string {
