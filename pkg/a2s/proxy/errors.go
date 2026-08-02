@@ -14,4 +14,7 @@ var (
 
 	// ErrCachePacket identifies a response packet that cannot answer its query.
 	ErrCachePacket = errors.New("a2s proxy: invalid cache packet")
+
+	// ErrPoller identifies a polling configuration or lifecycle failure.
+	ErrPoller = errors.New("a2s proxy: poller failure")
 )

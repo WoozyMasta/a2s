@@ -19,9 +19,9 @@ const cacheableQueryCount = 3
 // Store and Invalidate publish immutable snapshots;
 // Load returns a packet with an independently owned payload.
 type Cache struct {
-	enabled [cacheableQueryCount]bool     // Enabled cache entries by query index.
-	writeMu sync.Mutex                    // Serializes snapshot publication.
 	state   atomic.Pointer[cacheSnapshot] // Current immutable snapshot.
+	writeMu sync.Mutex                    // Serializes snapshot publication.
+	enabled [cacheableQueryCount]bool     // Enabled cache entries by query index.
 }
 
 // cacheSnapshot is immutable after publication through Cache.state.
@@ -31,8 +31,8 @@ type cacheSnapshot struct {
 
 // cacheEntry contains one response and its validity metadata.
 type cacheEntry struct {
-	packet    a2s.Packet // Cached logical response packet.
 	updatedAt time.Time  // Time at which packet was obtained upstream.
+	packet    a2s.Packet // Cached logical response packet.
 	valid     bool       // Whether packet may be served.
 }
 
