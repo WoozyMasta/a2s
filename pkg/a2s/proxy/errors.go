@@ -17,4 +17,7 @@ var (
 
 	// ErrPoller identifies a polling configuration or lifecycle failure.
 	ErrPoller = errors.New("a2s proxy: poller failure")
+
+	// ErrHandler identifies invalid proxy handler configuration or use.
+	ErrHandler = errors.New("a2s proxy: handler failure")
 )
