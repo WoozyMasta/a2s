@@ -14,11 +14,12 @@ import (
 
 // Options defines the root command structure.
 type Options struct {
-	Info    InfoCommand    `command:"info"    description:"Retrieve server information A2S_INFO"`
-	Players PlayersCommand `command:"players" description:"Retrieve player list A2S_PLAYERS"`
 	Rules   RulesCommand   `command:"rules"   description:"Retrieve server rules A2S_RULES"`
 	All     AllCommand     `command:"all"     description:"Retrieve all available server information"`
+	Info    InfoCommand    `command:"info"    description:"Retrieve server information A2S_INFO"`
+	Players PlayersCommand `command:"players" description:"Retrieve player list A2S_PLAYERS"`
 	Ping    PingCommand    `command:"ping"    description:"Ping the server with A2S_INFO"`
+	Proxy   ProxyCommand   `command:"proxy"   description:"Run a cached A2S proxy"`
 }
 
 // InfoCommand handles the 'info' subcommand.
@@ -50,9 +51,25 @@ type AllCommand struct {
 // PingCommand handles the 'ping' subcommand.
 type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
+
 	GlobalOptions
 	PingCount  int `short:"c" default:"0" validate-min:"0" long:"ping-count"  description:"Set the number of ping requests to send (0 = infinite)"`
 	PingPeriod int `short:"p" default:"1" validate-min:"1" long:"ping-period" description:"Set the period between pings in seconds"`
+}
+
+// ProxyCommand defines configuration for the cached A2S proxy.
+type ProxyCommand struct {
+	Args ServerArgs `positional-args:"yes"`
+
+	Listen       string        `long:"listen"        description:"Local UDP endpoint to listen on" required:"true"`
+	Cache        []string      `long:"cache"         description:"Response types to cache"                       default:"auto" choices:"info;players;rules;auto"`
+	TTL          time.Duration `long:"ttl"           description:"Cache refresh interval"                        default:"15s"  validate-min:"1"`
+	InactiveTTL  time.Duration `long:"inactive-ttl"  description:"Inactive cache retry interval (0 = use TTL)"   default:"0"    validate-min:"0"`
+	Jitter       time.Duration `long:"jitter"        description:"Maximum polling interval jitter"               default:"1s"   validate-min:"0"`
+	Retries      int           `long:"retries"       description:"Retries after an upstream refresh failure"     default:"2"    validate-min:"0"`
+	Timeout      time.Duration `long:"timeout"       description:"Upstream request timeout"                      default:"3s"   validate-min:"1"`
+	Buffer       uint16        `long:"buffer-size"   description:"Upstream UDP receive buffer size"              default:"8192" validate-min:"1"`
+	UpstreamPing bool          `long:"upstream-ping" description:"Forward A2A_PING instead of answering locally"`
 }
 
 // GlobalOptions defines global CLI options applicable to all commands.
@@ -112,18 +129,29 @@ func run(args []string, app *Application) error {
 	// Execute the appropriate command
 	switch p.Active.Name {
 	case "help", "version", "completion":
-		// Built-in flags commands execute during ParseArgs.
-		return nil
+		return nil // Built-in flags commands execute during ParseArgs.
+
 	case "info":
 		return executeInfo(app, &opts.Info)
+
 	case "players":
 		return executePlayers(app, &opts.Players)
+
 	case "rules":
 		return executeRules(app, &opts.Rules)
+
 	case "all":
 		return executeAll(app, &opts.All)
+
 	case "ping":
 		return executePing(app, &opts.Ping)
+
+	case "proxy":
+		if err := validateProxyCommand(&opts.Proxy); err != nil {
+			return err
+		}
+		return fmt.Errorf("proxy command runtime is not implemented yet")
+
 	default:
 		return fmt.Errorf("unknown command: %s", p.Active.Name)
 	}
@@ -161,6 +189,7 @@ func newParser(opts *Options) (*flags.Parser, error) {
 		"rules":   "Query server rules with A2S_RULES or automatic A3SB parsing.",
 		"all":     "Query server metadata, rules, and players in one command.",
 		"ping":    "Measure server response time with repeated A2S_INFO queries.",
+		"proxy":   "Expose a cached UDP proxy for an upstream A2S server.",
 	})
 
 	return parser, parser.SetCommandExamples(map[string][]*flags.CommandExample{
@@ -169,6 +198,7 @@ func newParser(opts *Options) (*flags.Parser, error) {
 		"rules":   {flags.Example().Arg("example.org:2303").Option(&opts.Rules.Game, "arma3")},
 		"all":     {flags.Example().Arg("127.0.0.1:27015").Option(&opts.All.Format, "json")},
 		"ping":    {flags.Example().Arg("127.0.0.1:27015").Option(&opts.Ping.PingCount, "5")},
+		"proxy":   {flags.Example().Arg("127.0.0.1:27015").Option(&opts.Proxy.Listen, ":27016")},
 	})
 }
 

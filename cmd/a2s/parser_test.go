@@ -4,17 +4,22 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/woozymasta/flags"
 )
 
 func TestParserRecognizesCommands(t *testing.T) {
-	tests := []string{"info", "players", "rules", "all", "ping"}
+	tests := []string{"info", "players", "rules", "all", "ping", "proxy"}
 
 	for _, command := range tests {
 		t.Run(command, func(t *testing.T) {
 			parser, options := newTestParser()
-			if _, err := parser.ParseArgs([]string{command, "127.0.0.1"}); err != nil {
+			args := []string{command, "127.0.0.1"}
+			if command == "proxy" {
+				args = append(args, "--listen", ":27016")
+			}
+			if _, err := parser.ParseArgs(args); err != nil {
 				t.Fatalf("ParseArgs() error = %v", err)
 			}
 			if parser.Active == nil || parser.Active.Name != command {
@@ -57,6 +62,26 @@ func TestParserRecognizesPrimaryOptions(t *testing.T) {
 			check: func(t *testing.T, options *Options) {
 				if options.Ping.PingCount != 5 || options.Ping.PingPeriod != 2 {
 					t.Fatalf("ping options = %#v, want count=5 period=2", options.Ping)
+				}
+			},
+		},
+		{
+			name: "proxy options",
+			args: []string{
+				"proxy", "upstream:27015", "--listen", ":27016",
+				"--cache", "info", "--cache", "rules",
+				"--ttl", "30s", "--inactive-ttl", "5s",
+				"--retries", "4", "--jitter", "2s", "--timeout", "4s",
+				"--buffer-size", "4096", "--upstream-ping",
+			},
+			check: func(t *testing.T, options *Options) {
+				proxy := options.Proxy
+				if proxy.Listen != ":27016" || len(proxy.Cache) != 2 ||
+					proxy.TTL != 30*time.Second || proxy.InactiveTTL != 5*time.Second ||
+					proxy.Retries != 4 || proxy.Jitter != 2*time.Second ||
+					proxy.Timeout != 4*time.Second || proxy.Buffer != 4096 ||
+					!proxy.UpstreamPing {
+					t.Fatalf("proxy options = %#v", proxy)
 				}
 			},
 		},
@@ -192,10 +217,14 @@ func TestParserValidatesNumericOptions(t *testing.T) {
 }
 
 func TestParserRequiresHostForNetworkCommands(t *testing.T) {
-	for _, command := range []string{"info", "players", "rules", "all", "ping"} {
+	for _, command := range []string{"info", "players", "rules", "all", "ping", "proxy"} {
 		t.Run(command, func(t *testing.T) {
 			parser, _ := newTestParser()
-			if _, err := parser.ParseArgs([]string{command}); !isParserError(err, flags.ErrRequired) {
+			args := []string{command}
+			if command == "proxy" {
+				args = append(args, "--listen", ":27016")
+			}
+			if _, err := parser.ParseArgs(args); !isParserError(err, flags.ErrRequired) {
 				t.Fatalf("ParseArgs() error = %v, want ErrRequired", err)
 			}
 		})
@@ -217,7 +246,7 @@ func TestParserHelpContainsPrimaryCommandsAndOptions(t *testing.T) {
 	var help bytes.Buffer
 	parser.WriteHelp(&help)
 
-	for _, want := range []string{"info", "players", "rules", "all", "ping", "version"} {
+	for _, want := range []string{"info", "players", "rules", "all", "ping", "proxy", "version"} {
 		if !bytes.Contains(help.Bytes(), []byte(want)) {
 			t.Fatalf("help does not contain %q:\n%s", want, help.String())
 		}
@@ -240,6 +269,7 @@ func TestParserCommandsHaveLongDescriptions(t *testing.T) {
 		"rules":   "Query server rules with A2S_RULES or automatic A3SB parsing.",
 		"all":     "Query server metadata, rules, and players in one command.",
 		"ping":    "Measure server response time with repeated A2S_INFO queries.",
+		"proxy":   "Expose a cached UDP proxy for an upstream A2S server.",
 	}
 
 	parser, _ := newTestParser()
@@ -264,6 +294,7 @@ func TestParserHelpContainsStructuredExamples(t *testing.T) {
 		{command: "info", want: "a2s info 127.0.0.1:27015"},
 		{command: "rules", want: "a2s rules example.org:2303 --game arma3"},
 		{command: "all", want: "a2s all 127.0.0.1:27015 --format json"},
+		{command: "proxy", want: "a2s proxy 127.0.0.1:27015 --listen :27016"},
 	}
 
 	for _, tt := range tests {
@@ -275,6 +306,76 @@ func TestParserHelpContainsStructuredExamples(t *testing.T) {
 			}
 			if !bytes.Contains([]byte(err.Error()), []byte(tt.want)) {
 				t.Fatalf("help does not contain structured example %q:\n%s", tt.want, err)
+			}
+		})
+	}
+}
+
+func TestValidateProxyCommand(t *testing.T) {
+	tests := []struct {
+		name    string
+		command ProxyCommand
+		want    []string
+		wantErr string
+	}{
+		{
+			name: "default cache",
+			command: ProxyCommand{
+				Args:   ServerArgs{Host: "127.0.0.1:27015"},
+				Listen: ":27016",
+			},
+			want: []string{"auto"},
+		},
+		{
+			name: "deduplicates concrete values",
+			command: ProxyCommand{
+				Args:   ServerArgs{Host: "127.0.0.1:27015"},
+				Listen: ":27016",
+				Cache:  []string{"info", "rules", "info"},
+			},
+			want: []string{"info", "rules"},
+		},
+		{
+			name: "auto selector cannot be combined",
+			command: ProxyCommand{
+				Args:   ServerArgs{Host: "127.0.0.1:27015"},
+				Listen: ":27016",
+				Cache:  []string{"auto", "rules"},
+			},
+			wantErr: `cache selector "auto" cannot be combined with other values`,
+		},
+		{
+			name: "invalid upstream endpoint",
+			command: ProxyCommand{
+				Args:   ServerArgs{Host: "127.0.0.1"},
+				Listen: ":27016",
+			},
+			wantErr: "invalid upstream endpoint",
+		},
+		{
+			name: "invalid listen port",
+			command: ProxyCommand{
+				Args:   ServerArgs{Host: "127.0.0.1:27015"},
+				Listen: ":invalid",
+			},
+			wantErr: "invalid listen port",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateProxyCommand(&tt.command)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("validateProxyCommand() error = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("validateProxyCommand() error = %v", err)
+			}
+			if strings.Join(tt.command.Cache, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("cache = %v, want %v", tt.command.Cache, tt.want)
 			}
 		})
 	}

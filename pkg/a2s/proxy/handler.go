@@ -10,10 +10,10 @@ import (
 
 // HandlerConfig configures downstream request handling.
 type HandlerConfig struct {
-	// LocalPing answers deprecated A2A_PING requests without contacting upstream.
-	LocalPing bool
 	// ChallengeProvider issues tokens for local GETCHALLENGE responses.
 	ChallengeProvider server.ChallengeProvider
+	// LocalPing answers deprecated A2A_PING requests without contacting upstream.
+	LocalPing bool
 }
 
 // Handler routes downstream requests through the cache, relay, or local
