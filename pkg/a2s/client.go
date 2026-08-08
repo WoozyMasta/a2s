@@ -262,11 +262,16 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 	var (
 		lastUnexpectedErr      error
 		lastUnexpectedResponse ResponseType
+		usedChallenge          bool
 	)
 
 	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
-		resp, responseType, err := c.requestWithChallenge(effectiveCtx, requestType)
-		meta := QueryMeta{Duration: time.Since(started)}
+		resp, responseType, attemptUsedChallenge, err := c.requestWithChallenge(effectiveCtx, requestType)
+		usedChallenge = usedChallenge || attemptUsedChallenge
+		meta := QueryMeta{
+			Duration:      time.Since(started),
+			UsedChallenge: usedChallenge,
+		}
 		if err != nil {
 			if lastUnexpectedErr != nil {
 				return Packet{Type: lastUnexpectedResponse}, meta, errors.Join(lastUnexpectedErr, err)
@@ -308,7 +313,10 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 	}
 
 	if lastUnexpectedErr != nil {
-		return Packet{Type: lastUnexpectedResponse}, QueryMeta{Duration: time.Since(started)}, lastUnexpectedErr
+		return Packet{Type: lastUnexpectedResponse}, QueryMeta{
+			Duration:      time.Since(started),
+			UsedChallenge: usedChallenge,
+		}, lastUnexpectedErr
 	}
 
 	return Packet{}, QueryMeta{Duration: time.Since(started)}, validationErrForRequest(requestType)
@@ -359,31 +367,34 @@ func (c *Client) releaseQuery() {
 // including its bounded challenge exchange.
 // ChallengeRequest returns its challenge
 // as the final response and must never enter this exchange.
-func (c *Client) requestWithChallenge(ctx context.Context, requestType QueryType) ([]byte, ResponseType, error) {
+func (c *Client) requestWithChallenge(
+	ctx context.Context,
+	requestType QueryType,
+) ([]byte, ResponseType, bool, error) {
 	challenge := InitialChallenge
 
 	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
 		resp, err := c.request(ctx, requestType, challenge)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, attempt > 0, err
 		}
 
 		responseType := ResponseType(resp[4])
 		if responseType != ResponseChallenge || requestType == ChallengeRequest || requestType == PingRequest {
-			return resp, responseType, nil
+			return resp, responseType, attempt > 0, nil
 		}
 
 		if attempt == maxChallengeResponses-1 {
-			return resp, ResponseChallenge, ErrChallengeLoop
+			return resp, ResponseChallenge, true, ErrChallengeLoop
 		}
 
 		challenge, err = parseChallengeResponse(resp)
 		if err != nil {
-			return resp, ResponseChallenge, err
+			return resp, ResponseChallenge, true, err
 		}
 	}
 
-	return nil, ResponseChallenge, ErrChallengeLoop
+	return nil, ResponseChallenge, true, ErrChallengeLoop
 }
 
 // parseChallengeResponse reads a challenge from a complete A2S response.

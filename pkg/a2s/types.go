@@ -53,6 +53,10 @@ var InitialChallenge = Challenge{0xFF, 0xFF, 0xFF, 0xFF}
 type QueryMeta struct {
 	// Duration is the complete logical query latency.
 	Duration time.Duration
+
+	// UsedChallenge reports whether the server required a challenge exchange
+	// before returning the final response.
+	UsedChallenge bool
 }
 
 // EDF represents Extra Data Flag bits in A2S_INFO response.

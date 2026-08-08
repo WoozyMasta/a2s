@@ -147,10 +147,7 @@ func run(args []string, app *Application) error {
 		return executePing(app, &opts.Ping)
 
 	case "proxy":
-		if err := validateProxyCommand(&opts.Proxy); err != nil {
-			return err
-		}
-		return fmt.Errorf("proxy command runtime is not implemented yet")
+		return executeProxy(app, &opts.Proxy)
 
 	default:
 		return fmt.Errorf("unknown command: %s", p.Active.Name)

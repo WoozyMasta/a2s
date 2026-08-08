@@ -26,4 +26,28 @@ func TestQueryReturnsLogicalPacket(t *testing.T) {
 	if meta.Duration < 0 {
 		t.Fatalf("query duration = %s, want non-negative duration", meta.Duration)
 	}
+	if meta.UsedChallenge {
+		t.Fatal("query metadata reports an unexpected challenge exchange")
+	}
+}
+
+func TestQueryMetadataReportsChallengeExchange(t *testing.T) {
+	fixture := newUDPPacketFixture(
+		t,
+		singlePacketFixture(ResponseChallenge, []byte{1, 2, 3, 4}),
+		singlePacketFixture(ResponseRules, []byte("rules")),
+	)
+	client, err := NewWithAddr(fixture.Addr())
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	defer client.Close()
+
+	_, meta, err := client.Query(context.Background(), RulesRequest)
+	if err != nil {
+		t.Fatalf("Query returned error: %v", err)
+	}
+	if !meta.UsedChallenge {
+		t.Fatal("query metadata does not report the challenge exchange")
+	}
 }
