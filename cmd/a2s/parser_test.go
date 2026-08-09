@@ -159,6 +159,7 @@ func TestParserRejectsInvalidChoices(t *testing.T) {
 	tests := [][]string{
 		{"info", "--format", "yaml", "host"},
 		{"rules", "--game", "rust", "host"},
+		{"proxy", "host:27015", "--listen", ":27016", "--cache", "unknown"},
 	}
 
 	for _, args := range tests {
@@ -216,6 +217,49 @@ func TestParserValidatesNumericOptions(t *testing.T) {
 	}
 }
 
+func TestParserValidatesProxyOptions(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "zero ttl",
+			args: []string{"proxy", "host:27015", "--listen", ":27016", "--ttl", "0s"},
+		},
+		{
+			name: "negative inactive ttl",
+			args: []string{"proxy", "host:27015", "--listen", ":27016", "--inactive-ttl", "-1s"},
+		},
+		{
+			name: "negative retries",
+			args: []string{"proxy", "host:27015", "--listen", ":27016", "--retries", "-1"},
+		},
+		{
+			name: "negative jitter",
+			args: []string{"proxy", "host:27015", "--listen", ":27016", "--jitter", "-1s"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser, _ := newTestParser()
+			if _, err := parser.ParseArgs(tt.args); !isParserError(err, flags.ErrValidation) {
+				t.Fatalf("ParseArgs() error = %v, want ErrValidation", err)
+			}
+		})
+	}
+}
+
+func TestParserRejectsInvalidProxyDuration(t *testing.T) {
+	parser, _ := newTestParser()
+	_, err := parser.ParseArgs([]string{
+		"proxy", "host:27015", "--listen", ":27016", "--ttl", "invalid",
+	})
+	if err == nil {
+		t.Fatal("ParseArgs() error = nil, want invalid duration error")
+	}
+}
+
 func TestParserRequiresHostForNetworkCommands(t *testing.T) {
 	for _, command := range []string{"info", "players", "rules", "all", "ping", "proxy"} {
 		t.Run(command, func(t *testing.T) {
@@ -228,6 +272,14 @@ func TestParserRequiresHostForNetworkCommands(t *testing.T) {
 				t.Fatalf("ParseArgs() error = %v, want ErrRequired", err)
 			}
 		})
+	}
+}
+
+func TestParserRequiresListenForProxy(t *testing.T) {
+	parser, _ := newTestParser()
+	_, err := parser.ParseArgs([]string{"proxy", "host:27015"})
+	if !isParserError(err, flags.ErrRequired) {
+		t.Fatalf("ParseArgs() error = %v, want ErrRequired", err)
 	}
 }
 
@@ -308,6 +360,24 @@ func TestParserHelpContainsStructuredExamples(t *testing.T) {
 				t.Fatalf("help does not contain structured example %q:\n%s", tt.want, err)
 			}
 		})
+	}
+}
+
+func TestProxyHelpDocumentsCurrentDefaults(t *testing.T) {
+	parser, _ := newTestParser()
+	_, err := parser.ParseArgs([]string{"proxy", "--help"})
+	if !isParserError(err, flags.ErrHelp) {
+		t.Fatalf("proxy help error = %v, want ErrHelp", err)
+	}
+
+	help := err.Error()
+	for _, want := range []string{"/cache", "auto", "/upstream-ping"} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("proxy help does not contain %q:\n%s", want, help)
+		}
+	}
+	if strings.Contains(help, "challenge") {
+		t.Fatalf("proxy help still exposes removed challenge option:\n%s", help)
 	}
 }
 
