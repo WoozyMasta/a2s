@@ -17,24 +17,14 @@ const proxyStartupRetryDelay = time.Second
 
 // proxyPreparation contains resources and decisions required before serving.
 type proxyPreparation struct {
-	pollClient  *a2s.Client
-	relayClient *a2s.Client
-	cache       *proxycache.Cache
-	packetizer  server.Packetizer
-	policy      server.ChallengePolicy
-	info        a2s.Packet
-	infoMeta    a2s.QueryMeta
-}
-
-// executeProxy prepares upstream state before the runtime listener is added.
-func executeProxy(_ *Application, command *ProxyCommand) error {
-	preparation, err := prepareProxyStartup(context.Background(), command)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = preparation.close() }()
-
-	return fmt.Errorf("proxy command runtime is not implemented yet")
+	upstream    string                 // Normalized upstream endpoint for diagnostics.
+	pollClient  *a2s.Client            // Client dedicated to cache refreshes.
+	relayClient *a2s.Client            // Client dedicated to live passthrough.
+	cache       *proxycache.Cache      // Cache seeded by successful startup probes.
+	packetizer  server.Packetizer      // Downstream framing selected from INFO.
+	policy      server.ChallengePolicy // Downstream challenge policy selected from INFO.
+	info        a2s.Packet             // Successful startup INFO packet.
+	infoMeta    a2s.QueryMeta          // Metadata from the startup INFO exchange.
 }
 
 // close releases clients owned by a startup preparation.
@@ -72,7 +62,7 @@ func prepareProxyStartup(ctx context.Context, command *ProxyCommand) (*proxyPrep
 		return nil, fmt.Errorf("invalid upstream endpoint: %w", err)
 	}
 
-	preparation := &proxyPreparation{}
+	preparation := &proxyPreparation{upstream: address}
 	cleanup := func(startupErr error) (*proxyPreparation, error) {
 		if closeErr := preparation.close(); closeErr != nil {
 			startupErr = errors.Join(startupErr, closeErr)

@@ -5,6 +5,9 @@ import (
 	"encoding/binary"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -119,6 +122,133 @@ func TestPrepareProxyStartupFailsBeforeServingOnInfoError(t *testing.T) {
 	}
 }
 
+func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
+	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
+	command := proxyStartupCommand(fixture, []string{"auto"})
+	command.Listen = freeProxyListenAddress(t)
+	command.TTL = time.Hour
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	output := &proxyRuntimeTestWriter{}
+	app := NewApplication(output, output)
+	runtimeErr := make(chan error, 1)
+	go func() { runtimeErr <- executeProxyContext(ctx, app, command) }()
+
+	waitForProxyRuntimeOutput(t, output, "proxy listening")
+
+	client, err := a2s.NewWithString(command.Listen, a2s.WithTimeout(time.Second))
+	if err != nil {
+		t.Fatalf("NewWithString() error = %v", err)
+	}
+	defer client.Close()
+
+	info, err := client.GetInfo(context.Background())
+	if err != nil {
+		t.Fatalf("GetInfo() error = %v", err)
+	}
+	if info.Name != "proxy test" {
+		t.Fatalf("info name = %q, want %q", info.Name, "proxy test")
+	}
+	if _, err := client.GetPing(context.Background()); err != nil {
+		t.Fatalf("GetPing() error = %v", err)
+	}
+
+	cancel()
+	select {
+	case err := <-runtimeErr:
+		if err != nil {
+			t.Fatalf("executeProxyContext() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeProxyContext() did not stop after cancellation")
+	}
+}
+
+func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
+	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+	command := proxyStartupCommand(fixture, []string{"players"})
+	command.Listen = freeProxyListenAddress(t)
+	command.Timeout = 10 * time.Millisecond
+	command.TTL = time.Hour
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	output := &proxyRuntimeTestWriter{}
+	runtimeErr := make(chan error, 1)
+	go func() {
+		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command)
+	}()
+
+	waitForProxyRuntimeOutput(t, output, "proxy listening")
+	select {
+	case err := <-runtimeErr:
+		t.Fatalf("executeProxyContext() stopped without cache entries: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	cancel()
+	select {
+	case err := <-runtimeErr:
+		if err != nil {
+			t.Fatalf("executeProxyContext() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeProxyContext() did not stop after cancellation")
+	}
+}
+
+func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T) {
+	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+	command := proxyStartupCommand(fixture, []string{"info"})
+	command.Listen = freeProxyListenAddress(t)
+	command.Timeout = 10 * time.Millisecond
+	command.TTL = 20 * time.Millisecond
+	command.InactiveTTL = 20 * time.Millisecond
+	command.Retries = 0
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	output := &proxyRuntimeTestWriter{}
+	runtimeErr := make(chan error, 1)
+	go func() {
+		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command)
+	}()
+
+	waitForProxyRuntimeOutput(t, output, "proxy listening")
+	fixture.setInfoResponse(true)
+	client, err := a2s.NewWithString(command.Listen, a2s.WithTimeout(100*time.Millisecond))
+	if err != nil {
+		t.Fatalf("NewWithString() error = %v", err)
+	}
+	defer client.Close()
+	if _, err := client.GetInfo(context.Background()); err != nil {
+		t.Fatalf("initial GetInfo() error = %v", err)
+	}
+
+	fixture.setInfoResponse(false)
+	waitForProxyRuntimeOutput(t, output, "INFO unavailable")
+	if _, err := client.GetInfo(context.Background()); err == nil {
+		t.Fatal("GetInfo() succeeded while the cached entry was unavailable")
+	}
+
+	fixture.setInfoResponse(true)
+	waitForProxyRuntimeOutput(t, output, "INFO recovered")
+	if _, err := client.GetInfo(context.Background()); err != nil {
+		t.Fatalf("recovered GetInfo() error = %v", err)
+	}
+
+	cancel()
+	select {
+	case err := <-runtimeErr:
+		if err != nil {
+			t.Fatalf("executeProxyContext() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("executeProxyContext() did not stop after cancellation")
+	}
+}
+
 func proxyStartupCommand(fixture *proxyStartupFixture, cache []string) *ProxyCommand {
 	return &ProxyCommand{
 		Args: ServerArgs{
@@ -132,13 +262,62 @@ func proxyStartupCommand(fixture *proxyStartupFixture, cache []string) *ProxyCom
 	}
 }
 
+func freeProxyListenAddress(t *testing.T) string {
+	t.Helper()
+
+	conn, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("ListenPacket() error = %v", err)
+	}
+	address := conn.LocalAddr().String()
+	if err := conn.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	return address
+}
+
+func waitForProxyRuntimeOutput(t *testing.T, output *proxyRuntimeTestWriter, text string) {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if strings.Contains(output.String(), text) {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatalf("runtime output does not contain %q: %q", text, output.String())
+}
+
+type proxyRuntimeTestWriter struct {
+	mu   sync.RWMutex
+	text string
+}
+
+func (w *proxyRuntimeTestWriter) Write(data []byte) (int, error) {
+	w.mu.Lock()
+	w.text += string(data)
+	w.mu.Unlock()
+
+	return len(data), nil
+}
+
+func (w *proxyRuntimeTestWriter) String() string {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	return w.text
+}
+
 type proxyStartupFixture struct {
 	conn          *net.UDPConn
 	addr          *net.UDPAddr
 	info          []byte
 	infoChallenge bool
-	respondInfo   bool
-	respondExtra  bool
+	respondInfo   atomic.Bool
+	respondExtra  atomic.Bool
 	done          chan struct{}
 }
 
@@ -167,10 +346,10 @@ func newProxyStartupFixture(
 		addr:          conn.LocalAddr().(*net.UDPAddr),
 		info:          info,
 		infoChallenge: infoChallenge,
-		respondInfo:   respondInfo,
-		respondExtra:  respondExtra,
 		done:          make(chan struct{}),
 	}
+	fixture.respondInfo.Store(respondInfo)
+	fixture.respondExtra.Store(respondExtra)
 	go fixture.serve()
 
 	t.Cleanup(func() {
@@ -205,17 +384,17 @@ func (f *proxyStartupFixture) serve() {
 		var response []byte
 		switch query {
 		case a2s.InfoRequest:
-			if f.respondInfo {
+			if f.respondInfo.Load() {
 				response = f.info
 			}
 
 		case a2s.PlayerRequest:
-			if f.respondExtra {
+			if f.respondExtra.Load() {
 				response, _ = a2s.AppendPlayers(nil, nil)
 			}
 
 		case a2s.RulesRequest:
-			if f.respondExtra {
+			if f.respondExtra.Load() {
 				response, _ = a2s.AppendRules(nil, nil)
 			}
 		}
@@ -224,6 +403,10 @@ func (f *proxyStartupFixture) serve() {
 			_, _ = f.conn.WriteToUDP(response, remote)
 		}
 	}
+}
+
+func (f *proxyStartupFixture) setInfoResponse(enabled bool) {
+	f.respondInfo.Store(enabled)
 }
 
 func proxyStartupInfoPacket(responseType a2s.ResponseType) ([]byte, error) {
