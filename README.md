@@ -59,8 +59,16 @@ The utility supports the following commands:
 * `players` - Retrieve player list `A2S_PLAYERS`
 * `all` - Retrieve all available server information
 * `ping` - Ping the server with `A2S_INFO`
+* `proxy` - Run a cached A2S proxy
 
 For detailed information about available options and flags, run `a2s --help`.
+
+For deployment, prefer a separate game query endpoint behind the proxy.
+If the game must keep the advertised UDP port,
+use external NAT or selective packet steering;
+`SO_REUSEPORT` and `SO_REUSEADDR` are not A2S demultiplexers.
+The proxy does not configure firewall, NAT,
+container, or operating-system rules.
 
 ## Package
 
