@@ -17,10 +17,13 @@ and this project adheres to [Semantic Versioning][].
 
 ### Added
 
+* `CLI` adds the `proxy` command
 * `a2s/server` provides a UDP A2S server
   with secure challenge-by-default handling,
   bounded Source/GoldSource packetization, controlled shutdown,
   panic isolation, atomic snapshots, middleware, and proxy composition
+* `a2s/proxy` provides reusable cached response storage, polling,
+  live passthrough, local challenge handling, and recovery lifecycle
 * `appid` exposes the curated Steam AppID registry for A2S-compatible games
 * `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
 * `a2s` exposes protocol-faithful `AppID` and `GameID` fields,
