@@ -48,7 +48,13 @@ func TestFormatterPrintJSONReturnsMarshalError(t *testing.T) {
 }
 
 func TestFriendlyQueryErrorExplainsTimeout(t *testing.T) {
-	err := friendlyQueryError("failed to get server info", context.DeadlineExceeded, 3*time.Second)
+	err := friendlyQueryError(
+		NewApplication(nil, nil),
+		"error.server_info",
+		"failed to get server info",
+		context.DeadlineExceeded,
+		3*time.Second,
+	)
 	message := err.Error()
 
 	if !strings.Contains(message, "server did not respond within 3 seconds") {

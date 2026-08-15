@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning][].
 ### Added
 
 * `CLI` adds the `proxy` command
+* `CLI` localizes in Russian, German, Italian, Spanish, Czech, and Chinese
+  with English fallback
 * `a2s/server` provides a UDP A2S server
   with secure challenge-by-default handling,
   bounded Source/GoldSource packetization, controlled shutdown,

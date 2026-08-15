@@ -30,13 +30,13 @@ func executeProxyContext(ctx context.Context, app *Application, command *ProxyCo
 
 	preparation, err := prepareProxyStartup(ctx, command)
 	if err != nil {
-		return err
+		return app.wrapError("error.proxy_startup", "proxy startup failed", err)
 	}
 	defer func() { _ = preparation.close() }()
 
 	provider, err := server.NewStatelessChallengeProvider()
 	if err != nil {
-		return fmt.Errorf("create downstream challenge provider: %w", err)
+		return app.wrapError("error.proxy_challenge_provider", "create downstream challenge provider", err)
 	}
 
 	handler, err := proxycache.NewHandler(
@@ -48,7 +48,7 @@ func executeProxyContext(ctx context.Context, app *Application, command *ProxyCo
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("create proxy handler: %w", err)
+		return app.wrapError("error.proxy_handler", "create proxy handler", err)
 	}
 
 	poller, err := proxycache.NewPoller(
@@ -65,7 +65,7 @@ func executeProxyContext(ctx context.Context, app *Application, command *ProxyCo
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("create proxy poller: %w", err)
+		return app.wrapError("error.proxy_poller", "create proxy poller", err)
 	}
 
 	proxyServer, err := server.New(
@@ -75,12 +75,16 @@ func executeProxyContext(ctx context.Context, app *Application, command *ProxyCo
 		server.WithPacketizer(preparation.packetizer),
 	)
 	if err != nil {
-		return fmt.Errorf("create proxy server: %w", err)
+		return app.wrapError("error.proxy_server", "create proxy server", err)
 	}
 
 	conn, err := net.ListenPacket("udp", command.Listen)
 	if err != nil {
-		return fmt.Errorf("listen on %q: %w", command.Listen, err)
+		return fmt.Errorf(
+			"%s: %w",
+			app.localize("error.proxy_listen", "listen on %s", command.Listen),
+			err,
+		)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -114,19 +118,21 @@ func executeProxyContext(ctx context.Context, app *Application, command *ProxyCo
 		if isProxyContextStop(err) {
 			return nil
 		}
-		return fmt.Errorf("proxy server stopped: %w", err)
+		return app.wrapError("error.proxy_server_stopped", "proxy server stopped", err)
 
 	case err := <-pollFailure:
 		cancel()
 		<-serveErr
 		<-pollDone
-		return fmt.Errorf("proxy poller stopped: %w", err)
+		return app.wrapError("error.proxy_poller_stopped", "proxy poller stopped", err)
 	}
 }
 
 // isProxyContextStop identifies normal context-driven server termination.
 func isProxyContextStop(err error) bool {
-	return err == nil || errors.Is(err, context.Canceled) || errors.Is(err, server.ErrServerClosed)
+	return err == nil ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, server.ErrServerClosed)
 }
 
 // writeProxyStartup reports the endpoint mapping after the listener is ready.
@@ -134,7 +140,12 @@ func writeProxyStartup(app *Application, listen, upstream string) {
 	if app == nil || app.Out == nil {
 		return
 	}
-	_, _ = fmt.Fprintf(app.Out, "proxy listening on %s -> %s\n", listen, upstream)
+	_, _ = fmt.Fprintln(app.Out, app.localize(
+		"proxy.listening",
+		"proxy listening on %s -> %s",
+		listen,
+		upstream,
+	))
 }
 
 // writeProxyStateChange reports meaningful cache availability transitions.
@@ -144,14 +155,18 @@ func writeProxyStateChange(app *Application, change proxycache.StateChange) {
 	}
 
 	if change.Active {
-		_, _ = fmt.Fprintf(app.Err, "%s recovered\n", proxyQueryName(change.Query))
+		_, _ = fmt.Fprintln(app.Err, app.localize(
+			"proxy.recovered",
+			"%s recovered",
+			proxyQueryName(change.Query),
+		))
 		return
 	}
 
-	_, _ = fmt.Fprintf(
-		app.Err,
-		"%s unavailable: %v\n",
+	_, _ = fmt.Fprintln(app.Err, app.localize(
+		"proxy.unavailable",
+		"%s unavailable: %v",
 		proxyQueryName(change.Query),
 		change.Err,
-	)
+	))
 }

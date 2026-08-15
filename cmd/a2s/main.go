@@ -14,12 +14,12 @@ import (
 
 // Options defines the root command structure.
 type Options struct {
-	Rules   RulesCommand   `command:"rules"   description:"Retrieve server rules A2S_RULES"`
-	All     AllCommand     `command:"all"     description:"Retrieve all available server information"`
-	Info    InfoCommand    `command:"info"    description:"Retrieve server information A2S_INFO"`
-	Players PlayersCommand `command:"players" description:"Retrieve player list A2S_PLAYERS"`
-	Ping    PingCommand    `command:"ping"    description:"Ping the server with A2S_INFO"`
-	Proxy   ProxyCommand   `command:"proxy"   description:"Run a cached A2S proxy"`
+	Rules   RulesCommand   `command:"rules"   ini-group:"rules"   command-i18n:"command.rules.description"`
+	All     AllCommand     `command:"all"     ini-group:"all"     command-i18n:"command.all.description"`
+	Info    InfoCommand    `command:"info"    ini-group:"info"    command-i18n:"command.info.description"`
+	Players PlayersCommand `command:"players" ini-group:"players" command-i18n:"command.players.description"`
+	Ping    PingCommand    `command:"ping"    ini-group:"ping"    command-i18n:"command.ping.description"`
+	Proxy   ProxyCommand   `command:"proxy"   ini-group:"proxy"   command-i18n:"command.proxy.description"`
 }
 
 // InfoCommand handles the 'info' subcommand.
@@ -53,42 +53,42 @@ type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
 	GlobalOptions
-	PingCount  int `short:"c" default:"0" validate-min:"0" long:"ping-count"  description:"Set the number of ping requests to send (0 = infinite)"`
-	PingPeriod int `short:"p" default:"1" validate-min:"1" long:"ping-period" description:"Set the period between pings in seconds"`
+	PingCount  int `short:"c" default:"0" validate-min:"0" long:"ping-count"  description-i18n:"option.ping_count.description"`
+	PingPeriod int `short:"p" default:"1" validate-min:"1" long:"ping-period" description-i18n:"option.ping_period.description"`
 }
 
 // ProxyCommand defines configuration for the cached A2S proxy.
 type ProxyCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	Listen       string        `long:"listen"        description:"Local UDP endpoint to listen on" required:"true"`
-	Cache        []string      `long:"cache"         description:"Response types to cache"                       default:"auto" choices:"info;players;rules;auto"`
-	TTL          time.Duration `long:"ttl"           description:"Cache refresh interval"                        default:"15s"  validate-min:"1"`
-	InactiveTTL  time.Duration `long:"inactive-ttl"  description:"Inactive cache retry interval (0 = use TTL)"   default:"0"    validate-min:"0"`
-	Jitter       time.Duration `long:"jitter"        description:"Maximum polling interval jitter"               default:"1s"   validate-min:"0"`
-	Retries      int           `long:"retries"       description:"Retries after an upstream refresh failure"     default:"2"    validate-min:"0"`
-	Timeout      time.Duration `long:"timeout"       description:"Upstream request timeout"                      default:"3s"   validate-min:"1"`
-	Buffer       uint16        `long:"buffer-size"   description:"Upstream UDP receive buffer size"              default:"8192" validate-min:"1"`
-	UpstreamPing bool          `long:"upstream-ping" description:"Forward A2A_PING instead of answering locally"`
+	Listen       string        `long:"listen"        description-i18n:"option.proxy.listen.description" required:"true"`
+	Cache        []string      `long:"cache"         description-i18n:"option.proxy.cache.description"         default:"auto" choices:"info;players;rules;auto"`
+	TTL          time.Duration `long:"ttl"           description-i18n:"option.proxy.ttl.description"           default:"15s"  validate-min:"1"`
+	InactiveTTL  time.Duration `long:"inactive-ttl"  description-i18n:"option.proxy.inactive_ttl.description"  default:"0"    validate-min:"0"`
+	Jitter       time.Duration `long:"jitter"        description-i18n:"option.proxy.jitter.description"        default:"1s"   validate-min:"0"`
+	Retries      int           `long:"retries"       description-i18n:"option.proxy.retries.description"       default:"2"    validate-min:"0"`
+	Timeout      time.Duration `long:"timeout"       description-i18n:"option.proxy.timeout.description"       default:"3s"   validate-min:"1"`
+	Buffer       uint16        `long:"buffer-size"   description-i18n:"option.proxy.buffer_size.description"   default:"8192" validate-min:"1"`
+	UpstreamPing bool          `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
 }
 
 // GlobalOptions defines global CLI options applicable to all commands.
 type GlobalOptions struct {
-	Format  string `short:"f" default:"table" long:"format"      description:"Output format" choices:"json;table;raw;md;html"`
-	Timeout int    `short:"t" default:"3"     long:"timeout"     description:"Set connection timeout in seconds"`
-	Buffer  uint16 `short:"b" default:"8192"  long:"buffer-size" description:"Set connection buffer size"`
+	Format  string `short:"f" default:"table" long:"format"      description-i18n:"option.format.description" choices:"json;table;raw;md;html"`
+	Timeout int    `short:"t" default:"3"     long:"timeout"     description-i18n:"option.timeout.description"`
+	Buffer  uint16 `short:"b" default:"8192"  long:"buffer-size" description-i18n:"option.buffer_size.description"`
 }
 
 // ServerArgs defines positional arguments for server connection.
 type ServerArgs struct {
-	Host string `positional-arg-name:"host" description:"Server host (with optional port, e.g., 127.0.0.1:27016)" required:"true"`
-	Port string `positional-arg-name:"port" description:"Query port (if not included in host)"`
+	Host string `positional-arg-name:"host" arg-name-i18n:"arg.host.name" arg-description-i18n:"arg.host.description" required:"true"`
+	Port string `positional-arg-name:"port" arg-name-i18n:"arg.port.name" arg-description-i18n:"arg.port.description"`
 }
 
 // RulesOptions defines options specific to rules command.
 type RulesOptions struct {
-	Game string `short:"g" long:"game" description:"Game type for more accurate results" choices:"dayz;arma3"`
-	Raw  bool   `short:"r" long:"raw"  description:"Disable parse A2S_RULES values to types"`
+	Game string `short:"g" long:"game" description-i18n:"option.game.description" choices:"dayz;arma3"`
+	Raw  bool   `short:"r" long:"raw"  description-i18n:"option.raw.description"`
 }
 
 // main parses command-line options and dispatches the selected subcommand.
@@ -105,7 +105,15 @@ func main() {
 // run parses command-line options and executes the selected subcommand.
 func run(args []string, app *Application) error {
 	opts := &Options{}
-	p, err := newParser(opts)
+	i18nConfig, err := newI18nConfig()
+	if err != nil {
+		return err
+	}
+	if app != nil {
+		app.Localizer = flags.NewLocalizer(i18nConfig)
+	}
+
+	p, err := newParser(opts, i18nConfig)
 	if err != nil {
 		return err
 	}
@@ -123,7 +131,7 @@ func run(args []string, app *Application) error {
 
 	if p.Active == nil {
 		p.WriteHelp(app.Out)
-		return fmt.Errorf("no command specified")
+		return fmt.Errorf("%s", app.localize("error.no_command", "no command specified"))
 	}
 
 	// Execute the appropriate command
@@ -150,12 +158,16 @@ func run(args []string, app *Application) error {
 		return executeProxy(app, &opts.Proxy)
 
 	default:
-		return fmt.Errorf("unknown command: %s", p.Active.Name)
+		return fmt.Errorf("%s", app.localize(
+			"error.unknown_command",
+			"unknown command: %s",
+			p.Active.Name,
+		))
 	}
 }
 
-// newParser creates the CLI parser and configures its built-in commands.
-func newParser(opts *Options) (*flags.Parser, error) {
+// newParser creates the CLI parser with a shared localization config.
+func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error) {
 	parser := flags.NewParser(opts,
 		flags.Default|
 			flags.DetectShellFlagStyle|
@@ -169,9 +181,7 @@ func newParser(opts *Options) (*flags.Parser, error) {
 			flags.StrictPositionalArgs|
 			flags.ShowRepeatableInHelp,
 	)
-
-	parser.LongDescription = "CLI for querying Steam A2S server information " +
-		"and working with A3SB subprotocol for Arma 3 and DayZ."
+	parser.SetI18n(i18nConfig)
 
 	parser.SetVersionInfo(flags.VersionInfo{
 		Version:      vars.Version,
@@ -180,22 +190,75 @@ func newParser(opts *Options) (*flags.Parser, error) {
 		URL:          vars.URL,
 	})
 	parser.SetVersionFields(flags.VersionFieldsCore)
-	parser.SetCommandLongDescriptions(map[string]string{
-		"info":    "Query server metadata with A2S_INFO.",
-		"players": "Query the current player list with A2S_PLAYER.",
-		"rules":   "Query server rules with A2S_RULES or automatic A3SB parsing.",
-		"all":     "Query server metadata, rules, and players in one command.",
-		"ping":    "Measure server response time with repeated A2S_INFO queries.",
-		"proxy":   "Expose a cached UDP proxy for an upstream A2S server.",
+
+	parser.SetLongDescriptionI18nKey("cli.description")
+	parser.SetCommandLongDescriptionI18nKeys(map[string]string{
+		"info":    "command.info.long",
+		"players": "command.players.long",
+		"rules":   "command.rules.long",
+		"all":     "command.all.long",
+		"ping":    "command.ping.long",
+		"proxy":   "command.proxy.long",
 	})
 
 	return parser, parser.SetCommandExamples(map[string][]*flags.CommandExample{
-		"info":    {flags.Example().Arg("127.0.0.1:27015")},
-		"players": {flags.Example().Arg("127.0.0.1:27015")},
-		"rules":   {flags.Example().Arg("example.org:2303").Option(&opts.Rules.Game, "arma3")},
-		"all":     {flags.Example().Arg("127.0.0.1:27015").Option(&opts.All.Format, "json")},
-		"ping":    {flags.Example().Arg("127.0.0.1:27015").Option(&opts.Ping.PingCount, "5")},
-		"proxy":   {flags.Example().Arg("127.0.0.1:27015").Option(&opts.Proxy.Listen, ":27016")},
+		"info": {
+			flags.Example().
+				Arg("127.0.0.1:27015"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Info.Format, "json").
+				Raw("| jq '.name, .players, .map'"),
+		},
+
+		"players": {
+			flags.Example().
+				Arg("127.0.0.1:27015"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Players.Format, "json").
+				Raw("| jq '.[] | {name, score}'"),
+		},
+
+		"rules": {
+			flags.Example().
+				Arg("example.org:2303").
+				Option(&opts.Rules.Game, "arma3"),
+			flags.Example().
+				Arg("example.org:2303").
+				Option(&opts.Rules.Raw).
+				Option(&opts.Rules.Format, "json").
+				Raw("| jq 'to_entries[] | \"\\(.key)=\\(.value)\"'"),
+		},
+
+		"all": {
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.All.Format, "json"),
+		},
+
+		"ping": {
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Ping.PingCount, "5"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Ping.PingCount, "10").
+				Option(&opts.Ping.PingPeriod, "2"),
+		},
+
+		"proxy": {
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Proxy.Listen, ":27016"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Proxy.Listen, ":27016").
+				Option(&opts.Proxy.Cache, "info").
+				Option(&opts.Proxy.Cache, "players").
+				Option(&opts.Proxy.Cache, "rules").
+				Option(&opts.Proxy.TTL, "30s"),
+		},
 	})
 }
 
@@ -222,6 +285,11 @@ func createClient(host, port string, timeout int, buffer uint16) (*a2s.Client, e
 // closeClient safely closes the client and logs any error.
 func closeClient(app *Application, client *a2s.Client) {
 	if err := client.Close(); err != nil {
-		_, _ = fmt.Fprintf(app.Err, "Warning: failed to close client: %s\n", err)
+		_, _ = fmt.Fprintf(
+			app.Err,
+			"%s: %s\n",
+			app.localize("warning.close_client", "Warning: failed to close client"),
+			err,
+		)
 	}
 }

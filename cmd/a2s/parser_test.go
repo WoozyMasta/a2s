@@ -314,39 +314,32 @@ func TestParserHelpContainsPrimaryCommandsAndOptions(t *testing.T) {
 	}
 }
 
-func TestParserCommandsHaveLongDescriptions(t *testing.T) {
-	want := map[string]string{
-		"info":    "Query server metadata with A2S_INFO.",
-		"players": "Query the current player list with A2S_PLAYER.",
-		"rules":   "Query server rules with A2S_RULES or automatic A3SB parsing.",
-		"all":     "Query server metadata, rules, and players in one command.",
-		"ping":    "Measure server response time with repeated A2S_INFO queries.",
-		"proxy":   "Expose a cached UDP proxy for an upstream A2S server.",
-	}
-
-	parser, _ := newTestParser()
-	for name, description := range want {
-		t.Run(name, func(t *testing.T) {
-			command := parser.Command.Find(name)
-			if command == nil {
-				t.Fatalf("command %q was not found", name)
-			}
-			if command.LongDescription != description {
-				t.Fatalf("long description = %q, want %q", command.LongDescription, description)
-			}
-		})
-	}
-}
-
 func TestParserHelpContainsStructuredExamples(t *testing.T) {
 	tests := []struct {
 		command string
-		want    string
+		wants   []string
 	}{
-		{command: "info", want: "a2s info 127.0.0.1:27015"},
-		{command: "rules", want: "a2s rules example.org:2303 --game arma3"},
-		{command: "all", want: "a2s all 127.0.0.1:27015 --format json"},
-		{command: "proxy", want: "a2s proxy 127.0.0.1:27015 --listen :27016"},
+		{command: "info", wants: []string{
+			"a2s info 127.0.0.1:27015",
+			"a2s info 127.0.0.1:27015 --format json | jq '.name, .players, .map'",
+		}},
+		{command: "players", wants: []string{
+			"a2s players 127.0.0.1:27015 --format json | jq '.[] | {name, score}'",
+		}},
+		{command: "rules", wants: []string{
+			"a2s rules example.org:2303 --game arma3",
+			"a2s rules example.org:2303 --raw --format json | jq",
+		}},
+		{command: "all", wants: []string{
+			"a2s all 127.0.0.1:27015 --format json",
+		}},
+		{command: "ping", wants: []string{
+			"a2s ping 127.0.0.1:27015 --ping-count 10 --ping-period 2",
+		}},
+		{command: "proxy", wants: []string{
+			"a2s proxy 127.0.0.1:27015 --listen :27016",
+			"a2s proxy 127.0.0.1:27015 --listen :27016 --cache info --cache players --cache rules --ttl 30s",
+		}},
 	}
 
 	for _, tt := range tests {
@@ -356,8 +349,10 @@ func TestParserHelpContainsStructuredExamples(t *testing.T) {
 			if !isParserError(err, flags.ErrHelp) {
 				t.Fatalf("ParseArgs() error = %v, want ErrHelp", err)
 			}
-			if !bytes.Contains([]byte(err.Error()), []byte(tt.want)) {
-				t.Fatalf("help does not contain structured example %q:\n%s", tt.want, err)
+			for _, want := range tt.wants {
+				if !bytes.Contains([]byte(err.Error()), []byte(want)) {
+					t.Fatalf("help does not contain structured example %q:\n%s", want, err)
+				}
 			}
 		})
 	}
@@ -453,7 +448,12 @@ func TestValidateProxyCommand(t *testing.T) {
 
 func newTestParser() (*flags.Parser, *Options) {
 	options := &Options{}
-	parser, err := newParser(options)
+	i18nConfig, err := newI18nConfig()
+	if err != nil {
+		panic(err)
+	}
+	i18nConfig.Locale = "en"
+	parser, err := newParser(options, i18nConfig)
 	if err != nil {
 		panic(err)
 	}

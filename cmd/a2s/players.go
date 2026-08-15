@@ -5,29 +5,38 @@ import (
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
 // executePlayers queries A2S_PLAYER and renders the available player fields.
 func executePlayers(app *Application, cmd *PlayersCommand) error {
 	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	if err != nil {
-		return err
+		return app.wrapError("error.client_create", "failed to create client", err)
 	}
 	defer closeClient(app, client)
 
 	players, err := client.GetPlayers(context.Background())
 	if err != nil {
-		return friendlyQueryError("failed to get players", err, client.Timeout())
+		return friendlyQueryError(app, "error.players", "failed to get players", err, client.Timeout())
 	}
 
-	formatter := NewFormatter(cmd.Format, app.Out)
+	formatter := NewFormatter(cmd.Format, app.Out, app.Localizer)
 
 	if formatter.ShouldUseJSON() {
 		return formatter.PrintJSON(players)
 	}
 
+	return renderPlayersTable(app, players, client.Addr().String(), formatter)
+}
+
+// renderPlayersTable renders human-readable player data without querying a server.
+func renderPlayersTable(app *Application, players []a2s.Player, address string, formatter *Formatter) error {
 	if len(players) == 0 {
-		_, _ = fmt.Fprintln(app.Out, "The server is empty and there are no players to print ...")
+		_, _ = fmt.Fprintln(app.Out, app.localize(
+			"players.empty",
+			"The server is empty and there are no players to print ...",
+		))
 		return nil
 	}
 
@@ -49,18 +58,18 @@ func executePlayers(app *Application, cmd *PlayersCommand) error {
 		}
 	}
 
-	columns := []interface{}{"#"}
+	columns := []interface{}{app.localize("table.number", "#")}
 	if counter[0] > 0 {
-		columns = append(columns, "PlayTime")
+		columns = append(columns, app.localize("players.play_time", "PlayTime"))
 	}
 	if counter[1] > 0 {
-		columns = append(columns, "Score")
+		columns = append(columns, app.localize("players.score", "Score"))
 	}
 	if counter[2] > 0 {
-		columns = append(columns, "Name")
+		columns = append(columns, app.localize("players.name", "Name"))
 	}
 	if counter[3] > 0 {
-		columns = append(columns, "Index")
+		columns = append(columns, app.localize("players.index", "Index"))
 	}
 
 	t := table.NewWriter()
@@ -87,12 +96,16 @@ func executePlayers(app *Application, cmd *PlayersCommand) error {
 	}
 
 	if err := formatter.PrintTable(t); err != nil {
-		return err
+		return app.wrapError("error.render_players", "failed to render players", err)
 	}
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		_, _ = fmt.Fprintf(app.Out, "A2S_PLAYERS response for %s\n", client.Addr())
+		_, _ = fmt.Fprintf(
+			app.Out,
+			"%s\n",
+			app.localize("footer.players", "A2S_PLAYERS response for %s", address),
+		)
 	}
 
 	return nil

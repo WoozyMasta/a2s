@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -22,31 +21,36 @@ func (e *userFacingError) Unwrap() error {
 	return e.cause
 }
 
-// friendlyQueryError adds a clear explanation for query timeouts
-// without hiding the original cause from programmatic error inspection.
-func friendlyQueryError(prefix string, err error, timeout time.Duration) error {
+// friendlyQueryError adds localized context for query failures without hiding
+// the original cause from programmatic error inspection.
+func friendlyQueryError(app *Application, key, prefix string, err error, timeout time.Duration) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return &userFacingError{
-			message: fmt.Sprintf(
+			message: app.localize(
+				"error.query_timeout",
 				"%s: server did not respond within %s; it may be offline or unreachable",
-				prefix,
-				humanTimeout(timeout),
+				app.localize(key, prefix),
+				humanTimeout(app, timeout),
 			),
 			cause: err,
 		}
 	}
 
-	return fmt.Errorf("%s: %w", prefix, err)
+	return app.wrapError(key, prefix, err)
 }
 
-func humanTimeout(timeout time.Duration) string {
+func humanTimeout(app *Application, timeout time.Duration) string {
 	if timeout > 0 && timeout%time.Second == 0 {
 		seconds := int(timeout / time.Second)
-		unit := "seconds"
+		key := "time.seconds"
+		fallback := "%d seconds"
+
 		if seconds == 1 {
-			unit = "second"
+			key = "time.second"
+			fallback = "%d second"
 		}
-		return fmt.Sprintf("%d %s", seconds, unit)
+
+		return app.localize(key, fallback, seconds)
 	}
 
 	return timeout.String()

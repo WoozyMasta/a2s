@@ -6,11 +6,15 @@ import "github.com/woozymasta/a2s/internal/ping"
 func executePing(app *Application, cmd *PingCommand) error {
 	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	if err != nil {
-		return err
+		return app.wrapError("error.client_create", "failed to create client", err)
 	}
 	defer closeClient(app, client)
 
-	ping.Start(client, cmd.PingCount, cmd.PingPeriod)
+	ping.Start(client, cmd.PingCount, cmd.PingPeriod, ping.Output{
+		Out:      app.Out,
+		Err:      app.Err,
+		Localize: app.localize,
+	})
 
 	return nil
 }

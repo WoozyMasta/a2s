@@ -2,6 +2,8 @@ package main
 
 import (
 	"io"
+
+	"github.com/woozymasta/flags"
 )
 
 // Application contains process-owned streams used by CLI commands.
@@ -10,6 +12,8 @@ type Application struct {
 	Out io.Writer
 	// Err receives diagnostics and cleanup warnings.
 	Err io.Writer
+	// Localizer resolves application messages using the parser's locale config.
+	Localizer *flags.Localizer
 }
 
 // NewApplication creates an application with explicit output destinations.

@@ -8,16 +8,18 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/woozymasta/flags"
 )
 
 // Formatter handles output formatting in different formats.
 type Formatter struct {
-	out    io.Writer
-	format string
+	out       io.Writer
+	localizer *flags.Localizer
+	format    string
 }
 
 // NewFormatter creates a new formatter with the specified format.
-func NewFormatter(format string, out io.Writer) *Formatter {
+func NewFormatter(format string, out io.Writer, localizers ...*flags.Localizer) *Formatter {
 	normalized := format
 	if normalized == "" {
 		normalized = "table"
@@ -28,7 +30,12 @@ func NewFormatter(format string, out io.Writer) *Formatter {
 		out = io.Discard
 	}
 
-	return &Formatter{format: normalized, out: out}
+	var localizer *flags.Localizer
+	if len(localizers) > 0 {
+		localizer = localizers[0]
+	}
+
+	return &Formatter{format: normalized, out: out, localizer: localizer}
 }
 
 // PrintTable prints data as a table in the specified format.
@@ -64,11 +71,25 @@ func (f *Formatter) PrintTable(t table.Writer) error {
 func (f *Formatter) PrintJSON(data any) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		return fmt.Errorf(
+			"%s: %w",
+			localizeFormatterError(f.localizer, "error.json_marshal", "failed to marshal JSON"),
+			err,
+		)
 	}
 	_, _ = fmt.Fprintln(f.out, string(jsonData))
 
 	return nil
+}
+
+// localizeFormatterError resolves formatter errors
+// without coupling it to the full application object.
+func localizeFormatterError(localizer *flags.Localizer, key, fallback string) string {
+	if localizer == nil {
+		return fallback
+	}
+
+	return localizer.Localize(key, fallback, nil)
 }
 
 // PrintRaw prints raw data (for rules).

@@ -8,7 +8,7 @@ import (
 func executeAll(app *Application, cmd *AllCommand) error {
 	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
 	if err != nil {
-		return err
+		return app.wrapError("error.client_create", "failed to create client", err)
 	}
 	defer closeClient(app, client)
 
