@@ -72,10 +72,7 @@ func renderPlayersTable(app *Application, players []a2s.Player, address string, 
 		columns = append(columns, app.localize("players.index", "Index"))
 	}
 
-	t := table.NewWriter()
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row(columns))
-
+	rows := make([]table.Row, 0, len(players))
 	for i, player := range players {
 		row := []interface{}{fmt.Sprintf("%d", i+1)}
 
@@ -92,9 +89,10 @@ func renderPlayersTable(app *Application, players []a2s.Player, address string, 
 			row = append(row, fmt.Sprint(player.Index))
 		}
 
-		t.AppendRow(table.Row(row))
+		rows = append(rows, table.Row(row))
 	}
 
+	t := formatter.NewTable(table.Row(columns), rows)
 	if err := formatter.PrintTable(t); err != nil {
 		return app.wrapError("error.render_players", "failed to render players", err)
 	}

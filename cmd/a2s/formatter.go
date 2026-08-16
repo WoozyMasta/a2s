@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -13,9 +14,10 @@ import (
 
 // Formatter handles output formatting in different formats.
 type Formatter struct {
-	out       io.Writer
-	localizer *flags.Localizer
-	format    string
+	out           io.Writer
+	localizer     *flags.Localizer
+	format        string
+	terminalWidth int
 }
 
 // NewFormatter creates a new formatter with the specified format.
@@ -35,7 +37,66 @@ func NewFormatter(format string, out io.Writer, localizers ...*flags.Localizer) 
 		localizer = localizers[0]
 	}
 
-	return &Formatter{format: normalized, out: out, localizer: localizer}
+	return &Formatter{
+		format:        normalized,
+		out:           out,
+		localizer:     localizer,
+		terminalWidth: detectTableTerminalWidth(normalized, out),
+	}
+}
+
+// detectTableTerminalWidth returns the terminal width for interactive tables.
+// Non-table formats and non-TTY writers intentionally return zero
+// so their output remains independent of the current terminal.
+func detectTableTerminalWidth(format string, out io.Writer) int {
+	if format != "table" {
+		return 0
+	}
+
+	file, ok := out.(*os.File)
+	if !ok || !flags.DetectFileTTY(file) {
+		return 0
+	}
+
+	width, _ := flags.DetectTerminalSize()
+	if width <= 0 {
+		return 0
+	}
+
+	return width
+}
+
+// NewTable creates a rounded table and applies responsive widths
+// for an interactive table output.
+// Other output formats keep their natural layout.
+func (f *Formatter) NewTable(
+	header table.Row,
+	rows []table.Row,
+	hints ...columnWidthHint,
+) table.Writer {
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(header)
+	t.AppendRows(rows)
+
+	if f.IsTableFormat() && f.terminalWidth > 0 {
+		layout, err := planTableLayout(f.terminalWidth, header, rows, hints)
+		if err == nil {
+			configs := make([]table.ColumnConfig, len(layout.Widths))
+			for columnIndex, width := range layout.Widths {
+				configs[columnIndex] = table.ColumnConfig{
+					Number:           columnIndex + 1,
+					WidthMax:         width,
+					WidthMaxEnforcer: text.WrapText,
+				}
+			}
+
+			t.SetColumnConfigs(configs)
+			t.Style().Size.WidthMax = f.terminalWidth
+		}
+	}
+
+	return t
 }
 
 // PrintTable prints data as a table in the specified format.
@@ -98,14 +159,12 @@ func (f *Formatter) PrintRaw(data map[string]string) error {
 		return f.PrintJSON(data)
 	}
 
-	t := table.NewWriter()
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Rule", "Value"})
-
+	rows := make([]table.Row, 0, len(data))
 	for k, v := range data {
-		t.AppendRow(table.Row{k, v})
+		rows = append(rows, table.Row{k, v})
 	}
 
+	t := f.NewTable(table.Row{"Rule", "Value"}, rows)
 	return f.PrintTable(t)
 }
 

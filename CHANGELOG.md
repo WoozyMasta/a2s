@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning][].
 ### Changed
 
 * project requires Go 1.25 or newer
+* `CLI` adapts interactive tables to terminal width
 * `CLI` uses strict command/argument validation and unified version metadata
 * `a2s` separate request and response type bytes
   into `QueryType` and `ResponseType`, removing the ambiguous `Flag` API

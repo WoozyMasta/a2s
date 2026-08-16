@@ -42,15 +42,13 @@ func renderInfoTable(
 	formatter *Formatter,
 ) error {
 	// Human-readable formats share the table assembly below.
-	t := table.NewWriter()
-	t.SetStyle(table.StyleRounded)
-
-	t.AppendHeader(table.Row{
+	header := table.Row{
 		app.localize("table.property", "Property"),
 		app.localize("table.value", "Value"),
-	})
+	}
+	rows := make([]table.Row, 0, 48)
 
-	t.AppendRows([]table.Row{
+	rows = append(rows, []table.Row{
 		{
 			app.localize("info.query_type", "Query type:"),
 			info.Format.String(),
@@ -107,19 +105,19 @@ func renderInfoTable(
 			app.localize("info.game_version", "Game version:"),
 			info.Version,
 		},
-	})
+	}...)
 
 	// GoldSource fields are only meaningful for the obsolete GoldSource layout.
 	if info.Format == 0x6D {
 		if info.Address != "" {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				app.localize("info.server_address", "Server address:"),
 				info.Address,
 			})
 		}
 
 		if info.Mod != nil {
-			t.AppendRows([]table.Row{
+			rows = append(rows, []table.Row{
 				{
 					app.localize("info.mod_url", "Mod URL:"),
 					info.Mod.Link,
@@ -144,28 +142,28 @@ func renderInfoTable(
 					app.localize("info.custom_dll", "Custom DLL:"),
 					fmt.Sprintf("%t", info.Mod.DLL),
 				},
-			})
+			}...)
 		}
 	}
 
 	// Render only optional fields advertised by EDF.
 	if info.EDF != 0 {
 		if info.Port != 0 {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				app.localize("info.port", "Port:"),
 				fmt.Sprintf("%d", info.Port),
 			})
 		}
 
 		if info.SteamID != 0 {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				app.localize("info.server_steamid", "Server SteamID:"),
 				fmt.Sprintf("%d", info.SteamID),
 			})
 		}
 
 		if (info.EDF & 0x40) != 0 {
-			t.AppendRows([]table.Row{
+			rows = append(rows, []table.Row{
 				{
 					app.localize("info.sourcetv_port", "SourceTV Port:"),
 					fmt.Sprintf("%d", info.SourceTVPort),
@@ -174,7 +172,7 @@ func renderInfoTable(
 					app.localize("info.sourcetv_name", "SourceTV Name:"),
 					info.SourceTVName,
 				},
-			})
+			}...)
 		}
 
 		if len(info.Keywords) > 0 {
@@ -184,7 +182,7 @@ func renderInfoTable(
 			switch info.EffectiveID() {
 			case appid.Arma3:
 				arma := keywords.ParseArma3(info.Keywords)
-				t.AppendRows([]table.Row{
+				rows = append(rows, []table.Row{
 					{
 						app.localize("info.type_of_game", "Type of game:"),
 						arma.GameType.String(),
@@ -261,11 +259,11 @@ func renderInfoTable(
 						app.localize("info.enabled_file_patching", "Enabled file patching:"),
 						app.formatBool(arma.AllowedFilePatching),
 					},
-				})
+				}...)
 
 			case appid.DayZ, appid.DayZExperimental:
 				dayz := keywords.ParseDayZ(info.Keywords)
-				t.AppendRows([]table.Row{
+				rows = append(rows, []table.Row{
 					{
 						app.localize("info.shard", "Shard:"),
 						dayz.Shard,
@@ -322,16 +320,17 @@ func renderInfoTable(
 						app.localize("info.need_dlc", "Need DLC:"),
 						app.formatBool(dayz.DLC),
 					},
-				})
+				}...)
 			}
 		}
 	}
 
-	t.AppendRow(table.Row{
+	rows = append(rows, table.Row{
 		app.localize("info.server_ping", "Server ping:"),
 		fmt.Sprintf("%d ms", meta.Duration.Milliseconds()),
 	})
 
+	t := formatter.NewTable(header, rows)
 	if err := formatter.PrintTable(t); err != nil {
 		return app.wrapError("error.render_info", "failed to render server info", err)
 	}

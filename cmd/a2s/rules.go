@@ -106,12 +106,11 @@ func printRules(app *Application, rules map[string]any, client *a2s.Client, form
 
 // renderRulesTable renders ordinary A2S rules without querying a server.
 func renderRulesTable(app *Application, rules map[string]any, address string, formatter *Formatter) error {
-	t := table.NewWriter()
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{
+	header := table.Row{
 		app.localize("table.rule", "Rule"),
 		app.localize("table.value", "Value"),
-	})
+	}
+	rows := make([]table.Row, 0, len(rules))
 
 	// Sort keys so table and text output is deterministic.
 	keys := make([]string, 0, len(rules))
@@ -125,9 +124,10 @@ func renderRulesTable(app *Application, rules map[string]any, address string, fo
 		if boolValue, ok := value.(bool); ok {
 			value = app.formatBool(boolValue)
 		}
-		t.AppendRow(table.Row{k, value})
+		rows = append(rows, table.Row{k, value})
 	}
 
+	t := formatter.NewTable(header, rows)
 	if err := formatter.PrintTable(t); err != nil {
 		return app.wrapError("error.render_rules", "failed to render rules", err)
 	}
@@ -175,21 +175,20 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	// Print Island/Description info (DayZ specific)
 	if rules.Island != "" {
 		formatter.PrintSectionHeader(app.localize("section.server_information", "Server Information"))
-		t := table.NewWriter()
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{
+		header := table.Row{
 			app.localize("table.option", "Option"),
 			app.localize("table.value", "Value"),
-		})
+		}
+		rows := make([]table.Row, 0, 10)
 
 		if rules.Description != "" {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				app.localize("rules.description", "Description:"),
 				rules.Description,
 			})
 		}
 
-		t.AppendRows([]table.Row{
+		rows = append(rows, []table.Row{
 			{
 				app.localize("rules.allowed_build", "Allowed build:"),
 				fmt.Sprintf("%d", rules.AllowedBuild),
@@ -226,8 +225,9 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 				app.localize("rules.time_left", "TimeLeft:"),
 				fmt.Sprintf("%d", rules.TimeLeft),
 			},
-		})
+		}...)
 
+		t := formatter.NewTable(header, rows)
 		if err := formatter.PrintTable(t); err != nil {
 			return app.wrapError("error.render_rules", "failed to render rules", err)
 		}
@@ -236,15 +236,12 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	// Print Difficulty (Arma3 specific)
 	if rules.Difficulty != nil {
 		formatter.PrintSectionHeader(app.localize("section.difficulty", "Difficulty Settings"))
-		t := table.NewWriter()
-		t.SetStyle(table.StyleRounded)
-
-		t.AppendHeader(table.Row{
+		header := table.Row{
 			app.localize("table.option", "Option"),
 			app.localize("table.value", "Value"),
-		})
+		}
 
-		t.AppendRows([]table.Row{
+		rows := []table.Row{
 			{
 				app.localize("rules.difficulty_level", "Difficulty Level:"),
 				fmt.Sprintf("%d", rules.Difficulty.Level),
@@ -265,8 +262,9 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 				app.localize("rules.crosshair", "Crosshair:"),
 				fmt.Sprintf("%t", rules.Difficulty.Crosshair),
 			},
-		})
+		}
 
+		t := formatter.NewTable(header, rows)
 		if err := formatter.PrintTable(t); err != nil {
 			return app.wrapError("error.render_rules", "failed to render rules", err)
 		}
@@ -275,23 +273,28 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	// Print DLC
 	if len(rules.DLC) > 0 {
 		formatter.PrintSectionHeader(app.localize("section.dlc", "DLC"))
-		t := table.NewWriter()
-		t.SetStyle(table.StyleRounded)
-
-		t.AppendHeader(table.Row{
+		header := table.Row{
 			app.localize("table.number", "#"),
 			app.localize("rules.dlc_name", "DLC Name"),
 			app.localize("rules.dlc_url", "DLC URL"),
-		})
+		}
+		rows := make([]table.Row, 0, len(rules.DLC))
 
 		for i, dlc := range rules.DLC {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", i+1),
 				dlc.Name,
 				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
 			})
 		}
+		if shouldCompactLinkTable(formatter, header, rows) {
+			header[2] = app.localize("rules.app_id", "APP ID")
+			for index, dlc := range rules.DLC {
+				rows[index][2] = fmt.Sprintf("%d", dlc.ID)
+			}
+		}
 
+		t := formatter.NewTable(header, rows)
 		if err := formatter.PrintTable(t); err != nil {
 			return app.wrapError("error.render_rules", "failed to render rules", err)
 		}
@@ -300,22 +303,28 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	// Print Creator DLC
 	if len(rules.CreatorDLC) > 0 {
 		formatter.PrintSectionHeader(app.localize("section.creator_dlc", "Creator DLC"))
-		t := table.NewWriter()
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{
+		header := table.Row{
 			app.localize("table.number", "#"),
 			app.localize("rules.creator_dlc_name", "Creator DLC Name"),
 			app.localize("rules.creator_dlc_url", "Creator DLC URL"),
-		})
+		}
+		rows := make([]table.Row, 0, len(rules.CreatorDLC))
 
 		for i, dlc := range rules.CreatorDLC {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", i+1),
 				dlc.Name,
 				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
 			})
 		}
+		if shouldCompactLinkTable(formatter, header, rows) {
+			header[2] = app.localize("rules.app_id", "APP ID")
+			for index, dlc := range rules.CreatorDLC {
+				rows[index][2] = fmt.Sprintf("%d", dlc.ID)
+			}
+		}
 
+		t := formatter.NewTable(header, rows)
 		if err := formatter.PrintTable(t); err != nil {
 			return app.wrapError("error.render_rules", "failed to render rules", err)
 		}
@@ -324,22 +333,28 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	// Print Mods
 	if len(rules.Mods) > 0 {
 		formatter.PrintSectionHeader(app.localize("section.mods", "Mods"))
-		t := table.NewWriter()
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{
+		header := table.Row{
 			app.localize("table.number", "#"),
 			app.localize("rules.mod_name", "Mod Name"),
 			app.localize("rules.mod_url", "Mod URL"),
-		})
+		}
+		rows := make([]table.Row, 0, len(rules.Mods))
 
 		for i, mod := range rules.Mods {
-			t.AppendRow(table.Row{
+			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", i+1),
 				mod.Name,
 				fmt.Sprintf("https://steamcommunity.com/sharedfiles/filedetails/?id=%d", mod.ID),
 			})
 		}
+		if shouldCompactLinkTable(formatter, header, rows) {
+			header[2] = app.localize("rules.workshop_id", "WORKSHOP ID")
+			for index, mod := range rules.Mods {
+				rows[index][2] = fmt.Sprintf("%d", mod.ID)
+			}
+		}
 
+		t := formatter.NewTable(header, rows)
 		if err := formatter.PrintTable(t); err != nil {
 			return err
 		}
@@ -355,4 +370,15 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 	}
 
 	return nil
+}
+
+// shouldCompactLinkTable selects the compact human-readable representation
+// only when the full link table cannot reach its preferred layout.
+func shouldCompactLinkTable(formatter *Formatter, header table.Row, rows []table.Row) bool {
+	if formatter == nil || !formatter.IsTableFormat() || formatter.terminalWidth <= 0 {
+		return false
+	}
+
+	layout, err := planTableLayout(formatter.terminalWidth, header, rows, nil)
+	return err == nil && !layout.FitsPreferred
 }
