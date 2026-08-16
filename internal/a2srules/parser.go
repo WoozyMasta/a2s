@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 // Package a2srules parses the common A2S_RULES key/value envelope.
 //
 // It deliberately does not interpret A3SB pages or any game-specific fields.

@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 // Package keywords provides parsers for sv_tag values from A2S_INFO responses.
 package keywords
 

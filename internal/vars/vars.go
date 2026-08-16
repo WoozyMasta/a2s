@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 // Package vars provides build-time metadata about the application.
 // Values are typically injected at build time via ldflags
 // and reflect the state of the git repository and the build moment.

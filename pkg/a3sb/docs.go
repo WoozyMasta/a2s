@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 /*
 Package a3sb parses Arma 3 Server Browser Protocol responses carried by A2S_RULES.
 

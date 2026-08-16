@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 /*
 Package types implements type representation for various data encoded in responses,
 such as server language, OS, game type, or server state.

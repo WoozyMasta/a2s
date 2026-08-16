@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 // Package wire provides a small, protocol-neutral decoder
 // for little-endian binary data backed by an in-memory byte slice.
 // Protocol-specific semantics remain in the owning A2S/A3SB packages;

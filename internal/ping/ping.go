@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 // Package ping runs cyclic A2S_INFO requests,
 // accumulates response-time statistics,
 // and prints a report when the run completes.
