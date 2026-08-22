@@ -16,7 +16,7 @@ import (
 type HandlerConfig struct {
 	// ChallengeProvider issues tokens for local GETCHALLENGE responses.
 	ChallengeProvider server.ChallengeProvider
-	// LocalPing answers deprecated A2A_PING requests without contacting upstream.
+	// LocalPing answers obsolete A2A_PING wire requests without contacting upstream.
 	LocalPing bool
 }
 
@@ -26,7 +26,7 @@ type Handler struct {
 	cache     *Cache                   // Cache for enabled INFO/PLAYER/RULES queries.
 	relay     Upstream                 // Upstream used for live passthrough.
 	provider  server.ChallengeProvider // Provider shared with the downstream server.
-	localPing bool                     // Whether deprecated PING is answered locally.
+	localPing bool                     // Whether obsolete PING wire requests are answered locally.
 }
 
 // Ensure Handler implements server.Handler.

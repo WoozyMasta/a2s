@@ -7,8 +7,8 @@ Package a2s provides a client for Valve's Steam A2S server query protocol.
 
 The package supports the primary A2S_INFO, A2S_PLAYER, and A2S_RULES
 queries used by Source and GoldSource-compatible servers.
-It also exposes the deprecated A2S_SERVERQUERY_GETCHALLENGE
-and A2A_PING methods for protocol compatibility.
+It also exposes methods for the obsolete A2S_SERVERQUERY_GETCHALLENGE
+and A2A_PING wire requests for protocol compatibility.
 Challenge exchanges, split responses, query deadlines,
 and response validation are handled by the client.
 

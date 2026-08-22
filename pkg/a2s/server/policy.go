@@ -10,7 +10,7 @@ import "github.com/woozymasta/a2s/pkg/a2s"
 //
 // The policy only describes challenge requirements.
 // It does not issue or validate challenge tokens
-// and does not enable deprecated ping or challenge request handling.
+// and does not enable obsolete ping or challenge wire-request handling.
 type ChallengePolicy interface {
 	Required(a2s.QueryType) bool
 }
@@ -26,7 +26,7 @@ func (f ChallengePolicyFunc) Required(query a2s.QueryType) bool {
 // SecureChallengePolicy returns the Internet-facing default policy.
 //
 // INFO, PLAYER, and RULES requests require a challenge.
-// Deprecated PING and explicit challenge requests are not enabled by this policy.
+// Obsolete PING and explicit challenge wire requests are not enabled by this policy.
 func SecureChallengePolicy() ChallengePolicy {
 	return ChallengePolicyFunc(func(query a2s.QueryType) bool {
 		switch query {
@@ -42,7 +42,7 @@ func SecureChallengePolicy() ChallengePolicy {
 // used by older A2S servers, where INFO is answered without a challenge.
 //
 // PLAYER and RULES requests require a challenge.
-// Deprecated PING and explicit challenge requests are not enabled by this policy.
+// Obsolete PING and explicit challenge wire requests are not enabled by this policy.
 func LegacyChallengePolicy() ChallengePolicy {
 	return ChallengePolicyFunc(func(query a2s.QueryType) bool {
 		return query == a2s.PlayerRequest || query == a2s.RulesRequest

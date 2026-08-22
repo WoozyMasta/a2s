@@ -14,7 +14,9 @@ import (
 // GetChallenge queries an opaque challenge token
 // (A2S_SERVERQUERY_GETCHALLENGE).
 //
-// Deprecated: challenge is handled automatically by Query.
+// The A2S_SERVERQUERY_GETCHALLENGE wire request is obsolete for ordinary queries
+// because Query handles challenge exchanges automatically,
+// but this method remains supported for explicit protocol access.
 func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
 	packet, _, err := c.Query(ctx, ChallengeRequest)
 	if err != nil {

@@ -56,14 +56,14 @@ const (
 	// ResponseRules identifies an A2S_RULES response.
 	ResponseRules ResponseType = 0x45
 
-	// A2S_SERVERQUERY_GETCHALLENGE (DEPRECATED)
+	// A2S_SERVERQUERY_GETCHALLENGE wire request (OBSOLETE)
 
 	// ChallengeRequest requests a challenge for player and rules queries.
 	ChallengeRequest QueryType = 0x57
 	// ResponseChallenge identifies an A2S challenge response.
 	ResponseChallenge ResponseType = 0x41
 
-	// A2A_PING (DEPRECATED)
+	// A2A_PING wire request (OBSOLETE)
 
 	// PingRequest requests a legacy A2A_PING response.
 	PingRequest QueryType = 0x69

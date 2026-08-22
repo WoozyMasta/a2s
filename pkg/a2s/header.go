@@ -10,8 +10,8 @@ package a2s
 //   - InfoRequest      = 0x54
 //   - PlayerRequest    = 0x55
 //   - RulesRequest     = 0x56
-//   - ChallengeRequest = 0x57 (DEPRECATED)
-//   - PingRequest      = 0x69 (DEPRECATED)
+//   - ChallengeRequest = 0x57 (OBSOLETE WIRE REQUEST)
+//   - PingRequest      = 0x69 (OBSOLETE WIRE REQUEST)
 func createHeader(requestType QueryType, challenge Challenge) ([]byte, error) {
 	var hasChallenge bool
 	switch requestType {
