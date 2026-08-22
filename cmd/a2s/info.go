@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/woozymasta/a2s/pkg/a2s"
@@ -59,7 +60,7 @@ func renderInfoTable(
 		},
 		{
 			app.localize("info.protocol", "Protocol:"),
-			fmt.Sprintf("%d", info.Protocol),
+			strconv.FormatUint(uint64(info.Protocol), 10),
 		},
 		{
 			app.localize("info.server_name", "Server name:"),
@@ -87,7 +88,7 @@ func renderInfoTable(
 		},
 		{
 			app.localize("info.bots_count", "Bots count:"),
-			fmt.Sprintf("%d", info.Bots),
+			strconv.FormatUint(uint64(info.Bots), 10),
 		},
 		{
 			app.localize("info.server_type", "Server type:"),
@@ -132,19 +133,19 @@ func renderInfoTable(
 				},
 				{
 					app.localize("info.mod_version", "Mod Version:"),
-					fmt.Sprintf("%d", info.Mod.Version),
+					strconv.FormatUint(uint64(info.Mod.Version), 10),
 				},
 				{
 					app.localize("info.mod_size", "Mod Size:"),
-					fmt.Sprintf("%d", info.Mod.Size),
+					strconv.FormatUint(uint64(info.Mod.Size), 10),
 				},
 				{
 					app.localize("info.multiplayer_only", "Multiplayer only:"),
-					fmt.Sprintf("%t", info.Mod.Type),
+					strconv.FormatBool(info.Mod.Type),
 				},
 				{
 					app.localize("info.custom_dll", "Custom DLL:"),
-					fmt.Sprintf("%t", info.Mod.DLL),
+					strconv.FormatBool(info.Mod.DLL),
 				},
 			}...)
 		}
@@ -155,14 +156,14 @@ func renderInfoTable(
 		if info.Port != 0 {
 			rows = append(rows, table.Row{
 				app.localize("info.port", "Port:"),
-				fmt.Sprintf("%d", info.Port),
+				strconv.FormatUint(uint64(info.Port), 10),
 			})
 		}
 
 		if info.SteamID != 0 {
 			rows = append(rows, table.Row{
 				app.localize("info.server_steamid", "Server SteamID:"),
-				fmt.Sprintf("%d", info.SteamID),
+				strconv.FormatUint(info.SteamID, 10),
 			})
 		}
 
@@ -170,7 +171,7 @@ func renderInfoTable(
 			rows = append(rows, []table.Row{
 				{
 					app.localize("info.sourcetv_port", "SourceTV Port:"),
-					fmt.Sprintf("%d", info.SourceTVPort),
+					strconv.FormatUint(uint64(info.SourceTVPort), 10),
 				},
 				{
 					app.localize("info.sourcetv_name", "SourceTV Name:"),
@@ -213,11 +214,11 @@ func renderInfoTable(
 					},
 					{
 						app.localize("info.required_version", "Required version:"),
-						fmt.Sprintf("%d", arma.RequiredVersion),
+						strconv.FormatUint(uint64(arma.RequiredVersion), 10),
 					},
 					{
 						app.localize("info.required_build", "Required build:"),
-						fmt.Sprintf("%d", arma.RequiredBuildNo),
+						strconv.FormatUint(uint64(arma.RequiredBuildNo), 10),
 					},
 					{
 						app.localize("info.language", "Language:"),
@@ -225,11 +226,11 @@ func renderInfoTable(
 					},
 					{
 						app.localize("info.longitude", "Longitude:"),
-						fmt.Sprintf("%d", arma.Longitude),
+						strconv.Itoa(int(arma.Longitude)),
 					},
 					{
 						app.localize("info.latitude", "Latitude:"),
-						fmt.Sprintf("%d", arma.Latitude),
+						strconv.Itoa(int(arma.Latitude)),
 					},
 					{
 						app.localize("info.state_of_server", "State of server:"),
@@ -241,7 +242,7 @@ func renderInfoTable(
 					},
 					{
 						app.localize("info.difficulty", "Difficulty:"),
-						fmt.Sprintf("%d", arma.Difficulty),
+						strconv.FormatUint(uint64(arma.Difficulty), 10),
 					},
 					{
 						app.localize("info.require_mods_equal", "Require mods equal:"),
@@ -286,11 +287,11 @@ func renderInfoTable(
 					},
 					{
 						app.localize("info.game_port", "Game port:"),
-						fmt.Sprintf("%d", dayz.GamePort),
+						strconv.FormatUint(uint64(dayz.GamePort), 10),
 					},
 					{
 						app.localize("info.players_queue", "Players queue:"),
-						fmt.Sprintf("%d", dayz.PlayersQueue),
+						strconv.FormatUint(uint64(dayz.PlayersQueue), 10),
 					},
 					{
 						app.localize("info.battleye_protected", "BattlEye protected:"),

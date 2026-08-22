@@ -52,10 +52,7 @@ func EncodePages(data []byte, pageSize int) (a2s.Rules, error) {
 	rules := make(a2s.Rules, 0, pageCount)
 	for pageIndex := 0; pageIndex < pageCount; pageIndex++ {
 		start := pageIndex * pageSize
-		end := start + pageSize
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(start+pageSize, len(data))
 
 		pageNumber := byte(pageIndex + 1) // #nosec G115 -- page count is bounded to 255.
 		pageTotal := byte(pageCount)      // #nosec G115 -- page count is bounded to 255.

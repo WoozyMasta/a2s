@@ -134,11 +134,9 @@ func (p *Poller) Run(ctx context.Context) error {
 			continue
 		}
 
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			p.runQuery(ctx, query)
-		}()
+		})
 	}
 	group.Wait()
 

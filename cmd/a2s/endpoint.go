@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -16,7 +17,7 @@ func normalizeEndpoint(host, port string) (string, error) {
 	host = strings.TrimSpace(host)
 	port = strings.TrimSpace(port)
 	if host == "" {
-		return "", fmt.Errorf("host must not be empty")
+		return "", errors.New("host must not be empty")
 	}
 
 	if strings.HasPrefix(host, "[") {
@@ -36,7 +37,7 @@ func normalizeEndpoint(host, port string) (string, error) {
 
 		host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
 		if host == "" {
-			return "", fmt.Errorf("invalid bracketed host")
+			return "", errors.New("invalid bracketed host")
 		}
 	} else if strings.HasSuffix(host, "]") {
 		return "", fmt.Errorf("invalid bracketed host %q", host)
@@ -53,7 +54,7 @@ func normalizeEndpoint(host, port string) (string, error) {
 	}
 
 	if port == "" {
-		return "", fmt.Errorf("query port must be provided when host has no port")
+		return "", errors.New("query port must be provided when host has no port")
 	}
 
 	return net.JoinHostPort(host, port), nil

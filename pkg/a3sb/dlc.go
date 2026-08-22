@@ -68,7 +68,7 @@ func (r *Rules) readDLC(reader *wire.Decoder, dlcMask uint16) error {
 		return nil
 	}
 
-	for i := 0; i < dlcCount; i++ {
+	for i := range dlcCount {
 		hash, err := reader.Uint32()
 		if err != nil {
 			return err

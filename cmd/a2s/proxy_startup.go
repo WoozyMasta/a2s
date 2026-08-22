@@ -55,7 +55,7 @@ func (p *proxyPreparation) close() error {
 // prepareProxyStartup validates and probes all state needed before binding.
 func prepareProxyStartup(ctx context.Context, command *ProxyCommand) (*proxyPreparation, error) {
 	if ctx == nil {
-		return nil, fmt.Errorf("proxy startup context must not be nil")
+		return nil, errors.New("proxy startup context must not be nil")
 	}
 	if err := validateProxyCommand(command); err != nil {
 		return nil, err

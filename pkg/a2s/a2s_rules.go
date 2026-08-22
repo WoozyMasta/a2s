@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
@@ -29,9 +30,9 @@ type Rules []Rule
 
 // Get returns the last value for name, matching the old map representation.
 func (r Rules) Get(name string) (string, bool) {
-	for i := len(r) - 1; i >= 0; i-- {
-		if r[i].Name == name {
-			return r[i].Value, true
+	for _, v := range slices.Backward(r) {
+		if v.Name == name {
+			return v.Value, true
 		}
 	}
 

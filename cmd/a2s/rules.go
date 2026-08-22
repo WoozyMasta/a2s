@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -195,15 +196,15 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		rows = append(rows, []table.Row{
 			{
 				app.localize("rules.allowed_build", "Allowed build:"),
-				fmt.Sprintf("%d", rules.AllowedBuild),
+				strconv.FormatUint(uint64(rules.AllowedBuild), 10),
 			},
 			{
 				app.localize("rules.client_port", "Client port:"),
-				fmt.Sprintf("%d", rules.ClientPort),
+				strconv.FormatUint(uint64(rules.ClientPort), 10),
 			},
 			{
 				app.localize("rules.dedicated", "Dedicated:"),
-				fmt.Sprintf("%t", rules.Dedicated),
+				strconv.FormatBool(rules.Dedicated),
 			},
 			{
 				app.localize("rules.island", "Island:"),
@@ -219,15 +220,15 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 			},
 			{
 				app.localize("rules.required_build", "Required build:"),
-				fmt.Sprintf("%d", rules.RequiredBuild),
+				strconv.FormatUint(uint64(rules.RequiredBuild), 10),
 			},
 			{
 				app.localize("rules.required_version", "Required version:"),
-				fmt.Sprintf("%d", rules.RequiredVersion),
+				strconv.FormatUint(uint64(rules.RequiredVersion), 10),
 			},
 			{
 				app.localize("rules.time_left", "TimeLeft:"),
-				fmt.Sprintf("%d", rules.TimeLeft),
+				strconv.FormatUint(uint64(rules.TimeLeft), 10),
 			},
 		}...)
 
@@ -248,23 +249,23 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		rows := []table.Row{
 			{
 				app.localize("rules.difficulty_level", "Difficulty Level:"),
-				fmt.Sprintf("%d", rules.Difficulty.Level),
+				strconv.FormatUint(uint64(rules.Difficulty.Level), 10),
 			},
 			{
 				app.localize("rules.ai_level", "AI Level:"),
-				fmt.Sprintf("%d", rules.Difficulty.AILevel),
+				strconv.FormatUint(uint64(rules.Difficulty.AILevel), 10),
 			},
 			{
 				app.localize("rules.advanced_flight", "Advanced Flight:"),
-				fmt.Sprintf("%t", rules.Difficulty.AdvanceFlight),
+				strconv.FormatBool(rules.Difficulty.AdvanceFlight),
 			},
 			{
 				app.localize("rules.third_person", "Third Person:"),
-				fmt.Sprintf("%t", rules.Difficulty.ThirdPerson),
+				strconv.FormatBool(rules.Difficulty.ThirdPerson),
 			},
 			{
 				app.localize("rules.crosshair", "Crosshair:"),
-				fmt.Sprintf("%t", rules.Difficulty.Crosshair),
+				strconv.FormatBool(rules.Difficulty.Crosshair),
 			},
 		}
 
@@ -286,7 +287,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 
 		for i, dlc := range rules.DLC {
 			rows = append(rows, table.Row{
-				fmt.Sprintf("%d", i+1),
+				strconv.Itoa(i + 1),
 				dlc.Name,
 				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
 			})
@@ -294,7 +295,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		if shouldCompactLinkTable(formatter, header, rows) {
 			header[2] = app.localize("rules.app_id", "APP ID")
 			for index, dlc := range rules.DLC {
-				rows[index][2] = fmt.Sprintf("%d", dlc.ID)
+				rows[index][2] = strconv.FormatUint(dlc.ID, 10)
 			}
 		}
 
@@ -316,7 +317,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 
 		for i, dlc := range rules.CreatorDLC {
 			rows = append(rows, table.Row{
-				fmt.Sprintf("%d", i+1),
+				strconv.Itoa(i + 1),
 				dlc.Name,
 				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
 			})
@@ -324,7 +325,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		if shouldCompactLinkTable(formatter, header, rows) {
 			header[2] = app.localize("rules.app_id", "APP ID")
 			for index, dlc := range rules.CreatorDLC {
-				rows[index][2] = fmt.Sprintf("%d", dlc.ID)
+				rows[index][2] = strconv.FormatUint(dlc.ID, 10)
 			}
 		}
 
@@ -346,7 +347,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 
 		for i, mod := range rules.Mods {
 			rows = append(rows, table.Row{
-				fmt.Sprintf("%d", i+1),
+				strconv.Itoa(i + 1),
 				mod.Name,
 				fmt.Sprintf("https://steamcommunity.com/sharedfiles/filedetails/?id=%d", mod.ID),
 			})
@@ -354,7 +355,7 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		if shouldCompactLinkTable(formatter, header, rows) {
 			header[2] = app.localize("rules.workshop_id", "WORKSHOP ID")
 			for index, mod := range rules.Mods {
-				rows[index][2] = fmt.Sprintf("%d", mod.ID)
+				rows[index][2] = strconv.FormatUint(mod.ID, 10)
 			}
 		}
 

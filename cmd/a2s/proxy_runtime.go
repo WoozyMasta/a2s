@@ -29,7 +29,7 @@ func executeProxy(app *Application, command *ProxyCommand) error {
 // until cancellation or a fatal local server error.
 func executeProxyContext(ctx context.Context, app *Application, command *ProxyCommand) error {
 	if ctx == nil {
-		return fmt.Errorf("proxy runtime context must not be nil")
+		return errors.New("proxy runtime context must not be nil")
 	}
 
 	preparation, err := prepareProxyStartup(ctx, command)

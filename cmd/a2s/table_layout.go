@@ -45,7 +45,7 @@ type tableLayout struct {
 // displayWidth returns the widest visual line in a table cell.
 func displayWidth(value any) int {
 	maxWidth := 0
-	for _, line := range strings.Split(fmt.Sprint(value), "\n") {
+	for line := range strings.SplitSeq(fmt.Sprint(value), "\n") {
 		width := text.StringWidthWithoutEscSequences(line)
 		if width > maxWidth {
 			maxWidth = width

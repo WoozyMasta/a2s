@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -17,7 +18,7 @@ const proxyCacheAuto = "auto"
 // It performs no DNS resolution, socket creation, or upstream request.
 func validateProxyCommand(command *ProxyCommand) error {
 	if command == nil {
-		return fmt.Errorf("proxy command must not be nil")
+		return errors.New("proxy command must not be nil")
 	}
 
 	upstream, err := normalizeEndpoint(command.Args.Host, command.Args.Port)
@@ -54,7 +55,7 @@ func normalizeProxyCache(values []string) ([]string, error) {
 	for _, value := range values {
 		value = strings.ToLower(strings.TrimSpace(value))
 		if value == "" {
-			return nil, fmt.Errorf("cache selector must not be empty")
+			return nil, errors.New("cache selector must not be empty")
 		}
 
 		switch value {

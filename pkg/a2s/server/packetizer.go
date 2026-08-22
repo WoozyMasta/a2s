@@ -144,10 +144,7 @@ func (p *SourcePacketizer) Packetize(data []byte) ([][]byte, error) {
 	id := nextSourceSplitID(p.nextID)
 	packets := make([][]byte, 0, count)
 	for index, start := 0, 0; start < len(data); index, start = index+1, start+chunkSize {
-		end := start + chunkSize
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(start+chunkSize, len(data))
 
 		packet := make([]byte, sourceSplitHeaderSize+end-start)
 		binary.LittleEndian.PutUint32(packet[:4], splitMarker)
@@ -226,10 +223,7 @@ func (p *GoldSourcePacketizer) Packetize(data []byte) ([][]byte, error) {
 	id := nextGoldSourceSplitID(p.nextID)
 	packets := make([][]byte, 0, count)
 	for index, start := 0, 0; start < len(data); index, start = index+1, start+chunkSize {
-		end := start + chunkSize
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(start+chunkSize, len(data))
 
 		packet := make([]byte, goldSourceSplitHeaderSize+end-start)
 		binary.LittleEndian.PutUint32(packet[:4], splitMarker)

@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/woozymasta/a2s/pkg/a2s"
@@ -62,7 +63,7 @@ func renderPlayersTable(app *Application, players []a2s.Player, address string, 
 		}
 	}
 
-	columns := []interface{}{app.localize("table.number", "#")}
+	columns := []any{app.localize("table.number", "#")}
 	if counter[0] > 0 {
 		columns = append(columns, app.localize("players.play_time", "PlayTime"))
 	}
@@ -78,19 +79,19 @@ func renderPlayersTable(app *Application, players []a2s.Player, address string, 
 
 	rows := make([]table.Row, 0, len(players))
 	for i, player := range players {
-		row := []interface{}{fmt.Sprintf("%d", i+1)}
+		row := []any{strconv.Itoa(i + 1)}
 
 		if counter[0] > 0 {
 			row = append(row, player.Duration.String())
 		}
 		if counter[1] > 0 {
-			row = append(row, fmt.Sprint(player.Score))
+			row = append(row, strconv.Itoa(int(player.Score)))
 		}
 		if counter[2] > 0 {
 			row = append(row, player.Name)
 		}
 		if counter[3] > 0 {
-			row = append(row, fmt.Sprint(player.Index))
+			row = append(row, strconv.FormatUint(uint64(player.Index), 10))
 		}
 
 		rows = append(rows, table.Row(row))

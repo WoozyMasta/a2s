@@ -269,7 +269,7 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 		usedChallenge          bool
 	)
 
-	for attempt := 0; attempt < maxUnsupportedResponses; attempt++ {
+	for range maxUnsupportedResponses {
 		resp, responseType, attemptUsedChallenge, err := c.requestWithChallenge(effectiveCtx, requestType)
 		usedChallenge = usedChallenge || attemptUsedChallenge
 		meta := QueryMeta{
@@ -377,7 +377,7 @@ func (c *Client) requestWithChallenge(
 ) ([]byte, ResponseType, bool, error) {
 	challenge := InitialChallenge
 
-	for attempt := 0; attempt < maxChallengeResponses; attempt++ {
+	for attempt := range maxChallengeResponses {
 		resp, err := c.request(ctx, requestType, challenge)
 		if err != nil {
 			return nil, 0, attempt > 0, err
@@ -474,7 +474,7 @@ func (c *Client) request(ctx context.Context, requestType QueryType, challenge C
 	)
 	readOK := false
 
-	for attempt := 0; attempt < 6; attempt++ {
+	for range 6 {
 		if cap(c.readBuf) < int(c.bufferSize) {
 			c.readBuf = make([]byte, c.bufferSize)
 		}

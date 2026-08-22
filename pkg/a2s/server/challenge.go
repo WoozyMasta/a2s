@@ -86,7 +86,7 @@ func (p *statelessChallengeProvider) challenge(
 	remote netip.AddrPort,
 	bucket int64,
 ) a2s.Challenge {
-	for counter := uint32(0); counter < 256; counter++ {
+	for counter := range uint32(256) {
 		mac := hmac.New(sha256.New, p.secret[:])
 		mac.Write(challengeMessage(remote, bucket, counter))
 
