@@ -69,11 +69,12 @@ func parseSplitHeader(data []byte) (splitHeaderInfo, error) {
 
 	// Check if the packet is from the Source engine.
 	isSource := false
-	if len(data) >= 13 && binary.LittleEndian.Uint32(data[9:13]) == singlePacket {
-		isSource = false
-	} else if len(data) >= 16 && binary.LittleEndian.Uint32(data[12:16]) == singlePacket {
+	switch {
+	case len(data) >= 13 && binary.LittleEndian.Uint32(data[9:13]) == singlePacket:
+	case len(data) >= 16 && binary.LittleEndian.Uint32(data[12:16]) == singlePacket:
 		isSource = true
-	} else if len(data) >= srcSplitHeader {
+
+	case len(data) >= srcSplitHeader:
 		splitSize := binary.LittleEndian.Uint16(data[splitSizeOff:srcSplitHeader])
 		if splitSize > 0 && splitSize <= splitSizeMax {
 			isSource = true

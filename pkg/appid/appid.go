@@ -2,25 +2,29 @@
 // SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
 // Source: https://github.com/WoozyMasta/a2s
 
-// Package appid contains Steam application IDs
-// for games known to use the A2S/Valve server query protocol.
-//
-// It is intentionally not a general Steam application registry.
-// Entries are added only when they are relevant to A2S querying,
-// protocol-specific handling, or user-facing identification.
+/*
+Package appid contains Steam application IDs
+for games known to use the A2S/Valve server query protocol.
+
+It is intentionally not a general Steam application registry.
+Entries are added only when they are relevant to A2S querying,
+protocol-specific handling, or user-facing identification.
+*/
 package appid
 
 import "strconv"
 
-// AppID is a Steam application ID represented in the same width as the
-// effective game identifiers used by the A2S API.
+// AppID is a Steam application ID represented
+// in the same width as the effective game identifiers used by the A2S API.
 type AppID uint64
 
+// AppID constants identify Steam applications known to use A2S queries.
 const (
 	// Unknown represents an unknown application ID.
 	Unknown = 0
 
 	// GoldSource and Source games.
+
 	CounterStrike              = 10
 	TeamFortressClassic        = 20
 	DayOfDefeat                = 30
@@ -64,6 +68,7 @@ const (
 	DayOfInfamy                = 447820
 
 	// Bohemia Interactive games.
+
 	Arma2                   = 33900
 	Arma2OperationArrowhead = 33930
 	Arma3                   = 107410
@@ -72,6 +77,7 @@ const (
 	ArmaReforger            = 1874880 // Valve Query must be enabled server-side.
 
 	// Survival and sandbox games.
+
 	ProjectZomboid           = 108600
 	Starbound                = 211820
 	TheForest                = 242760
@@ -112,6 +118,7 @@ const (
 	Soulmask                 = 2646460
 
 	// Tactical and shooter games.
+
 	AliensVsPredator2010       = 10680
 	Brink                      = 22350
 	RedOrchestra2              = 35450
@@ -130,6 +137,7 @@ const (
 	OperationHarshDoorstop     = 736590
 
 	// Racing and simulation games using Valve Query.
+
 	EuroTruckSimulator2    = 227300
 	ProjectCars            = 234630
 	AmericanTruckSimulator = 270880
@@ -137,6 +145,7 @@ const (
 	ProjectCars2           = 378860
 
 	// Other A2S-compatible games.
+
 	TowerUnite = 394690
 )
 

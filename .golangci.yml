@@ -1,39 +1,61 @@
 version: "2"
 run:
   tests: false
+
 linters:
   enable:
+    - modernize
+    - prealloc
+    - tagliatelle
+    - perfsprint
+    - asciicheck
+    - bidichk
+    - decorder
+    - dupl
+    - gocritic
     - bodyclose
     - gosec
     - nilerr
     - predeclared
     - revive
     - rowserrcheck
-    - sqlclosecheck
     - tparallel
     - unconvert
     - unparam
     - whitespace
-  settings:
-    revive:
-      rules:
-        - name: exported
-          arguments:
-            - disableChecksOnVariables
-            - disableChecksOnConstants
-          severity: warning
-          disabled: false
+    - staticcheck
+    - goheader
+
   exclusions:
     generated: lax
     presets:
       - common-false-positives
+    rules:
+      - linters:
+          - revive
+        path: 'pkg/keywords/types/(gametype|language|platform|serverstate)\.go'
+        text: '^exported:'
     paths:
       - third_party$
       - builtin$
       - examples$
+
+  settings:
+    goheader:
+      template: |-
+        SPDX-License-Identifier: MIT
+        SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+        Source: https://github.com/WoozyMasta/a2s
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+          yaml: snake
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+
 formatters:
   enable:
     - goimports

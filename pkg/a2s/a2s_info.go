@@ -94,7 +94,7 @@ type Info struct {
 	// Extra Data Flags decoded from the response.
 	// Encoders derive known flags from populated optional fields
 	// instead of treating this metadata as their source of truth.
-	EDF EDF `json:"EDF,omitempty"`
+	EDF EDF `json:"EDF,omitempty"` //nolint:tagliatelle // A2S protocol-defined JSON key.
 }
 
 // EffectiveID returns the full GameID when present, otherwise the legacy AppID.

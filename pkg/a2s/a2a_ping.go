@@ -13,6 +13,7 @@ import (
 )
 
 // GetPing queries server ping (A2A_PING) and returns complete query latency.
+//
 // Deprecated: ping is included in all query responses.
 func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
 	packet, meta, err := c.Query(ctx, PingRequest)

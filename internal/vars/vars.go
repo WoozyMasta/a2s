@@ -41,7 +41,7 @@ type BuildInfo struct {
 	Commit string `json:"commit"`
 
 	// BuildTime is the application build time (UTC).
-	BuildTime time.Time `json:"build_time,omitempty"`
+	BuildTime time.Time `json:"build_time,omitzero"`
 
 	// URL is the repository URL.
 	URL string `json:"url,omitempty"`

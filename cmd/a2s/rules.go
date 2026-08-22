@@ -57,23 +57,23 @@ func executeRules(app *Application, cmd *RulesCommand) error {
 			)
 		}
 		if cmd.Raw {
-			return executeRulesStandard(app, ctx, client, true, formatter)
+			return executeRulesStandard(ctx, app, client, true, formatter)
 		}
 
-		return executeRulesA3SB(app, ctx, client, appID, formatter)
+		return executeRulesA3SB(ctx, app, client, appID, formatter)
 	}
 
 	if cmd.Raw {
-		return executeRulesStandard(app, ctx, client, cmd.Raw, formatter)
+		return executeRulesStandard(ctx, app, client, cmd.Raw, formatter)
 	}
 
-	return executeRulesA3SB(app, ctx, client, 0, formatter)
+	return executeRulesA3SB(ctx, app, client, 0, formatter)
 }
 
 // executeRulesStandard retrieves and renders ordinary A2S_RULES values.
 func executeRulesStandard(
-	app *Application,
 	ctx context.Context,
+	app *Application,
 	client *a2s.Client,
 	raw bool,
 	formatter *Formatter,
@@ -150,8 +150,8 @@ func renderRulesTable(app *Application, rules map[string]any, address string, fo
 
 // executeRulesA3SB retrieves and renders Arma 3/DayZ server-browser rules.
 func executeRulesA3SB(
-	app *Application,
 	ctx context.Context,
+	app *Application,
 	client *a2s.Client,
 	appID uint64,
 	formatter *Formatter,
@@ -275,64 +275,26 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 		}
 	}
 
-	// Print DLC
-	if len(rules.DLC) > 0 {
-		formatter.PrintSectionHeader(app.localize("section.dlc", "DLC"))
-		header := table.Row{
-			app.localize("table.number", "#"),
-			app.localize("rules.dlc_name", "DLC Name"),
-			app.localize("rules.dlc_url", "DLC URL"),
-		}
-		rows := make([]table.Row, 0, len(rules.DLC))
-
-		for i, dlc := range rules.DLC {
-			rows = append(rows, table.Row{
-				strconv.Itoa(i + 1),
-				dlc.Name,
-				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
-			})
-		}
-		if shouldCompactLinkTable(formatter, header, rows) {
-			header[2] = app.localize("rules.app_id", "APP ID")
-			for index, dlc := range rules.DLC {
-				rows[index][2] = strconv.FormatUint(dlc.ID, 10)
-			}
-		}
-
-		t := formatter.NewTable(header, rows)
-		if err := formatter.PrintTable(t); err != nil {
-			return app.wrapError("error.render_rules", "failed to render rules", err)
-		}
+	// Print DLC and Creator DLC with the same compact-link layout.
+	if err := renderDLCSection(
+		app,
+		formatter,
+		app.localize("section.dlc", "DLC"),
+		app.localize("rules.dlc_name", "DLC Name"),
+		app.localize("rules.dlc_url", "DLC URL"),
+		rules.DLC,
+	); err != nil {
+		return err
 	}
-
-	// Print Creator DLC
-	if len(rules.CreatorDLC) > 0 {
-		formatter.PrintSectionHeader(app.localize("section.creator_dlc", "Creator DLC"))
-		header := table.Row{
-			app.localize("table.number", "#"),
-			app.localize("rules.creator_dlc_name", "Creator DLC Name"),
-			app.localize("rules.creator_dlc_url", "Creator DLC URL"),
-		}
-		rows := make([]table.Row, 0, len(rules.CreatorDLC))
-
-		for i, dlc := range rules.CreatorDLC {
-			rows = append(rows, table.Row{
-				strconv.Itoa(i + 1),
-				dlc.Name,
-				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
-			})
-		}
-		if shouldCompactLinkTable(formatter, header, rows) {
-			header[2] = app.localize("rules.app_id", "APP ID")
-			for index, dlc := range rules.CreatorDLC {
-				rows[index][2] = strconv.FormatUint(dlc.ID, 10)
-			}
-		}
-
-		t := formatter.NewTable(header, rows)
-		if err := formatter.PrintTable(t); err != nil {
-			return app.wrapError("error.render_rules", "failed to render rules", err)
-		}
+	if err := renderDLCSection(
+		app,
+		formatter,
+		app.localize("section.creator_dlc", "Creator DLC"),
+		app.localize("rules.creator_dlc_name", "Creator DLC Name"),
+		app.localize("rules.creator_dlc_url", "Creator DLC URL"),
+		rules.CreatorDLC,
+	); err != nil {
+		return err
 	}
 
 	// Print Mods
@@ -372,6 +334,49 @@ func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, 
 			"%s\n",
 			app.localize("footer.rules", "A2S_RULES response for %s", address),
 		)
+	}
+
+	return nil
+}
+
+// renderDLCSection renders one DLC collection with optional compact IDs.
+func renderDLCSection(
+	app *Application,
+	formatter *Formatter,
+	section string,
+	nameHeader string,
+	urlHeader string,
+	entries []a3sb.DLCInfo,
+) error {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	formatter.PrintSectionHeader(section)
+	header := table.Row{
+		app.localize("table.number", "#"),
+		nameHeader,
+		urlHeader,
+	}
+	rows := make([]table.Row, 0, len(entries))
+	for i, entry := range entries {
+		rows = append(rows, table.Row{
+			strconv.Itoa(i + 1),
+			entry.Name,
+			fmt.Sprintf("https://store.steampowered.com/app/%d", entry.ID),
+		})
+	}
+
+	if shouldCompactLinkTable(formatter, header, rows) {
+		header[2] = app.localize("rules.app_id", "APP ID")
+		for index, entry := range entries {
+			rows[index][2] = strconv.FormatUint(entry.ID, 10)
+		}
+	}
+
+	t := formatter.NewTable(header, rows)
+	if err := formatter.PrintTable(t); err != nil {
+		return app.wrapError("error.render_rules", "failed to render rules", err)
 	}
 
 	return nil
