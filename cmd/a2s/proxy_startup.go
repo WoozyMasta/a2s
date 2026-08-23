@@ -53,7 +53,11 @@ func (p *proxyPreparation) close() error {
 }
 
 // prepareProxyStartup validates and probes all state needed before binding.
-func prepareProxyStartup(ctx context.Context, command *ProxyCommand) (*proxyPreparation, error) {
+func prepareProxyStartup(
+	ctx context.Context,
+	command *ProxyCommand,
+	clientOptions ClientOptions,
+) (*proxyPreparation, error) {
 	if ctx == nil {
 		return nil, errors.New("proxy startup context must not be nil")
 	}
@@ -74,11 +78,11 @@ func prepareProxyStartup(ctx context.Context, command *ProxyCommand) (*proxyPrep
 		return nil, startupErr
 	}
 
-	preparation.pollClient, err = newProxyUpstreamClient(address, command)
+	preparation.pollClient, err = newProxyUpstreamClient(address, clientOptions)
 	if err != nil {
 		return cleanup(fmt.Errorf("create polling client: %w", err))
 	}
-	preparation.relayClient, err = newProxyUpstreamClient(address, command)
+	preparation.relayClient, err = newProxyUpstreamClient(address, clientOptions)
 	if err != nil {
 		return cleanup(fmt.Errorf("create relay client: %w", err))
 	}
@@ -157,10 +161,10 @@ func prepareProxyStartup(ctx context.Context, command *ProxyCommand) (*proxyPrep
 }
 
 // newProxyUpstreamClient creates one client for polling or relay traffic.
-func newProxyUpstreamClient(address string, command *ProxyCommand) (*a2s.Client, error) {
-	options := []a2s.Option{a2s.WithBufferSize(command.Buffer)}
-	if command.Timeout > 0 {
-		options = append(options, a2s.WithTimeout(command.Timeout))
+func newProxyUpstreamClient(address string, clientOptions ClientOptions) (*a2s.Client, error) {
+	options := []a2s.Option{a2s.WithBufferSize(clientOptions.Buffer)}
+	if clientOptions.Timeout > 0 {
+		options = append(options, a2s.WithTimeout(clientOptions.Timeout))
 	}
 
 	return a2s.NewWithString(address, options...)

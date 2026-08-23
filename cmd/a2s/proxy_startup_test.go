@@ -47,7 +47,11 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 			fixture := newProxyStartupFixture(t, tt.infoType, tt.infoChallenge, true, true)
 			command := proxyStartupCommand(fixture, []string{"auto"})
 
-			preparation, err := prepareProxyStartup(context.Background(), command)
+			preparation, err := prepareProxyStartup(
+				context.Background(),
+				command,
+				proxyStartupClientOptions(),
+			)
 			if err != nil {
 				t.Fatalf("prepareProxyStartup() error = %v", err)
 			}
@@ -97,9 +101,10 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"auto"})
-	command.Timeout = 10 * time.Millisecond
+	clientOptions := proxyStartupClientOptions()
+	clientOptions.Timeout = 10 * time.Millisecond
 
-	preparation, err := prepareProxyStartup(context.Background(), command)
+	preparation, err := prepareProxyStartup(context.Background(), command, clientOptions)
 	if err != nil {
 		t.Fatalf("prepareProxyStartup() error = %v", err)
 	}
@@ -119,9 +124,10 @@ func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 func TestPrepareProxyStartupFailsBeforeServingOnInfoError(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, false, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
-	command.Timeout = 10 * time.Millisecond
+	clientOptions := proxyStartupClientOptions()
+	clientOptions.Timeout = 10 * time.Millisecond
 
-	if _, err := prepareProxyStartup(context.Background(), command); err == nil {
+	if _, err := prepareProxyStartup(context.Background(), command, clientOptions); err == nil {
 		t.Fatal("prepareProxyStartup() returned nil error for unavailable INFO")
 	}
 }
@@ -131,13 +137,14 @@ func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	command.Listen = freeProxyListenAddress(t)
 	command.TTL = time.Hour
+	clientOptions := proxyStartupClientOptions()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	output := &proxyRuntimeTestWriter{}
 	app := NewApplication(output, output)
 	runtimeErr := make(chan error, 1)
-	go func() { runtimeErr <- executeProxyContext(ctx, app, command) }()
+	go func() { runtimeErr <- executeProxyContext(ctx, app, command, clientOptions) }()
 
 	waitForProxyRuntimeOutput(t, output, "proxy listening")
 
@@ -173,15 +180,16 @@ func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"players"})
 	command.Listen = freeProxyListenAddress(t)
-	command.Timeout = 10 * time.Millisecond
 	command.TTL = time.Hour
+	clientOptions := proxyStartupClientOptions()
+	clientOptions.Timeout = 10 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	output := &proxyRuntimeTestWriter{}
 	runtimeErr := make(chan error, 1)
 	go func() {
-		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command)
+		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command, clientOptions)
 	}()
 
 	waitForProxyRuntimeOutput(t, output, "proxy listening")
@@ -206,17 +214,18 @@ func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T)
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	command.Listen = freeProxyListenAddress(t)
-	command.Timeout = 10 * time.Millisecond
 	command.TTL = 20 * time.Millisecond
 	command.InactiveTTL = 20 * time.Millisecond
 	command.Retries = 0
+	clientOptions := proxyStartupClientOptions()
+	clientOptions.Timeout = 10 * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	output := &proxyRuntimeTestWriter{}
 	runtimeErr := make(chan error, 1)
 	go func() {
-		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command)
+		runtimeErr <- executeProxyContext(ctx, NewApplication(output, output), command, clientOptions)
 	}()
 
 	waitForProxyRuntimeOutput(t, output, "proxy listening")
@@ -259,8 +268,13 @@ func proxyStartupCommand(fixture *proxyStartupFixture, cache []string) *ProxyCom
 			Host: fixture.addr.IP.String(),
 			Port: strconv.Itoa(fixture.addr.Port),
 		},
-		Listen:  ":27016",
-		Cache:   cache,
+		Listen: ":27016",
+		Cache:  cache,
+	}
+}
+
+func proxyStartupClientOptions() ClientOptions {
+	return ClientOptions{
 		Timeout: 250 * time.Millisecond,
 		Buffer:  8192,
 	}

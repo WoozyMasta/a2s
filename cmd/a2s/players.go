@@ -14,8 +14,13 @@ import (
 )
 
 // executePlayers queries A2S_PLAYER and renders the available player fields.
-func executePlayers(app *Application, cmd *PlayersCommand) error {
-	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+func executePlayers(app *Application, cmd *PlayersCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
 	if err != nil {
 		return app.wrapError("error.client_create", "failed to create client", err)
 	}

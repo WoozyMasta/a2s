@@ -9,8 +9,13 @@ import (
 )
 
 // executeAll runs the info, rules, and players commands for one server.
-func executeAll(app *Application, cmd *AllCommand) error {
-	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+func executeAll(app *Application, cmd *AllCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
 	if err != nil {
 		return app.wrapError("error.client_create", "failed to create client", err)
 	}
@@ -18,11 +23,11 @@ func executeAll(app *Application, cmd *AllCommand) error {
 
 	// Execute info
 	infoCmd := InfoCommand{
-		GlobalOptions: cmd.GlobalOptions,
+		OutputOptions: cmd.OutputOptions,
 	}
 	infoCmd.Args.Host = cmd.Args.Host
 	infoCmd.Args.Port = cmd.Args.Port
-	if err := executeInfo(app, &infoCmd); err != nil {
+	if err := executeInfo(app, &infoCmd, clientOptions); err != nil {
 		return err
 	}
 
@@ -30,12 +35,12 @@ func executeAll(app *Application, cmd *AllCommand) error {
 
 	// Execute rules
 	rulesCmd := RulesCommand{
-		GlobalOptions: cmd.GlobalOptions,
+		OutputOptions: cmd.OutputOptions,
 		RulesOptions:  cmd.RulesOptions,
 	}
 	rulesCmd.Args.Host = cmd.Args.Host
 	rulesCmd.Args.Port = cmd.Args.Port
-	if err := executeRules(app, &rulesCmd); err != nil {
+	if err := executeRules(app, &rulesCmd, clientOptions); err != nil {
 		return err
 	}
 
@@ -43,10 +48,10 @@ func executeAll(app *Application, cmd *AllCommand) error {
 
 	// Execute players
 	playersCmd := PlayersCommand{
-		GlobalOptions: cmd.GlobalOptions,
+		OutputOptions: cmd.OutputOptions,
 	}
 	playersCmd.Args.Host = cmd.Args.Host
 	playersCmd.Args.Port = cmd.Args.Port
 
-	return executePlayers(app, &playersCmd)
+	return executePlayers(app, &playersCmd, clientOptions)
 }

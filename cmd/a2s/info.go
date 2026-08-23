@@ -17,8 +17,13 @@ import (
 )
 
 // executeInfo queries A2S_INFO and renders the result in the requested format.
-func executeInfo(app *Application, cmd *InfoCommand) error {
-	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+func executeInfo(app *Application, cmd *InfoCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
 	if err != nil {
 		return app.wrapError("error.client_create", "failed to create client", err)
 	}

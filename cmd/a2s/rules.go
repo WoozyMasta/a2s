@@ -34,8 +34,13 @@ func gameToAppID(game string) uint64 {
 
 // executeRules selects the standard or automatic A3SB rules parser and renders its output.
 // Automatic mode uses one A2S_RULES request and does not require A2S_INFO merely to choose a parser.
-func executeRules(app *Application, cmd *RulesCommand) error {
-	client, err := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
+func executeRules(app *Application, cmd *RulesCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
 	if err != nil {
 		return app.wrapError("error.client_create", "failed to create client", err)
 	}

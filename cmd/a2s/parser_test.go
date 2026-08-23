@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/woozymasta/flags"
 )
@@ -73,6 +74,29 @@ func TestParserEnforcesCommandContract(t *testing.T) {
 			_, err := parser.ParseArgs(tt.args)
 			if !isParserError(err, tt.want) {
 				t.Fatalf("ParseArgs() error = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestParserAppliesCommonClientOptionsBeforeAndAfterCommand(t *testing.T) {
+	tests := [][]string{
+		{"--timeout", "750ms", "--buffer-size", "16384", "info", "host"},
+		{"info", "host", "--timeout", "750ms", "--buffer-size", "16384"},
+	}
+
+	for _, args := range tests {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			parser, options := newTestParser()
+			if _, err := parser.ParseArgs(args); err != nil {
+				t.Fatalf("ParseArgs() error = %v", err)
+			}
+
+			if options.Timeout != 750*time.Millisecond {
+				t.Fatalf("timeout = %s, want 750ms", options.Timeout)
+			}
+			if options.Buffer != 16384 {
+				t.Fatalf("buffer = %d, want 16384", options.Buffer)
 			}
 		})
 	}

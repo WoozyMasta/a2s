@@ -18,21 +18,26 @@ import (
 )
 
 // executeProxy owns process signal handling for the proxy command.
-func executeProxy(app *Application, command *ProxyCommand) error {
+func executeProxy(app *Application, command *ProxyCommand, clientOptions ClientOptions) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	return executeProxyContext(ctx, app, command)
+	return executeProxyContext(ctx, app, command, clientOptions)
 }
 
 // executeProxyContext prepares and runs proxy
 // until cancellation or a fatal local server error.
-func executeProxyContext(ctx context.Context, app *Application, command *ProxyCommand) error {
+func executeProxyContext(
+	ctx context.Context,
+	app *Application,
+	command *ProxyCommand,
+	clientOptions ClientOptions,
+) error {
 	if ctx == nil {
 		return errors.New("proxy runtime context must not be nil")
 	}
 
-	preparation, err := prepareProxyStartup(ctx, command)
+	preparation, err := prepareProxyStartup(ctx, command, clientOptions)
 	if err != nil {
 		return app.wrapError("error.proxy_startup", "proxy startup failed", err)
 	}

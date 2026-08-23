@@ -23,39 +23,39 @@ type Options struct {
 	Players PlayersCommand `command:"players" ini-group:"players" command-i18n:"command.players.description"`
 	Ping    PingCommand    `command:"ping"    ini-group:"ping"    command-i18n:"command.ping.description"`
 	Proxy   ProxyCommand   `command:"proxy"   ini-group:"proxy"   command-i18n:"command.proxy.description"`
+	ClientOptions
 }
 
 // InfoCommand handles the 'info' subcommand.
 type InfoCommand struct {
 	Args ServerArgs `positional-args:"yes"`
-	GlobalOptions
+	OutputOptions
 }
 
 // PlayersCommand handles the 'players' subcommand.
 type PlayersCommand struct {
 	Args ServerArgs `positional-args:"yes"`
-	GlobalOptions
+	OutputOptions
 }
 
 // RulesCommand handles the 'rules' subcommand.
 type RulesCommand struct {
 	Args ServerArgs `positional-args:"yes"`
+	OutputOptions
 	RulesOptions
-	GlobalOptions
 }
 
 // AllCommand handles the 'all' subcommand.
 type AllCommand struct {
 	Args ServerArgs `positional-args:"yes"`
+	OutputOptions
 	RulesOptions
-	GlobalOptions
 }
 
 // PingCommand handles the 'ping' subcommand.
 type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	GlobalOptions
 	PingCount  int `short:"c" default:"0" validate-min:"0" long:"ping-count"  description-i18n:"option.ping_count.description"`
 	PingPeriod int `short:"p" default:"1" validate-min:"1" long:"ping-period" description-i18n:"option.ping_period.description"`
 }
@@ -70,16 +70,18 @@ type ProxyCommand struct {
 	InactiveTTL  time.Duration `long:"inactive-ttl"  description-i18n:"option.proxy.inactive_ttl.description"  default:"0"    validate-min:"0"`
 	Jitter       time.Duration `long:"jitter"        description-i18n:"option.proxy.jitter.description"        default:"1s"   validate-min:"0"`
 	Retries      int           `long:"retries"       description-i18n:"option.proxy.retries.description"       default:"2"    validate-min:"0"`
-	Timeout      time.Duration `long:"timeout"       description-i18n:"option.proxy.timeout.description"       default:"3s"   validate-min:"1"`
-	Buffer       uint16        `long:"buffer-size"   description-i18n:"option.proxy.buffer_size.description"   default:"8192" validate-min:"1"`
 	UpstreamPing bool          `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
 }
 
-// GlobalOptions defines global CLI options applicable to all commands.
-type GlobalOptions struct {
-	Format  string `short:"f" default:"table" long:"format"      description-i18n:"option.format.description" choices:"json;table;raw;md;html"`
-	Timeout int    `short:"t" default:"3"     long:"timeout"     description-i18n:"option.timeout.description"`
-	Buffer  uint16 `short:"b" default:"8192"  long:"buffer-size" description-i18n:"option.buffer_size.description"`
+// ClientOptions defines network settings shared by all network commands.
+type ClientOptions struct {
+	Timeout time.Duration `short:"t" default:"3s"   validate-min:"1" long:"timeout"     description-i18n:"option.timeout.description"`
+	Buffer  uint16        `short:"b" default:"8192" validate-min:"1" long:"buffer-size" description-i18n:"option.buffer_size.description"`
+}
+
+// OutputOptions defines output settings for commands that render responses.
+type OutputOptions struct {
+	Format string `short:"f" long:"format" default:"table" choices:"json;table;raw;md;html" description-i18n:"option.format.description"`
 }
 
 // ServerArgs defines positional arguments for server connection.
@@ -143,22 +145,22 @@ func run(args []string, app *Application) error {
 		return nil // Built-in commands execute during ParseArgs.
 
 	case "info":
-		return executeInfo(app, &opts.Info)
+		return executeInfo(app, &opts.Info, opts.ClientOptions)
 
 	case "players":
-		return executePlayers(app, &opts.Players)
+		return executePlayers(app, &opts.Players, opts.ClientOptions)
 
 	case "rules":
-		return executeRules(app, &opts.Rules)
+		return executeRules(app, &opts.Rules, opts.ClientOptions)
 
 	case "all":
-		return executeAll(app, &opts.All)
+		return executeAll(app, &opts.All, opts.ClientOptions)
 
 	case "ping":
-		return executePing(app, &opts.Ping)
+		return executePing(app, &opts.Ping, opts.ClientOptions)
 
 	case "proxy":
-		return executeProxy(app, &opts.Proxy)
+		return executeProxy(app, &opts.Proxy, opts.ClientOptions)
 
 	default:
 		return fmt.Errorf("%s", app.localize(
@@ -266,7 +268,7 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 }
 
 // createClient builds and configures a client from CLI connection options.
-func createClient(host, port string, timeout int, buffer uint16) (*a2s.Client, error) {
+func createClient(host, port string, timeout time.Duration, buffer uint16) (*a2s.Client, error) {
 	address, err := normalizeEndpoint(host, port)
 	if err != nil {
 		return nil, err
@@ -274,7 +276,7 @@ func createClient(host, port string, timeout int, buffer uint16) (*a2s.Client, e
 
 	options := []a2s.Option{a2s.WithBufferSize(buffer)}
 	if timeout > 0 {
-		options = append(options, a2s.WithTimeout(time.Duration(timeout)*time.Second))
+		options = append(options, a2s.WithTimeout(timeout))
 	}
 
 	client, err := a2s.NewWithString(address, options...)

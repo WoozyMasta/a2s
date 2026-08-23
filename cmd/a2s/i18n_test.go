@@ -321,7 +321,7 @@ func TestRuntimeErrorsLocalizeContextAndPreserveCause(t *testing.T) {
 func TestRuntimeFailureKeepsMachineOutputClean(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	app := localizedTestApplication(t, "ru", &stdout, &stderr)
-	if err := executeInfo(app, &InfoCommand{}); err == nil {
+	if err := executeInfo(app, &InfoCommand{}, ClientOptions{}); err == nil {
 		t.Fatal("executeInfo() error = nil, want client creation error")
 	}
 	if stdout.Len() != 0 {
