@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/woozymasta/a2s/internal/vars"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/flags"
 )
@@ -140,8 +139,8 @@ func run(args []string, app *Application) error {
 
 	// Execute the appropriate command
 	switch p.Active.Name {
-	case "help", "version", "completion":
-		return nil // Built-in flags commands execute during ParseArgs.
+	case "help", "version", "completion", "docs":
+		return nil // Built-in commands execute during ParseArgs.
 
 	case "info":
 		return executeInfo(app, &opts.Info)
@@ -188,10 +187,10 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 	parser.SetI18n(i18nConfig)
 
 	parser.SetVersionInfo(flags.VersionInfo{
-		Version:      vars.Version,
-		Revision:     vars.Commit,
-		RevisionTime: vars.BuildTime,
-		URL:          vars.URL,
+		Version:      version,
+		Revision:     commit,
+		RevisionTime: buildTime,
+		URL:          repositoryURL,
 	})
 	parser.SetVersionFields(flags.VersionFieldsCore)
 

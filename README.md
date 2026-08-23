@@ -2,7 +2,7 @@
 # A2S
 
 <!-- markdownlint-disable-next-line MD033 -->
-<img src="winres/icon64.png" alt="MetricZ" align="left" width="64">
+<img src="winres/icon64.png" alt="A2S Logo" align="left" width="64">
 
 Powerful command-line utility and Go packages for querying Steam A2S
 server information.

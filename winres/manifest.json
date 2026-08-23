@@ -2,21 +2,17 @@
   "RT_GROUP_ICON": {
     "APP": {
       "0000": [
-        "icon.png",
-        "icon64.png",
+        "icon16.png",
         "icon32.png",
-        "icon16.png"
+        "icon64.png",
+        "icon256.png"
       ]
     }
   },
   "RT_MANIFEST": {
     "#1": {
       "0409": {
-        "identity": {
-          "name": "A2S CLI",
-          "version": ""
-        },
-        "description": "Command line utility for querying Steam A2S server information and working with A3SB subprotocol for Arma 3 and DayZ",
+        "description": "Command-line utility for querying Steam A2S game servers and running a cached A2S proxy",
         "minimum-os": "win7",
         "execution-level": "as invoker",
         "ui-access": false,
@@ -38,23 +34,19 @@
     "#1": {
       "0000": {
         "fixed": {
-          "file_version": "0.0.0",
-          "product_version": "0.0.0"
+          "file_version": "0.0.0.0",
+          "product_version": "0.0.0.0"
         },
         "info": {
           "0409": {
-            "Comments": "",
-            "CompanyName": "",
-            "FileDescription": "Command line utility for querying Steam A2S server information and working with A3SB subprotocol for Arma 3 and DayZ",
-            "FileVersion": "",
-            "InternalName": "A2S CLI",
-            "LegalCopyright": "WoozyMasta",
-            "LegalTrademarks": "",
+            "CompanyName": "WoozyMasta",
+            "FileDescription": "Command-line utility for querying Steam A2S game servers and running a cached A2S proxy",
+            "FileVersion": "0.0.0.0",
+            "InternalName": "a2s",
+            "LegalCopyright": "Copyright (c) 2021-2026 WoozyMasta",
             "OriginalFilename": "a2s.exe",
-            "PrivateBuild": "",
-            "ProductName": "A2S CLI",
-            "ProductVersion": "",
-            "SpecialBuild": ""
+            "ProductName": "A2S",
+            "ProductVersion": "0.0.0.0"
           }
         }
       }

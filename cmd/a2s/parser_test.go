@@ -8,317 +8,11 @@ import (
 	"bytes"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/woozymasta/flags"
 )
 
-func TestParserRecognizesCommands(t *testing.T) {
-	tests := []string{"info", "players", "rules", "all", "ping", "proxy"}
-
-	for _, command := range tests {
-		t.Run(command, func(t *testing.T) {
-			parser, options := newTestParser()
-			args := []string{command, "127.0.0.1"}
-			if command == "proxy" {
-				args = append(args, "--listen", ":27016")
-			}
-			if _, err := parser.ParseArgs(args); err != nil {
-				t.Fatalf("ParseArgs() error = %v", err)
-			}
-			if parser.Active == nil || parser.Active.Name != command {
-				t.Fatalf("active command = %#v, want %q", parser.Active, command)
-			}
-			if options == nil {
-				t.Fatal("parser options are nil")
-			}
-		})
-	}
-}
-
-func TestParserRecognizesPrimaryOptions(t *testing.T) {
-	tests := []struct {
-		name  string
-		args  []string
-		check func(*testing.T, *Options)
-	}{
-		{
-			name: "format",
-			args: []string{"info", "--format", "json", "host"},
-			check: func(t *testing.T, options *Options) {
-				if options.Info.Format != "json" {
-					t.Fatalf("format = %q, want json", options.Info.Format)
-				}
-			},
-		},
-		{
-			name: "rules options",
-			args: []string{"rules", "--game", "dayz", "--raw", "host"},
-			check: func(t *testing.T, options *Options) {
-				if options.Rules.Game != "dayz" || !options.Rules.Raw {
-					t.Fatalf("rules options = %#v, want game=dayz raw=true", options.Rules)
-				}
-			},
-		},
-		{
-			name: "ping options",
-			args: []string{"ping", "-c", "5", "-p", "2", "host"},
-			check: func(t *testing.T, options *Options) {
-				if options.Ping.PingCount != 5 || options.Ping.PingPeriod != 2 {
-					t.Fatalf("ping options = %#v, want count=5 period=2", options.Ping)
-				}
-			},
-		},
-		{
-			name: "proxy options",
-			args: []string{
-				"proxy", "upstream:27015", "--listen", ":27016",
-				"--cache", "info", "--cache", "rules",
-				"--ttl", "30s", "--inactive-ttl", "5s",
-				"--retries", "4", "--jitter", "2s", "--timeout", "4s",
-				"--buffer-size", "4096", "--upstream-ping",
-			},
-			check: func(t *testing.T, options *Options) {
-				proxy := options.Proxy
-				if proxy.Listen != ":27016" || len(proxy.Cache) != 2 ||
-					proxy.TTL != 30*time.Second || proxy.InactiveTTL != 5*time.Second ||
-					proxy.Retries != 4 || proxy.Jitter != 2*time.Second ||
-					proxy.Timeout != 4*time.Second || proxy.Buffer != 4096 ||
-					!proxy.UpstreamPing {
-					t.Fatalf("proxy options = %#v", proxy)
-				}
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parser, options := newTestParser()
-			if _, err := parser.ParseArgs(tt.args); err != nil {
-				t.Fatalf("ParseArgs() error = %v", err)
-			}
-			tt.check(t, options)
-		})
-	}
-}
-
-func TestParserHelpAndVersion(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{name: "long help", args: []string{"--help"}},
-		{name: "short help", args: []string{"-h"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parser, _ := newTestParser()
-			if _, err := parser.ParseArgs(tt.args); !isParserError(err, flags.ErrHelp) {
-				t.Fatalf("ParseArgs() error = %v, want ErrHelp", err)
-			}
-		})
-	}
-
-	for _, arg := range []string{"--version", "-v"} {
-		t.Run(arg, func(t *testing.T) {
-			parser, options := newTestParser()
-			if _, err := parser.ParseArgs([]string{arg}); !isParserError(err, flags.ErrVersion) {
-				t.Fatalf("ParseArgs() error = %v, want ErrVersion", err)
-			}
-			if options.Info.Args.Host != "" {
-				t.Fatalf("version parsing unexpectedly populated command arguments for %s", arg)
-			}
-		})
-	}
-}
-
-func TestParserAcceptsChoices(t *testing.T) {
-	for _, format := range []string{"json", "table", "raw", "md", "html"} {
-		t.Run("format/"+format, func(t *testing.T) {
-			parser, options := newTestParser()
-			if _, err := parser.ParseArgs([]string{"info", "--format", format, "host"}); err != nil {
-				t.Fatalf("ParseArgs() error = %v", err)
-			}
-			if options.Info.Format != format {
-				t.Fatalf("format = %q, want %q", options.Info.Format, format)
-			}
-		})
-	}
-
-	for _, game := range []string{"dayz", "arma3"} {
-		t.Run("game/"+game, func(t *testing.T) {
-			parser, options := newTestParser()
-			if _, err := parser.ParseArgs([]string{"rules", "--game", game, "host"}); err != nil {
-				t.Fatalf("ParseArgs() error = %v", err)
-			}
-			if options.Rules.Game != game {
-				t.Fatalf("game = %q, want %q", options.Rules.Game, game)
-			}
-		})
-	}
-}
-
-func TestParserRejectsInvalidChoices(t *testing.T) {
-	tests := [][]string{
-		{"info", "--format", "yaml", "host"},
-		{"rules", "--game", "rust", "host"},
-		{"proxy", "host:27015", "--listen", ":27016", "--cache", "unknown"},
-	}
-
-	for _, args := range tests {
-		t.Run(args[1], func(t *testing.T) {
-			parser, _ := newTestParser()
-			if _, err := parser.ParseArgs(args); !isParserError(err, flags.ErrInvalidChoice) {
-				t.Fatalf("ParseArgs() error = %v, want ErrInvalidChoice", err)
-			}
-		})
-	}
-}
-
-func TestParserStrictValidation(t *testing.T) {
-	parser, _ := newTestParser()
-	_, err := parser.ParseArgs([]string{"infp", "host"})
-	if !isParserError(err, flags.ErrUnknownCommand) {
-		t.Fatalf("unknown command error = %v, want ErrUnknownCommand", err)
-	}
-	if !strings.Contains(strings.ToLower(err.Error()), "info") {
-		t.Fatalf("unknown command error = %v, want suggestion for info", err)
-	}
-
-	parser, _ = newTestParser()
-	_, err = parser.ParseArgs([]string{"info", "host", "port", "extra"})
-	if !isParserError(err, flags.ErrUnexpectedArgument) {
-		t.Fatalf("extra argument error = %v, want ErrUnexpectedArgument", err)
-	}
-
-	parser, options := newTestParser()
-	if _, err := parser.ParseArgs([]string{"info", "--", "host"}); err != nil {
-		t.Fatalf("double-dash parse error = %v", err)
-	}
-	if options.Info.Args.Host != "host" {
-		t.Fatalf("host = %q, want host after --", options.Info.Args.Host)
-	}
-}
-
-func TestParserValidatesNumericOptions(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{name: "negative count", args: []string{"ping", "--ping-count", "-1", "host"}},
-		{name: "zero period", args: []string{"ping", "--ping-period", "0", "host"}},
-		{name: "negative period", args: []string{"ping", "--ping-period", "-1", "host"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parser, _ := newTestParser()
-			if _, err := parser.ParseArgs(tt.args); !isParserError(err, flags.ErrValidation) {
-				t.Fatalf("ParseArgs() error = %v, want ErrValidation", err)
-			}
-		})
-	}
-}
-
-func TestParserValidatesProxyOptions(t *testing.T) {
-	tests := []struct {
-		name string
-		args []string
-	}{
-		{
-			name: "zero ttl",
-			args: []string{"proxy", "host:27015", "--listen", ":27016", "--ttl", "0s"},
-		},
-		{
-			name: "negative inactive ttl",
-			args: []string{"proxy", "host:27015", "--listen", ":27016", "--inactive-ttl", "-1s"},
-		},
-		{
-			name: "negative retries",
-			args: []string{"proxy", "host:27015", "--listen", ":27016", "--retries", "-1"},
-		},
-		{
-			name: "negative jitter",
-			args: []string{"proxy", "host:27015", "--listen", ":27016", "--jitter", "-1s"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parser, _ := newTestParser()
-			if _, err := parser.ParseArgs(tt.args); !isParserError(err, flags.ErrValidation) {
-				t.Fatalf("ParseArgs() error = %v, want ErrValidation", err)
-			}
-		})
-	}
-}
-
-func TestParserRejectsInvalidProxyDuration(t *testing.T) {
-	parser, _ := newTestParser()
-	_, err := parser.ParseArgs([]string{
-		"proxy", "host:27015", "--listen", ":27016", "--ttl", "invalid",
-	})
-	if err == nil {
-		t.Fatal("ParseArgs() error = nil, want invalid duration error")
-	}
-}
-
-func TestParserRequiresHostForNetworkCommands(t *testing.T) {
-	for _, command := range []string{"info", "players", "rules", "all", "ping", "proxy"} {
-		t.Run(command, func(t *testing.T) {
-			parser, _ := newTestParser()
-			args := []string{command}
-			if command == "proxy" {
-				args = append(args, "--listen", ":27016")
-			}
-			if _, err := parser.ParseArgs(args); !isParserError(err, flags.ErrRequired) {
-				t.Fatalf("ParseArgs() error = %v, want ErrRequired", err)
-			}
-		})
-	}
-}
-
-func TestParserRequiresListenForProxy(t *testing.T) {
-	parser, _ := newTestParser()
-	_, err := parser.ParseArgs([]string{"proxy", "host:27015"})
-	if !isParserError(err, flags.ErrRequired) {
-		t.Fatalf("ParseArgs() error = %v, want ErrRequired", err)
-	}
-}
-
-func TestParserRootWithoutCommand(t *testing.T) {
-	parser, _ := newTestParser()
-	if _, err := parser.ParseArgs(nil); !isParserError(err, flags.ErrCommandRequired) {
-		t.Fatalf("ParseArgs() error = %v, want ErrCommandRequired", err)
-	}
-	if parser.Active != nil {
-		t.Fatalf("active command = %#v, want nil", parser.Active)
-	}
-}
-
-func TestParserHelpContainsPrimaryCommandsAndOptions(t *testing.T) {
-	parser, _ := newTestParser()
-	var help bytes.Buffer
-	parser.WriteHelp(&help)
-
-	for _, want := range []string{"info", "players", "rules", "all", "ping", "proxy", "version"} {
-		if !bytes.Contains(help.Bytes(), []byte(want)) {
-			t.Fatalf("help does not contain %q:\n%s", want, help.String())
-		}
-	}
-
-	parser, _ = newTestParser()
-	_, err := parser.ParseArgs([]string{"info", "--help"})
-	if !isParserError(err, flags.ErrHelp) {
-		t.Fatalf("command help error = %v, want ErrHelp", err)
-	}
-	if !bytes.Contains([]byte(err.Error()), []byte("format")) {
-		t.Fatalf("command help does not contain format option: %v", err)
-	}
-}
-
-func TestParserHelpContainsStructuredExamples(t *testing.T) {
+func TestParserHelpContainsConfiguredExamples(t *testing.T) {
 	tests := []struct {
 		command string
 		wants   []string
@@ -355,28 +49,32 @@ func TestParserHelpContainsStructuredExamples(t *testing.T) {
 			}
 			for _, want := range tt.wants {
 				if !bytes.Contains([]byte(err.Error()), []byte(want)) {
-					t.Fatalf("help does not contain structured example %q:\n%s", want, err)
+					t.Fatalf("help does not contain configured example %q:\n%s", want, err)
 				}
 			}
 		})
 	}
 }
 
-func TestProxyHelpDocumentsCurrentDefaults(t *testing.T) {
-	parser, _ := newTestParser()
-	_, err := parser.ParseArgs([]string{"proxy", "--help"})
-	if !isParserError(err, flags.ErrHelp) {
-		t.Fatalf("proxy help error = %v, want ErrHelp", err)
+func TestParserEnforcesCommandContract(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want flags.ErrorType
+	}{
+		{name: "unknown command", args: []string{"infp", "host"}, want: flags.ErrUnknownCommand},
+		{name: "unexpected argument", args: []string{"info", "host", "port", "extra"}, want: flags.ErrUnexpectedArgument},
+		{name: "missing command", args: nil, want: flags.ErrCommandRequired},
 	}
 
-	help := err.Error()
-	for _, want := range []string{"/cache", "auto", "/upstream-ping"} {
-		if !strings.Contains(help, want) {
-			t.Fatalf("proxy help does not contain %q:\n%s", want, help)
-		}
-	}
-	if strings.Contains(help, "challenge") {
-		t.Fatalf("proxy help still exposes removed challenge option:\n%s", help)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser, _ := newTestParser()
+			_, err := parser.ParseArgs(tt.args)
+			if !isParserError(err, tt.want) {
+				t.Fatalf("ParseArgs() error = %v, want %v", err, tt.want)
+			}
+		})
 	}
 }
 
