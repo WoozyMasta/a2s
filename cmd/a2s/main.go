@@ -81,7 +81,7 @@ type ClientOptions struct {
 
 // OutputOptions defines output settings for commands that render responses.
 type OutputOptions struct {
-	Format string `short:"f" long:"format" default:"table" choices:"json;table;raw;md;html" description-i18n:"option.format.description"`
+	Format string `short:"f" long:"format" default:"table" choices:"json;table;md;html" description-i18n:"option.format.description"`
 }
 
 // ServerArgs defines positional arguments for server connection.

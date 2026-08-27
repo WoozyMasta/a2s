@@ -111,11 +111,6 @@ func (f *Formatter) PrintTable(t table.Writer) error {
 	case "json":
 		_, _ = fmt.Fprintln(f.out, "{}")
 
-	case "raw":
-		t.Style().Format.Header = text.FormatDefault
-		t.Style().Format.Footer = text.FormatDefault
-		t.Render()
-
 	case "md", "markdown":
 		_, _ = fmt.Fprintln(f.out, t.RenderMarkdown())
 
@@ -155,21 +150,6 @@ func localizeFormatterError(localizer *flags.Localizer, key, fallback string) st
 	}
 
 	return localizer.Localize(key, fallback, nil)
-}
-
-// PrintRaw prints raw data (for rules).
-func (f *Formatter) PrintRaw(data map[string]string) error {
-	if f.format == "json" {
-		return f.PrintJSON(data)
-	}
-
-	rows := make([]table.Row, 0, len(data))
-	for k, v := range data {
-		rows = append(rows, table.Row{k, v})
-	}
-
-	t := f.NewTable(table.Row{"Rule", "Value"}, rows)
-	return f.PrintTable(t)
 }
 
 // ShouldUseJSON returns true if the format is JSON.

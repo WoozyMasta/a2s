@@ -24,7 +24,7 @@ func TestNewFormatterDetectsNoTerminalWidthForNonTTY(t *testing.T) {
 }
 
 func TestNewFormatterDoesNotDetectTerminalWidthForNonTableFormats(t *testing.T) {
-	formats := []string{"json", "raw", "md", "markdown", "html"}
+	formats := []string{"json", "md", "markdown", "html"}
 
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {

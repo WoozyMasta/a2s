@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD024 -->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -81,6 +82,7 @@ and this project adheres to [Semantic Versioning][].
 
 ### Removed
 
+* `CLI` removes the misleading `--format raw` output mode
 * `a2s` removes the ambiguous `Info.ID` field
 * `a2s` removes transport-only `Info.Ping` from the A2S_INFO model and JSON
 * remove the redundant `--skip-info` rules option
