@@ -102,7 +102,7 @@ func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	clientOptions := proxyStartupClientOptions()
-	clientOptions.Timeout = 10 * time.Millisecond
+	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
 	preparation, err := prepareProxyStartup(context.Background(), command, clientOptions)
 	if err != nil {
@@ -125,7 +125,7 @@ func TestPrepareProxyStartupFailsBeforeServingOnInfoError(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, false, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	clientOptions := proxyStartupClientOptions()
-	clientOptions.Timeout = 10 * time.Millisecond
+	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
 	if _, err := prepareProxyStartup(context.Background(), command, clientOptions); err == nil {
 		t.Fatal("prepareProxyStartup() returned nil error for unavailable INFO")
@@ -136,7 +136,7 @@ func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = time.Hour
+	command.TTL = Duration(time.Hour)
 	clientOptions := proxyStartupClientOptions()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -180,9 +180,9 @@ func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"players"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = time.Hour
+	command.TTL = Duration(time.Hour)
 	clientOptions := proxyStartupClientOptions()
-	clientOptions.Timeout = 10 * time.Millisecond
+	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -214,11 +214,11 @@ func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T)
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = 20 * time.Millisecond
-	command.InactiveTTL = 20 * time.Millisecond
+	command.TTL = Duration(20 * time.Millisecond)
+	command.InactiveTTL = Duration(20 * time.Millisecond)
 	command.Retries = 0
 	clientOptions := proxyStartupClientOptions()
-	clientOptions.Timeout = 10 * time.Millisecond
+	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -275,7 +275,7 @@ func proxyStartupCommand(fixture *proxyStartupFixture, cache []string) *ProxyCom
 
 func proxyStartupClientOptions() ClientOptions {
 	return ClientOptions{
-		Timeout: 250 * time.Millisecond,
+		Timeout: Duration(250 * time.Millisecond),
 		Buffer:  8192,
 	}
 }

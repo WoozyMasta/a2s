@@ -56,27 +56,30 @@ type AllCommand struct {
 type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	PingCount  int `short:"c" default:"0" validate-min:"0" long:"ping-count"  description-i18n:"option.ping_count.description"`
-	PingPeriod int `short:"p" default:"1" validate-min:"1" long:"ping-period" description-i18n:"option.ping_period.description"`
+	PingCount  int      `long:"ping-count"  description-i18n:"option.ping_count.description"      short:"c" default:"0" validate-min:"0"`
+	PingPeriod Duration `long:"ping-period" description-i18n:"option.ping_period.description"     short:"p" default:"1s" validate-min:"1"`
+	Query      string   `long:"query"       description-i18n:"option.ping.query.description"      short:"q" default:"info" choices:"info;players;rules"`
+	Compact    bool     `long:"compact"     description-i18n:"option.ping.compact.description"`
+	NoSummary  bool     `long:"no-summary"  description-i18n:"option.ping.no_summary.description"`
 }
 
 // ProxyCommand defines configuration for the cached A2S proxy.
 type ProxyCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	Listen       string        `long:"listen"        description-i18n:"option.proxy.listen.description" required:"true"`
-	Cache        []string      `long:"cache"         description-i18n:"option.proxy.cache.description"         default:"auto" choices:"info;players;rules;auto"`
-	TTL          time.Duration `long:"ttl"           description-i18n:"option.proxy.ttl.description"           default:"15s"  validate-min:"1"`
-	InactiveTTL  time.Duration `long:"inactive-ttl"  description-i18n:"option.proxy.inactive_ttl.description"  default:"0"    validate-min:"0"`
-	Jitter       time.Duration `long:"jitter"        description-i18n:"option.proxy.jitter.description"        default:"1s"   validate-min:"0"`
-	Retries      int           `long:"retries"       description-i18n:"option.proxy.retries.description"       default:"2"    validate-min:"0"`
-	UpstreamPing bool          `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
+	Listen       string   `long:"listen"        description-i18n:"option.proxy.listen.description"        short:"l" required:"true"`
+	Cache        []string `long:"cache"         description-i18n:"option.proxy.cache.description"         short:"c" default:"auto" choices:"info;players;rules;auto"`
+	TTL          Duration `long:"ttl"           description-i18n:"option.proxy.ttl.description"           short:"T" default:"15s"  validate-min:"1"`
+	InactiveTTL  Duration `long:"inactive-ttl"  description-i18n:"option.proxy.inactive_ttl.description"            default:"0"    validate-min:"0"`
+	Jitter       Duration `long:"jitter"        description-i18n:"option.proxy.jitter.description"        short:"j" default:"1s"   validate-min:"0"`
+	Retries      int      `long:"retries"       description-i18n:"option.proxy.retries.description"       short:"r" default:"2"    validate-min:"0"`
+	UpstreamPing bool     `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
 }
 
 // ClientOptions defines network settings shared by all network commands.
 type ClientOptions struct {
-	Timeout time.Duration `short:"t" default:"3s"   validate-min:"1" long:"timeout"     description-i18n:"option.timeout.description"`
-	Buffer  uint16        `short:"b" default:"8192" validate-min:"1" long:"buffer-size" description-i18n:"option.buffer_size.description"`
+	Timeout Duration `short:"t" default:"3s"   validate-min:"1" long:"timeout"     description-i18n:"option.timeout.description"`
+	Buffer  uint16   `short:"b" default:"8192" validate-min:"1" long:"buffer-size" description-i18n:"option.buffer_size.description"`
 }
 
 // OutputOptions defines output settings for commands that render responses.
@@ -249,7 +252,15 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 			flags.Example().
 				Arg("127.0.0.1:27015").
 				Option(&opts.Ping.PingCount, "10").
-				Option(&opts.Ping.PingPeriod, "2"),
+				Option(&opts.Ping.PingPeriod, "2s"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Ping.Compact).
+				Option(&opts.Ping.NoSummary),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Ping.Query, "players").
+				Option(&opts.Ping.Compact),
 		},
 
 		"proxy": {
@@ -268,7 +279,7 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 }
 
 // createClient builds and configures a client from CLI connection options.
-func createClient(host, port string, timeout time.Duration, buffer uint16) (*a2s.Client, error) {
+func createClient(host, port string, timeout Duration, buffer uint16) (*a2s.Client, error) {
 	address, err := normalizeEndpoint(host, port)
 	if err != nil {
 		return nil, err
@@ -276,7 +287,7 @@ func createClient(host, port string, timeout time.Duration, buffer uint16) (*a2s
 
 	options := []a2s.Option{a2s.WithBufferSize(buffer)}
 	if timeout > 0 {
-		options = append(options, a2s.WithTimeout(timeout))
+		options = append(options, a2s.WithTimeout(time.Duration(timeout)))
 	}
 
 	client, err := a2s.NewWithString(address, options...)

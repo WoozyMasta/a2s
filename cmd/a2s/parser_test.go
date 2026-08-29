@@ -33,7 +33,7 @@ func TestParserHelpContainsConfiguredExamples(t *testing.T) {
 			"a2s all 127.0.0.1:27015 --format json",
 		}},
 		{command: "ping", wants: []string{
-			"a2s ping 127.0.0.1:27015 --ping-count 10 --ping-period 2",
+			"a2s ping 127.0.0.1:27015 --ping-count 10 --ping-period 2s",
 		}},
 		{command: "proxy", wants: []string{
 			"a2s proxy 127.0.0.1:27015 --listen :27016",
@@ -92,13 +92,69 @@ func TestParserAppliesCommonClientOptionsBeforeAndAfterCommand(t *testing.T) {
 				t.Fatalf("ParseArgs() error = %v", err)
 			}
 
-			if options.Timeout != 750*time.Millisecond {
+			if time.Duration(options.Timeout) != 750*time.Millisecond {
 				t.Fatalf("timeout = %s, want 750ms", options.Timeout)
 			}
 			if options.Buffer != 16384 {
 				t.Fatalf("buffer = %d, want 16384", options.Buffer)
 			}
 		})
+	}
+}
+
+func TestParserAcceptsPingOutputOptions(t *testing.T) {
+	parser, options := newTestParser()
+	if _, err := parser.ParseArgs([]string{
+		"ping",
+		"host",
+		"--query",
+		"players",
+		"--compact",
+		"--no-summary",
+	}); err != nil {
+		t.Fatalf("ParseArgs() error = %v", err)
+	}
+
+	if !options.Ping.Compact {
+		t.Fatal("compact = false, want true")
+	}
+	if options.Ping.Query != "players" {
+		t.Fatalf("query = %q, want players", options.Ping.Query)
+	}
+	if !options.Ping.NoSummary {
+		t.Fatal("no-summary = false, want true")
+	}
+}
+
+func TestParserAcceptsDurationPingPeriod(t *testing.T) {
+	parser, options := newTestParser()
+	if _, err := parser.ParseArgs([]string{
+		"ping",
+		"host",
+		"--ping-period",
+		"250ms",
+	}); err != nil {
+		t.Fatalf("ParseArgs() error = %v", err)
+	}
+
+	if time.Duration(options.Ping.PingPeriod) != 250*time.Millisecond {
+		t.Fatalf("ping period = %s, want 250ms", options.Ping.PingPeriod)
+	}
+}
+
+func TestParserTreatsBareDurationAsSeconds(t *testing.T) {
+	parser, options := newTestParser()
+	if _, err := parser.ParseArgs([]string{
+		"ping",
+		"host",
+		"--ping-period",
+		"2",
+	}); err != nil {
+		t.Fatalf("ParseArgs() error = %v", err)
+	}
+
+	if time.Duration(options.Ping.PingPeriod) != 2*time.Second {
+		t.Fatalf("ping period = %s, want 2s", options.Ping.PingPeriod)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	proxycache "github.com/woozymasta/a2s/pkg/a2s/proxy"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
@@ -64,9 +65,9 @@ func executeProxyContext(
 		preparation.cache,
 		preparation.pollClient,
 		proxycache.PollerConfig{
-			TTL:         command.TTL,
-			InactiveTTL: command.InactiveTTL,
-			Jitter:      command.Jitter,
+			TTL:         time.Duration(command.TTL),
+			InactiveTTL: time.Duration(command.InactiveTTL),
+			Jitter:      time.Duration(command.Jitter),
 			Retries:     command.Retries,
 			OnStateChange: func(change proxycache.StateChange) {
 				writeProxyStateChange(app, change)

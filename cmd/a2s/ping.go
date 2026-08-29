@@ -4,7 +4,12 @@
 
 package main
 
-import "github.com/woozymasta/a2s/internal/ping"
+import (
+	"time"
+
+	"github.com/woozymasta/a2s/internal/ping"
+	"github.com/woozymasta/a2s/pkg/a2s"
+)
 
 // executePing runs the configured ping loop for one server.
 func executePing(app *Application, cmd *PingCommand, clientOptions ClientOptions) error {
@@ -19,11 +24,34 @@ func executePing(app *Application, cmd *PingCommand, clientOptions ClientOptions
 	}
 	defer closeClient(app, client)
 
-	ping.Start(client, cmd.PingCount, cmd.PingPeriod, ping.Output{
+	ping.Start(client, cmd.PingCount, time.Duration(cmd.PingPeriod), pingQueryType(cmd.Query), ping.Output{
 		Out:      app.Out,
 		Err:      app.Err,
 		Localize: app.localize,
+		LocalizeLabel: func(key, fallback string) string {
+			if app != nil && app.Localizer != nil {
+				return app.Localizer.Localize(key, fallback, nil)
+			}
+			return fallback
+		},
+		Compact:      cmd.Compact,
+		NoSummary:    cmd.NoSummary,
+		FormatGameID: formatAppID,
 	})
 
 	return nil
+}
+
+// pingQueryType converts the CLI query selector to an A2S request type.
+func pingQueryType(query string) a2s.QueryType {
+	switch query {
+	case "players":
+		return a2s.PlayerRequest
+
+	case "rules":
+		return a2s.RulesRequest
+
+	default:
+		return a2s.InfoRequest
+	}
 }

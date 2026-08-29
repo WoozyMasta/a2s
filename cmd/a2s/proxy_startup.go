@@ -92,7 +92,7 @@ func prepareProxyStartup(
 		preparation.pollClient,
 		a2s.InfoRequest,
 		command.Retries,
-		command.Jitter,
+		time.Duration(command.Jitter),
 	)
 	if err != nil {
 		return cleanup(fmt.Errorf("startup INFO probe: %w", err))
@@ -164,7 +164,7 @@ func prepareProxyStartup(
 func newProxyUpstreamClient(address string, clientOptions ClientOptions) (*a2s.Client, error) {
 	options := []a2s.Option{a2s.WithBufferSize(clientOptions.Buffer)}
 	if clientOptions.Timeout > 0 {
-		options = append(options, a2s.WithTimeout(clientOptions.Timeout))
+		options = append(options, a2s.WithTimeout(time.Duration(clientOptions.Timeout)))
 	}
 
 	return a2s.NewWithString(address, options...)

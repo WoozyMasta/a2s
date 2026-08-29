@@ -35,7 +35,7 @@ func TestCommandErrorsAreReturned(t *testing.T) {
 }
 
 func TestCreateClientReturnsError(t *testing.T) {
-	client, err := createClient("", "", 3*time.Second, 8192)
+	client, err := createClient("", "", Duration(3*time.Second), 8192)
 	if err == nil {
 		t.Fatal("createClient() error = nil, want invalid-address error")
 	}
