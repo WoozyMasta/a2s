@@ -56,9 +56,9 @@ type AllCommand struct {
 type PingCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
+	Query      string   `long:"query"       description-i18n:"option.ping.query.description"      short:"q" default:"info" choices:"info;players;rules"`
 	PingCount  int      `long:"ping-count"  description-i18n:"option.ping_count.description"      short:"c" default:"0" validate-min:"0"`
 	PingPeriod Duration `long:"ping-period" description-i18n:"option.ping_period.description"     short:"p" default:"1s" validate-min:"1"`
-	Query      string   `long:"query"       description-i18n:"option.ping.query.description"      short:"q" default:"info" choices:"info;players;rules"`
 	Compact    bool     `long:"compact"     description-i18n:"option.ping.compact.description"`
 	NoSummary  bool     `long:"no-summary"  description-i18n:"option.ping.no_summary.description"`
 }
@@ -186,10 +186,12 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 			flags.CompletionCommand|
 			flags.DocsCommand|
 			flags.VersionFlag|
+			flags.EnvProvisioning|
 			flags.StrictPositionalArgs|
 			flags.ShowRepeatableInHelp,
 	)
 	parser.SetI18n(i18nConfig)
+	parser.SetEnvPrefix("A2S")
 
 	parser.SetVersionInfo(flags.VersionInfo{
 		Version:      version,
