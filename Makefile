@@ -31,16 +31,15 @@ NATIVE_GOARCH     := $(shell $(GO) env GOARCH)
 BUILD_GOOS        ?= $(NATIVE_GOOS)
 BUILD_GOARCH      ?= $(NATIVE_GOARCH)
 BUILD_EXTENSION   := $(if $(filter $(BUILD_GOOS),windows),.exe,)
-VERSION           := $(or $(shell git describe --tags --abbrev=0),v0.0.0)
-COMMIT            := $(or $(shell git rev-parse HEAD),unknown)
+VERSION           := $(shell git describe --tags --abbrev=0 2>/dev/null || printf v0.0.0)
+COMMIT            := $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
 DATE              := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 URL               := https://$(MODULE_PATH)
-CMD_PATH          := $(MODULE_PATH)/cmd/a2s
 LDFLAGS_X         := \
-	-X '$(CMD_PATH).version=$(VERSION)' \
-	-X '$(CMD_PATH).commit=$(COMMIT)' \
-	-X '$(CMD_PATH)._buildTime=$(DATE)' \
-	-X '$(CMD_PATH).repositoryURL=$(URL)'
+	-X 'main.version=$(VERSION)' \
+	-X 'main.commit=$(COMMIT)' \
+	-X 'main._buildTime=$(DATE)' \
+	-X 'main.repositoryURL=$(URL)'
 
 RACE ?= 0
 ifeq ($(RACE),1)
