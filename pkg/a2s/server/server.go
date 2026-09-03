@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"sync"
 	"time"
 
@@ -30,7 +31,7 @@ const DefaultMaxRequestSize = defaultMaxRequestSize
 // the zero value is not ready to serve.
 // Serve does not close an externally supplied PacketConn.
 type Server struct {
-	// Handler is the configured handler wrapped by the challenge gate.
+	// Handler is the configured handler wrapped by outer middleware and the challenge gate.
 	Handler Handler
 
 	packetizer     Packetizer    // Encodes logical responses into UDP datagrams.
@@ -46,6 +47,7 @@ type serverConfig struct {
 	provider       ChallengeProvider // Challenge token issuer and validator.
 	packetizer     Packetizer        // Response packetizer.
 	panicReporter  PanicReporter     // Receives recovered handler panics.
+	middlewares    []Middleware      // Outer request middleware applied before the challenge gate.
 	workers        int               // Fixed worker count.
 	maxRequestSize int               // Maximum accepted request size.
 }
@@ -125,13 +127,37 @@ func New(handler Handler, options ...Option) (*Server, error) {
 		return nil, err
 	}
 
+	wrapped := Handler(gate)
+	for _, v := range slices.Backward(config.middlewares) {
+		wrapped = v(wrapped)
+		if wrapped == nil {
+			return nil, fmt.Errorf("%w: middleware returned nil handler", ErrServer)
+		}
+	}
+
 	return &Server{
-		Handler:        gate,
+		Handler:        wrapped,
 		panicReporter:  config.panicReporter,
 		workers:        config.workers,
 		maxRequestSize: config.maxRequestSize,
 		packetizer:     config.packetizer,
 	}, nil
+}
+
+// WithMiddleware adds outer request middleware in declaration order.
+// The first middleware is outermost and runs before challenge handling.
+func WithMiddleware(middlewares ...Middleware) Option {
+	return func(config *serverConfig) error {
+		for _, middleware := range middlewares {
+			if middleware == nil {
+				return fmt.Errorf("%w: middleware is nil", ErrServer)
+			}
+
+			config.middlewares = append(config.middlewares, middleware)
+		}
+
+		return nil
+	}
 }
 
 // WithPanicReporter configures the callback used for recovered handler panics.
