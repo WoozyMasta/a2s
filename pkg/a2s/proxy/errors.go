@@ -24,4 +24,7 @@ var (
 
 	// ErrHandler identifies invalid proxy handler configuration or use.
 	ErrHandler = errors.New("a2s proxy: handler failure")
+
+	// ErrRateLimit identifies invalid rate limiter configuration or use.
+	ErrRateLimit = errors.New("a2s proxy: rate limit failure")
 )

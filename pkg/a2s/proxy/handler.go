@@ -26,6 +26,7 @@ type Handler struct {
 	cache     *Cache                   // Cache for enabled INFO/PLAYER/RULES queries.
 	relay     Upstream                 // Upstream used for live passthrough.
 	provider  server.ChallengeProvider // Provider shared with the downstream server.
+	relaySem  chan struct{}            // Single-flight gate for live upstream queries.
 	localPing bool                     // Whether obsolete PING wire requests are answered locally.
 }
 
@@ -48,6 +49,7 @@ func NewHandler(cache *Cache, relay Upstream, config HandlerConfig) (*Handler, e
 		cache:     cache,
 		relay:     relay,
 		provider:  config.ChallengeProvider,
+		relaySem:  make(chan struct{}, 1),
 		localPing: config.LocalPing,
 	}, nil
 }
@@ -97,6 +99,13 @@ func (h *Handler) cachedResponse(query a2s.QueryType) (server.Response, error) {
 
 // relayResponse queries upstream and converts expected failures into drops.
 func (h *Handler) relayResponse(ctx context.Context, query a2s.QueryType) (server.Response, error) {
+	select {
+	case h.relaySem <- struct{}{}:
+		defer func() { <-h.relaySem }()
+	default:
+		return nil, server.ErrDrop
+	}
+
 	packet, _, err := h.relay.Query(ctx, query)
 	if err != nil {
 		return nil, server.ErrDrop
