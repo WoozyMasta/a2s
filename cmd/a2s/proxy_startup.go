@@ -91,8 +91,8 @@ func prepareProxyStartup(
 		ctx,
 		preparation.pollClient,
 		a2s.InfoRequest,
-		command.Retries,
-		time.Duration(command.Jitter),
+		command.CacheOptions.Retries,
+		time.Duration(command.CacheOptions.Jitter),
 	)
 	if err != nil {
 		return cleanup(fmt.Errorf("startup INFO probe: %w", err))
@@ -114,7 +114,7 @@ func prepareProxyStartup(
 		preparation.policy = server.LegacyChallengePolicy()
 	}
 
-	selectors, err := proxyCacheQueries(command.Cache)
+	selectors, err := proxyCacheQueries(command.CacheOptions.Cache)
 	if err != nil {
 		return cleanup(err)
 	}

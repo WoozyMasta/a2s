@@ -136,7 +136,7 @@ func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = Duration(time.Hour)
+	command.CacheOptions.TTL = Duration(time.Hour)
 	clientOptions := proxyStartupClientOptions()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -180,7 +180,7 @@ func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"players"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = Duration(time.Hour)
+	command.CacheOptions.TTL = Duration(time.Hour)
 	clientOptions := proxyStartupClientOptions()
 	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
@@ -214,9 +214,9 @@ func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T)
 	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	command.Listen = freeProxyListenAddress(t)
-	command.TTL = Duration(20 * time.Millisecond)
-	command.InactiveTTL = Duration(20 * time.Millisecond)
-	command.Retries = 0
+	command.CacheOptions.TTL = Duration(20 * time.Millisecond)
+	command.CacheOptions.InactiveTTL = Duration(20 * time.Millisecond)
+	command.CacheOptions.Retries = 0
 	clientOptions := proxyStartupClientOptions()
 	clientOptions.Timeout = Duration(10 * time.Millisecond)
 
@@ -268,8 +268,8 @@ func proxyStartupCommand(fixture *proxyStartupFixture, cache []string) *ProxyCom
 			Host: fixture.addr.IP.String(),
 			Port: strconv.Itoa(fixture.addr.Port),
 		},
-		Listen: ":27016",
-		Cache:  cache,
+		Listen:       ":27016",
+		CacheOptions: ProxyCacheOptions{Cache: cache},
 	}
 }
 

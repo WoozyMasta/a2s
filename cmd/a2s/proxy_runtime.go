@@ -65,10 +65,10 @@ func executeProxyContext(
 		preparation.cache,
 		preparation.pollClient,
 		proxycache.PollerConfig{
-			TTL:         time.Duration(command.TTL),
-			InactiveTTL: time.Duration(command.InactiveTTL),
-			Jitter:      time.Duration(command.Jitter),
-			Retries:     command.Retries,
+			TTL:         time.Duration(command.CacheOptions.TTL),
+			InactiveTTL: time.Duration(command.CacheOptions.InactiveTTL),
+			Jitter:      time.Duration(command.CacheOptions.Jitter),
+			Retries:     command.CacheOptions.Retries,
 			OnStateChange: func(change proxycache.StateChange) {
 				writeProxyStateChange(app, change)
 			},
@@ -78,12 +78,29 @@ func executeProxyContext(
 		return app.wrapError("error.proxy_poller", "create proxy poller", err)
 	}
 
-	proxyServer, err := server.New(
-		handler,
+	serverOptions := []server.Option{
 		server.WithChallengeProvider(provider),
 		server.WithChallengePolicy(preparation.policy),
 		server.WithPacketizer(preparation.packetizer),
-	)
+	}
+	if command.RateLimitOptions.RateLimit > 0 || command.RateLimitOptions.RateClientLimit > 0 {
+		limiter, limiterErr := proxycache.NewRateLimiter(proxycache.RateLimitConfig{
+			Global: proxycache.Rate{
+				Requests: command.RateLimitOptions.RateLimit,
+				Window:   time.Duration(command.RateLimitOptions.RateWindow),
+			},
+			Client: proxycache.Rate{
+				Requests: command.RateLimitOptions.RateClientLimit,
+				Window:   time.Duration(command.RateLimitOptions.RateWindow),
+			},
+		})
+		if limiterErr != nil {
+			return app.wrapError("error.proxy_rate_limit", "create proxy rate limiter", limiterErr)
+		}
+		serverOptions = append(serverOptions, server.WithMiddleware(limiter.Middleware()))
+	}
+
+	proxyServer, err := server.New(handler, serverOptions...)
 	if err != nil {
 		return app.wrapError("error.proxy_server", "create proxy server", err)
 	}

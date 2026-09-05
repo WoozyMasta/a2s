@@ -67,13 +67,27 @@ type PingCommand struct {
 type ProxyCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	Listen       string   `long:"listen"        description-i18n:"option.proxy.listen.description"        short:"l" required:"true"`
-	Cache        []string `long:"cache"         description-i18n:"option.proxy.cache.description"         short:"c" default:"auto" choices:"info;players;rules;auto"`
-	TTL          Duration `long:"ttl"           description-i18n:"option.proxy.ttl.description"           short:"T" default:"15s"  validate-min:"1"`
-	InactiveTTL  Duration `long:"inactive-ttl"  description-i18n:"option.proxy.inactive_ttl.description"            default:"0"    validate-min:"0"`
-	Jitter       Duration `long:"jitter"        description-i18n:"option.proxy.jitter.description"        short:"j" default:"1s"   validate-min:"0"`
-	Retries      int      `long:"retries"       description-i18n:"option.proxy.retries.description"       short:"r" default:"2"    validate-min:"0"`
-	UpstreamPing bool     `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
+	Listen string `long:"listen" description-i18n:"option.proxy.listen.description" short:"l" required:"true"`
+
+	CacheOptions     ProxyCacheOptions     `group:"Cache Options"      ini-group:"proxy-cache"      group-i18n:"group.proxy.cache"`
+	RateLimitOptions ProxyRateLimitOptions `group:"Rate Limit Options" ini-group:"proxy-rate-limit" group-i18n:"group.proxy.rate_limit"`
+	UpstreamPing     bool                  `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
+}
+
+// ProxyCacheOptions defines cache refresh and selection settings.
+type ProxyCacheOptions struct {
+	Cache       []string `default:"auto" long:"cache"        description-i18n:"option.proxy.cache.description"        short:"c" choices:"info;players;rules;auto"`
+	TTL         Duration `default:"15s"  long:"ttl"          description-i18n:"option.proxy.ttl.description"          short:"T" validate-min:"1"`
+	InactiveTTL Duration `default:"0"    long:"inactive-ttl" description-i18n:"option.proxy.inactive_ttl.description"           validate-min:"0"`
+	Jitter      Duration `default:"1s"   long:"jitter"       description-i18n:"option.proxy.jitter.description"       short:"j" validate-min:"0"`
+	Retries     int      `default:"2"    long:"retries"      description-i18n:"option.proxy.retries.description"      short:"r" validate-min:"0"`
+}
+
+// ProxyRateLimitOptions defines optional global and per-client request limits.
+type ProxyRateLimitOptions struct {
+	RateLimit       uint32   `default:"0"  validate-min:"0" long:"rate-limit"        description-i18n:"option.proxy.rate_limit.description"`
+	RateClientLimit uint32   `default:"0"  validate-min:"0" long:"rate-client-limit" description-i18n:"option.proxy.rate_client_limit.description"`
+	RateWindow      Duration `default:"1s" validate-min:"0" long:"rate-window"       description-i18n:"option.proxy.rate_window.description"`
 }
 
 // ClientOptions defines network settings shared by all network commands.
@@ -272,10 +286,16 @@ func newParser(opts *Options, i18nConfig flags.I18nConfig) (*flags.Parser, error
 			flags.Example().
 				Arg("127.0.0.1:27015").
 				Option(&opts.Proxy.Listen, ":27016").
-				Option(&opts.Proxy.Cache, "info").
-				Option(&opts.Proxy.Cache, "players").
-				Option(&opts.Proxy.Cache, "rules").
-				Option(&opts.Proxy.TTL, "30s"),
+				Option(&opts.Proxy.CacheOptions.Cache, "info").
+				Option(&opts.Proxy.CacheOptions.Cache, "players").
+				Option(&opts.Proxy.CacheOptions.Cache, "rules").
+				Option(&opts.Proxy.CacheOptions.TTL, "30s"),
+			flags.Example().
+				Arg("127.0.0.1:27015").
+				Option(&opts.Proxy.Listen, ":27016").
+				Option(&opts.Proxy.RateLimitOptions.RateLimit, "1000").
+				Option(&opts.Proxy.RateLimitOptions.RateClientLimit, "30").
+				Option(&opts.Proxy.RateLimitOptions.RateWindow, "1s"),
 		},
 	})
 }

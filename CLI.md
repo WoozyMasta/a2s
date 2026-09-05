@@ -210,7 +210,7 @@ a2s players 127.0.0.1:27015 --format json | jq '.[] | {name, score}'
 
 Run a cached A2S proxy
 
-Expose a cached UDP proxy for an upstream A2S server.
+Expose a cached UDP proxy for an upstream A2S server. Optional rate limits reduce application-level CPU and response traffic abuse; they do not replace host or provider DDoS protection.
 
 **Usage:** `a2s [OPTIONS] proxy [proxy-OPTIONS]`
 
@@ -224,17 +224,34 @@ a2s proxy 127.0.0.1:27015 --listen :27016
 a2s proxy 127.0.0.1:27015 --listen :27016 --cache info --cache players --cache rules --ttl 30s
 ```
 
+```text
+a2s proxy 127.0.0.1:27015 --listen :27016 --rate-limit 1000 --rate-client-limit 30 --rate-window 1s
+```
+
 #### Run a cached A2S proxy
+
+|Option|Description|Environment|Required|
+|---|---|---|---|
+|`-l`, `--listen`|Local UDP endpoint to listen on|`$A2S_LISTEN`|yes|
+|`--upstream-ping`|Forward A2A_PING instead of answering locally|`$A2S_UPSTREAM_PING`|no|
+
+#### Cache Options
 
 |Option|Description|Default|Environment|Required|
 |---|---|---|---|---|
-|`-l`, `--listen`|Local UDP endpoint to listen on||`$A2S_LISTEN`|yes|
 |`-c`, `--cache`|Response types to cache; choices: `info, players, rules, auto`|`auto`|`$A2S_CACHE`|no|
 |`-T`, `--ttl`|Cache refresh interval|`15s`|`$A2S_TTL`|no|
 |`--inactive-ttl`|Inactive cache retry interval (0 = use TTL)|`0`|`$A2S_INACTIVE_TTL`|no|
 |`-j`, `--jitter`|Maximum polling interval jitter|`1s`|`$A2S_JITTER`|no|
 |`-r`, `--retries`|Retries after an upstream refresh failure|`2`|`$A2S_RETRIES`|no|
-|`--upstream-ping`|Forward A2A_PING instead of answering locally||`$A2S_UPSTREAM_PING`|no|
+
+#### Rate Limit Options
+
+|Option|Description|Default|Environment|Required|
+|---|---|---|---|---|
+|`--rate-limit`|Global proxy request limit (0 = disabled)|`0`|`$A2S_RATE_LIMIT`|no|
+|`--rate-client-limit`|Per-client proxy request limit (0 = disabled)|`0`|`$A2S_RATE_CLIENT_LIMIT`|no|
+|`--rate-window`|Rate limit window|`1s`|`$A2S_RATE_WINDOW`|no|
 
 #### Arguments
 

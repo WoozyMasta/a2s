@@ -38,6 +38,7 @@ func TestParserHelpContainsConfiguredExamples(t *testing.T) {
 		{command: "proxy", wants: []string{
 			"a2s proxy 127.0.0.1:27015 --listen :27016",
 			"a2s proxy 127.0.0.1:27015 --listen :27016 --cache info --cache players --cache rules --ttl 30s",
+			"a2s proxy 127.0.0.1:27015 --listen :27016 --rate-limit 1000 --rate-client-limit 30 --rate-window 1s",
 		}},
 	}
 
@@ -158,6 +159,34 @@ func TestParserTreatsBareDurationAsSeconds(t *testing.T) {
 	}
 }
 
+func TestParserAcceptsProxyRateLimits(t *testing.T) {
+	parser, options := newTestParser()
+	if _, err := parser.ParseArgs([]string{
+		"proxy",
+		"host",
+		"--listen",
+		":27016",
+		"--rate-limit",
+		"1000",
+		"--rate-client-limit",
+		"30",
+		"--rate-window",
+		"250ms",
+	}); err != nil {
+		t.Fatalf("ParseArgs() error = %v", err)
+	}
+
+	if options.Proxy.RateLimitOptions.RateLimit != 1000 {
+		t.Fatalf("rate limit = %d, want 1000", options.Proxy.RateLimitOptions.RateLimit)
+	}
+	if options.Proxy.RateLimitOptions.RateClientLimit != 30 {
+		t.Fatalf("client rate limit = %d, want 30", options.Proxy.RateLimitOptions.RateClientLimit)
+	}
+	if time.Duration(options.Proxy.RateLimitOptions.RateWindow) != 250*time.Millisecond {
+		t.Fatalf("rate window = %s, want 250ms", options.Proxy.RateLimitOptions.RateWindow)
+	}
+}
+
 func TestValidateProxyCommand(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -176,18 +205,27 @@ func TestValidateProxyCommand(t *testing.T) {
 		{
 			name: "deduplicates concrete values",
 			command: ProxyCommand{
-				Args:   ServerArgs{Host: "127.0.0.1:27015"},
-				Listen: ":27016",
-				Cache:  []string{"info", "rules", "info"},
+				Args:         ServerArgs{Host: "127.0.0.1:27015"},
+				Listen:       ":27016",
+				CacheOptions: ProxyCacheOptions{Cache: []string{"info", "rules", "info"}},
 			},
 			want: []string{"info", "rules"},
 		},
 		{
+			name: "rate limiting requires a positive window",
+			command: ProxyCommand{
+				Args:             ServerArgs{Host: "127.0.0.1:27015"},
+				Listen:           ":27016",
+				RateLimitOptions: ProxyRateLimitOptions{RateClientLimit: 30},
+			},
+			wantErr: "rate window must be positive",
+		},
+		{
 			name: "auto selector cannot be combined",
 			command: ProxyCommand{
-				Args:   ServerArgs{Host: "127.0.0.1:27015"},
-				Listen: ":27016",
-				Cache:  []string{"auto", "rules"},
+				Args:         ServerArgs{Host: "127.0.0.1:27015"},
+				Listen:       ":27016",
+				CacheOptions: ProxyCacheOptions{Cache: []string{"auto", "rules"}},
 			},
 			wantErr: `cache selector "auto" cannot be combined with other values`,
 		},
@@ -221,8 +259,8 @@ func TestValidateProxyCommand(t *testing.T) {
 			if err != nil {
 				t.Fatalf("validateProxyCommand() error = %v", err)
 			}
-			if strings.Join(tt.command.Cache, ",") != strings.Join(tt.want, ",") {
-				t.Fatalf("cache = %v, want %v", tt.command.Cache, tt.want)
+			if strings.Join(tt.command.CacheOptions.Cache, ",") != strings.Join(tt.want, ",") {
+				t.Fatalf("cache = %v, want %v", tt.command.CacheOptions.Cache, tt.want)
 			}
 		})
 	}

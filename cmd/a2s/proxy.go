@@ -34,12 +34,15 @@ func validateProxyCommand(command *ProxyCommand) error {
 		return err
 	}
 
-	cache, err := normalizeProxyCache(command.Cache)
+	cache, err := normalizeProxyCache(command.CacheOptions.Cache)
 	if err != nil {
 		return err
 	}
+	if (command.RateLimitOptions.RateLimit > 0 || command.RateLimitOptions.RateClientLimit > 0) && command.RateLimitOptions.RateWindow <= 0 {
+		return errors.New("rate window must be positive when rate limiting is enabled")
+	}
 
-	command.Cache = cache
+	command.CacheOptions.Cache = cache
 	return nil
 }
 
