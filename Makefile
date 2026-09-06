@@ -16,7 +16,7 @@ VULNCHECK         ?= govulncheck
 VULNCHECK_VERSION ?= v1.8.0
 WINRES            ?= go-winres
 WINRES_VERSION    ?= v0.3.3
-WINRES_OUT        ?= ./cmd/a2s/rsrc
+WINRES_OUT        ?= ./cmd/$(BINARY)/rsrc
 BENCHSTAT         ?= benchstat
 RUMDL             ?= rumdl
 
@@ -109,7 +109,7 @@ release: clean winres
 .PHONY: check ci
 
 check: verify tidy fmt vet vulncheck lint-fix align-fix test-short test-race-short generate-docs markdown-lint
-ci: download generate-check tools-ci verify tidy-check fmt-check vet vulncheck lint align test-short test-race-short
+ci: download generate-check tools-ci verify tidy-check fmt-check vet vulncheck lint align test-short
 
 .PHONY: test test-short test-race test-race-short fuzz
 
