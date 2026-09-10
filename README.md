@@ -4,10 +4,10 @@
 <!-- markdownlint-disable-next-line MD033 -->
 <img src="winres/icon64.png" alt="A2S Logo" align="left" width="64">
 
-Powerful command-line utility and Go packages for querying Steam A2S
-server information.
-Built with specific support for Arma 3 and DayZ, this tool provides a
-seamless way to retrieve essential server data.
+Powerful command-line utility and Go packages
+for querying Steam A2S server information.
+Built with specific support for Arma 3 and DayZ,
+this tool provides a seamless way to retrieve essential server data.
 
 <!-- markdownlint-disable-next-line MD033 -->
 ## Description <br clear="right"/>
@@ -24,10 +24,11 @@ A2S supports querying Steam servers using the following methods:
 * `A2A_PING`: Measure the ping time to the server for latency insights.
   _(only package)_
 
-Additionally, this tool features an extension for the Arma 3 Server Browser
-Protocol (A3SBP). This extension overrides the standard `GetRules()` method,
-enabling compatibility with the unique protocol used by Arma 3's server
-browser.
+Additionally, this tool features an extension
+for the Arma 3 Server Browser Protocol (A3SBP).
+This extension overrides the standard `GetRules()` method,
+enabling compatibility with the unique protocol
+used by Arma 3's server browser.
 
 ## CLI Installation
 
@@ -47,10 +48,17 @@ chmod +x /usr/bin/a2s
 a2s -h && a2s -v
 ```
 
+## Container images
+
+```sh
+docker run --rm -ti ghcr.io/woozymasta/a2s:latest info host:port
+docker run --rm -ti docker.io/woozymasta/a2s:latest info host:port
+```
+
 ## A2S CLI
 
-Command-line utility for querying Steam A2S server information with support
-for Arma 3 and DayZ servers.
+Command-line utility for querying Steam A2S server information
+with support for Arma 3 and DayZ servers.
 
 The utility supports the following commands:
 
@@ -70,9 +78,9 @@ use external NAT or selective packet steering;
 The proxy does not configure firewall, NAT,
 container, or operating-system rules.
 
-## Package
+## Packages
 
-### A2S
+### A2S Packages
 
 Example of use:
 
@@ -103,7 +111,7 @@ if err != nil {
 * `github.com/woozymasta/a2s.GetChallenge()` -> `A2S_SERVERQUERY_GETCHALLENGE`
 * `github.com/woozymasta/a2s.GetPing()` -> `A2A_PING`
 
-### A3SB
+### A3SB Packages
 
 Example of use:
 
@@ -117,7 +125,8 @@ defer client.Close()
 // Wrap client
 a3Client := &a3sb.Client{Client: client}
 
-// Game id must be passed as the second argument to properly read the Arma 3 or Dayz rules
+// Game id must be passed as the second argument
+// to properly read the Arma 3 or Dayz rules
 rules, err := a3Client.GetRules(221100)
 if err != nil {
   panic(err)
@@ -132,7 +141,8 @@ if err != nil {
 
 ## Protocol Documentation
 
-For a deeper understanding of the protocols used, refer to the official documentation:
+For a deeper understanding of the protocols used,
+refer to the official documentation:
 
 * [Steam Server Queries][]
 * [Arma 3 Server Browser Protocol v3][]
