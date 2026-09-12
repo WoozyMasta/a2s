@@ -14,6 +14,10 @@ import (
 	"github.com/woozymasta/a2s/pkg/a2s/server"
 )
 
+// DefaultMaxClients bounds tracked per-client identities
+// when the client limiter is enabled without an explicit maximum.
+const DefaultMaxClients uint32 = 1024
+
 // Rate defines a token-bucket request limit over a time window.
 // Requests set to zero disable the limit.
 type Rate struct {
@@ -29,6 +33,10 @@ type RateLimitConfig struct {
 	Global Rate
 	// Client limits requests for each IPv4 address or IPv6 /64 prefix.
 	Client Rate
+	// MaxClients bounds tracked client identities.
+	// Zero uses DefaultMaxClients when Client is enabled
+	// and is ignored when the client limit is disabled.
+	MaxClients uint32
 }
 
 // RateLimiter limits decoded downstream requests before challenge handling.
@@ -40,6 +48,7 @@ type RateLimiter struct {
 	global        tokenBucket
 	globalRate    Rate
 	clientRate    Rate
+	maxClients    uint32
 	mu            sync.Mutex
 	globalEnabled bool
 }
@@ -85,6 +94,12 @@ func newRateLimiter(config RateLimitConfig, now func() time.Time) (*RateLimiter,
 		clients:    make(map[clientKey]*clientBucket),
 		now:        now,
 	}
+	if config.Client.Requests > 0 {
+		limiter.maxClients = config.MaxClients
+		if limiter.maxClients == 0 {
+			limiter.maxClients = DefaultMaxClients
+		}
+	}
 	if config.Global.Requests > 0 {
 		limiter.global = newTokenBucket(config.Global, now())
 		limiter.globalEnabled = true
@@ -113,39 +128,69 @@ func (l *RateLimiter) Middleware() server.Middleware {
 	}
 }
 
-// allow consumes global and per-client tokens in that order.
+// allow admits a request only when both configured buckets have a token.
+// Token consumption is committed only after both checks succeed.
 func (l *RateLimiter) allow(address netip.Addr) bool {
 	now := l.now()
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.globalEnabled && !l.global.allow(now, l.globalRate) {
-		return false
+	if l.globalEnabled {
+		l.global.refill(now, l.globalRate)
+		if !l.global.available() {
+			return false
+		}
 	}
 	if l.clientRate.Requests == 0 {
+		if l.globalEnabled {
+			l.global.consume()
+		}
 		return true
 	}
 
 	key := makeClientKey(address)
 	state, ok := l.clients[key]
 	if !ok {
-		l.cleanupClients(now)
-		state = &clientBucket{
-			bucket:   newTokenBucket(l.clientRate, now),
-			lastSeen: now,
+		l.cleanupClients(now, false)
+		if uint64(len(l.clients)) >= uint64(l.maxClients) {
+			l.cleanupClients(now, true)
+			if uint64(len(l.clients)) >= uint64(l.maxClients) {
+				return false
+			}
 		}
-		l.clients[key] = state
-	} else {
-		state.lastSeen = now
+
+		candidate := newTokenBucket(l.clientRate, now)
+		if !candidate.available() {
+			return false
+		}
+	
+		candidate.consume()
+		if l.globalEnabled {
+			l.global.consume()
+		}
+		l.clients[key] = &clientBucket{bucket: candidate, lastSeen: now}
+		return true
 	}
 
-	return state.bucket.allow(now, l.clientRate)
+	state.lastSeen = now
+	state.bucket.refill(now, l.clientRate)
+	if !state.bucket.available() {
+		return false
+	}
+
+	state.bucket.consume()
+	if l.globalEnabled {
+		l.global.consume()
+	}
+
+	return true
 }
 
 // cleanupClients removes clients idle for approximately two client windows.
-func (l *RateLimiter) cleanupClients(now time.Time) {
-	if !l.nextCleanup.IsZero() && now.Before(l.nextCleanup) {
+// Forced cleanup is used when the configured client-state bound is full.
+func (l *RateLimiter) cleanupClients(now time.Time, force bool) {
+	if !force && !l.nextCleanup.IsZero() && now.Before(l.nextCleanup) {
 		return
 	}
 
@@ -180,8 +225,8 @@ func newTokenBucket(rate Rate, now time.Time) tokenBucket {
 	}
 }
 
-// allow refills and consumes one token when available.
-func (b *tokenBucket) allow(now time.Time, rate Rate) bool {
+// refill adds tokens earned since the last bucket update.
+func (b *tokenBucket) refill(now time.Time, rate Rate) {
 	if elapsed := now.Sub(b.updatedAt); elapsed > 0 {
 		refill := float64(elapsed) / float64(rate.Window) * float64(rate.Requests)
 		b.tokens += refill
@@ -190,12 +235,16 @@ func (b *tokenBucket) allow(now time.Time, rate Rate) bool {
 		}
 		b.updatedAt = now
 	}
-	if b.tokens < 1 {
-		return false
-	}
+}
 
+// available reports whether the bucket can admit one request.
+func (b *tokenBucket) available() bool {
+	return b.tokens >= 1
+}
+
+// consume commits one previously checked token.
+func (b *tokenBucket) consume() {
 	b.tokens--
-	return true
 }
 
 // validateRate validates only enabled limits.

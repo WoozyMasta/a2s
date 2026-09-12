@@ -83,6 +83,26 @@ func TestRateLimiterGlobalAllowance(t *testing.T) {
 	}
 }
 
+func TestRateLimiterClientRejectionDoesNotConsumeGlobalToken(t *testing.T) {
+	now := time.Unix(100, 0)
+	limiter := mustTestRateLimiter(t, RateLimitConfig{
+		Global: Rate{Requests: 2, Window: time.Second},
+		Client: Rate{Requests: 1, Window: time.Second},
+	}, &now)
+
+	first := netip.MustParseAddr("192.0.2.1")
+	second := netip.MustParseAddr("192.0.2.2")
+	if !limiter.allow(first) {
+		t.Fatal("first client request was not allowed")
+	}
+	if limiter.allow(first) {
+		t.Fatal("client exceeded its limit")
+	}
+	if !limiter.allow(second) {
+		t.Fatal("second client was blocked by a rejected first-client request")
+	}
+}
+
 func TestRateLimiterClientUsesIPv4AddressWithoutPort(t *testing.T) {
 	now := time.Unix(100, 0)
 	limiter := mustTestRateLimiter(t, RateLimitConfig{
@@ -195,6 +215,46 @@ func TestRateLimiterGlobalAdmissionBoundsClientState(t *testing.T) {
 	}
 	if got := len(limiter.clients); got != 2 {
 		t.Fatalf("client state size = %d, want 2 admitted clients", got)
+	}
+}
+
+func TestRateLimiterMaxClientsBoundsPerClientState(t *testing.T) {
+	now := time.Unix(100, 0)
+	limiter := mustTestRateLimiter(t, RateLimitConfig{
+		Client:     Rate{Requests: 1, Window: time.Second},
+		MaxClients: 2,
+	}, &now)
+
+	if !limiter.allow(testIPv4(1)) || !limiter.allow(testIPv4(2)) {
+		t.Fatal("initial clients were not admitted")
+	}
+	if limiter.allow(testIPv4(3)) {
+		t.Fatal("new client was admitted past MaxClients")
+	}
+	if got := len(limiter.clients); got != 2 {
+		t.Fatalf("client state size = %d, want 2", got)
+	}
+}
+
+func TestRateLimiterExpiredClientsFreeBoundedState(t *testing.T) {
+	now := time.Unix(100, 0)
+	limiter := mustTestRateLimiter(t, RateLimitConfig{
+		Client:     Rate{Requests: 1, Window: time.Second},
+		MaxClients: 1,
+	}, &now)
+
+	if !limiter.allow(testIPv4(1)) {
+		t.Fatal("first client was not admitted")
+	}
+	now = now.Add(3 * time.Second)
+	if !limiter.allow(testIPv4(2)) {
+		t.Fatal("new client did not replace expired state")
+	}
+	if got := len(limiter.clients); got != 1 {
+		t.Fatalf("client state size = %d, want 1", got)
+	}
+	if _, ok := limiter.clients[makeClientKey(testIPv4(1))]; ok {
+		t.Fatal("expired client state was retained")
 	}
 }
 
