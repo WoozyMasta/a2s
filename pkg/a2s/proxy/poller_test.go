@@ -130,7 +130,7 @@ func TestPollerRefreshesColdCacheImmediately(t *testing.T) {
 
 func TestPollerRefreshesActiveCacheAfterTTL(t *testing.T) {
 	cache := mustCache(t, a2s.InfoRequest)
-	if err := cache.Store(a2s.InfoRequest, infoPacket(), time.Time{}); err != nil {
+	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
@@ -168,7 +168,7 @@ func TestPollerRefreshesActiveCacheAfterTTL(t *testing.T) {
 func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
 	cache := mustCache(t, a2s.InfoRequest)
 	old := infoPacket()
-	if err := cache.Store(a2s.InfoRequest, old, time.Time{}); err != nil {
+	if err := cache.Store(a2s.InfoRequest, old); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
@@ -215,7 +215,7 @@ func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
 
 func TestPollerExhaustedRetriesInvalidateEntry(t *testing.T) {
 	cache := mustCache(t, a2s.InfoRequest)
-	if err := cache.Store(a2s.InfoRequest, infoPacket(), time.Time{}); err != nil {
+	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 

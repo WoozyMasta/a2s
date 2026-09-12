@@ -164,7 +164,7 @@ func (l *RateLimiter) allow(address netip.Addr) bool {
 		if !candidate.available() {
 			return false
 		}
-	
+
 		candidate.consume()
 		if l.globalEnabled {
 			l.global.consume()

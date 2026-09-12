@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
@@ -33,11 +32,10 @@ type cacheSnapshot struct {
 	entries [cacheableQueryCount]cacheEntry // Independent state for each cacheable query.
 }
 
-// cacheEntry contains one response and its validity metadata.
+// cacheEntry contains one response and its validity state.
 type cacheEntry struct {
-	updatedAt time.Time  // Time at which packet was obtained upstream.
-	packet    a2s.Packet // Cached logical response packet.
-	valid     bool       // Whether packet may be served.
+	packet a2s.Packet // Cached logical response packet.
+	valid  bool       // Whether packet may be served.
 }
 
 // NewCache creates a cache with the supplied INFO, PLAYER, and RULES entries enabled.
@@ -72,7 +70,7 @@ func (c *Cache) Enabled(query a2s.QueryType) bool {
 // The packet payload is cloned before publication.
 // The response type must match the query type
 // so a cache entry cannot be served for the wrong query.
-func (c *Cache) Store(query a2s.QueryType, packet a2s.Packet, updatedAt time.Time) error {
+func (c *Cache) Store(query a2s.QueryType, packet a2s.Packet) error {
 	index, err := c.enabledIndex(query)
 	if err != nil {
 		return err
@@ -86,9 +84,8 @@ func (c *Cache) Store(query a2s.QueryType, packet a2s.Packet, updatedAt time.Tim
 
 	next := cloneSnapshot(c.state.Load())
 	next.entries[index] = cacheEntry{
-		packet:    clonePacket(packet),
-		updatedAt: updatedAt,
-		valid:     true,
+		packet: clonePacket(packet),
+		valid:  true,
 	}
 	c.state.Store(next)
 

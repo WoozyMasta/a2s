@@ -152,7 +152,7 @@ func prepareProxyStartup(
 		if !cache.Enabled(query) {
 			continue
 		}
-		if err := cache.Store(query, packet, time.Now()); err != nil {
+		if err := cache.Store(query, packet); err != nil {
 			return cleanup(fmt.Errorf("seed %s cache: %w", proxyQueryName(query), err))
 		}
 	}

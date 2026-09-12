@@ -96,7 +96,7 @@ func BenchmarkCachePublication(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for b.Loop() {
-			if err := cache.Store(a2s.InfoRequest, packet, time.Now()); err != nil {
+			if err := cache.Store(a2s.InfoRequest, packet); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -179,7 +179,7 @@ func benchmarkCache(b *testing.B, query a2s.QueryType, payload []byte) *Cache {
 	if query == a2s.PlayerRequest {
 		response = a2s.ResponsePlayers
 	}
-	if err := cache.Store(query, a2s.Packet{Type: response, Payload: payload}, time.Now()); err != nil {
+	if err := cache.Store(query, a2s.Packet{Type: response, Payload: payload}); err != nil {
 		b.Fatalf("Store() error = %v", err)
 	}
 

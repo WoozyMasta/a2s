@@ -157,7 +157,7 @@ func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) {
 		}
 
 		if err == nil {
-			if err := p.cache.Store(query, packet, time.Now()); err != nil {
+			if err := p.cache.Store(query, packet); err != nil {
 				return
 			}
 			active = true
@@ -178,7 +178,7 @@ func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) {
 			}
 
 			if err == nil {
-				if err := p.cache.Store(query, packet, time.Now()); err != nil {
+				if err := p.cache.Store(query, packet); err != nil {
 					return
 				}
 				continue
@@ -199,7 +199,7 @@ func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) {
 		}
 
 		if err == nil {
-			if err := p.cache.Store(query, packet, time.Now()); err != nil {
+			if err := p.cache.Store(query, packet); err != nil {
 				return
 			}
 

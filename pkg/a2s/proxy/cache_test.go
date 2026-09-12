@@ -9,7 +9,6 @@ import (
 	"errors"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 )
@@ -49,7 +48,7 @@ func TestCacheStoreAndLoadOwnPayload(t *testing.T) {
 	if err := cache.Store(a2s.InfoRequest, a2s.Packet{
 		Type:    a2s.ResponseInfo,
 		Payload: payload,
-	}, time.Unix(42, 0)); err != nil {
+	}); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
@@ -81,7 +80,7 @@ func TestCacheLoadReturnsOnlyValidEntries(t *testing.T) {
 	if _, ok := cache.Load(a2s.InfoRequest); ok {
 		t.Fatal("empty cache returned an INFO entry")
 	}
-	if err := cache.Store(a2s.InfoRequest, infoPacket(), time.Time{}); err != nil {
+	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store(INFO) error = %v", err)
 	}
 	if err := cache.Invalidate(a2s.InfoRequest); err != nil {
@@ -101,13 +100,13 @@ func TestCacheEntriesAreIndependent(t *testing.T) {
 		t.Fatalf("NewCache() error = %v", err)
 	}
 
-	if err := cache.Store(a2s.InfoRequest, infoPacket(), time.Time{}); err != nil {
+	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store(INFO) error = %v", err)
 	}
 	if err := cache.Store(a2s.PlayerRequest, a2s.Packet{
 		Type:    a2s.ResponsePlayers,
 		Payload: []byte("players"),
-	}, time.Time{}); err != nil {
+	}); err != nil {
 		t.Fatalf("Store(PLAYER) error = %v", err)
 	}
 	if err := cache.Invalidate(a2s.InfoRequest); err != nil {
@@ -128,10 +127,10 @@ func TestCacheRejectsDisabledAndMismatchedPackets(t *testing.T) {
 		t.Fatalf("NewCache() error = %v", err)
 	}
 
-	if err := cache.Store(a2s.PlayerRequest, a2s.Packet{Type: a2s.ResponsePlayers}, time.Time{}); !errors.Is(err, ErrCacheDisabled) {
+	if err := cache.Store(a2s.PlayerRequest, a2s.Packet{Type: a2s.ResponsePlayers}); !errors.Is(err, ErrCacheDisabled) {
 		t.Fatalf("Store(disabled) error = %v, want ErrCacheDisabled", err)
 	}
-	if err := cache.Store(a2s.InfoRequest, a2s.Packet{Type: a2s.ResponseRules}, time.Time{}); !errors.Is(err, ErrCachePacket) {
+	if err := cache.Store(a2s.InfoRequest, a2s.Packet{Type: a2s.ResponseRules}); !errors.Is(err, ErrCachePacket) {
 		t.Fatalf("Store(mismatched) error = %v, want ErrCachePacket", err)
 	}
 	if err := cache.Invalidate(a2s.PingRequest); !errors.Is(err, ErrCacheQuery) {
@@ -155,7 +154,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 				Payload: []byte{byte(i)},
 			}
 			for j := 0; j < 100; j++ {
-				if err := cache.Store(a2s.InfoRequest, packet, time.Time{}); err != nil {
+				if err := cache.Store(a2s.InfoRequest, packet); err != nil {
 					t.Errorf("Store() error = %v", err)
 					return
 				}

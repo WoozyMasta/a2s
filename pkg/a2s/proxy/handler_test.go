@@ -10,7 +10,6 @@ import (
 	"net/netip"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
@@ -59,7 +58,7 @@ func TestHandlerServesCachedQueriesWithoutRelay(t *testing.T) {
 			if err := cache.Store(test.query, a2s.Packet{
 				Type:    test.response,
 				Payload: test.payload,
-			}, time.Time{}); err != nil {
+			}); err != nil {
 				t.Fatalf("Store() error = %v", err)
 			}
 			relay := &handlerUpstream{}

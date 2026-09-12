@@ -36,7 +36,7 @@ func TestProxyCachedRulesRoundTripAvoidsRelay(t *testing.T) {
 	}
 
 	cache := mustCache(t, a2s.RulesRequest)
-	if err := cache.Store(a2s.RulesRequest, cached, time.Now()); err != nil {
+	if err := cache.Store(a2s.RulesRequest, cached); err != nil {
 		t.Fatalf("cache.Store() error = %v", err)
 	}
 
@@ -229,7 +229,7 @@ func TestProxyPacketResponsePreservesSourceAndGoldSourceLogicalPackets(t *testin
 			if err := cache.Store(a2s.InfoRequest, a2s.Packet{
 				Type:    test.response,
 				Payload: payload,
-			}, time.Now()); err != nil {
+			}); err != nil {
 				t.Fatalf("cache.Store() error = %v", err)
 			}
 

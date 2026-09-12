@@ -107,7 +107,7 @@ func TestRateLimiterLocalUDPCachedLargeResponseFlood(t *testing.T) {
 	if err := cache.Store(a2s.RulesRequest, a2s.Packet{
 		Type:    a2s.ResponseRules,
 		Payload: payload,
-	}, time.Now()); err != nil {
+	}); err != nil {
 		t.Fatalf("cache.Store() error = %v", err)
 	}
 	relay := &handlerUpstream{}
@@ -147,7 +147,7 @@ func TestRateLimiterPreservesCachedAndLocalResponsesDuringRelay(t *testing.T) {
 	if err := cache.Store(a2s.InfoRequest, a2s.Packet{
 		Type:    a2s.ResponseInfo,
 		Payload: []byte("cached info"),
-	}, time.Now()); err != nil {
+	}); err != nil {
 		t.Fatalf("cache.Store() error = %v", err)
 	}
 	handler := mustHandler(t, cache, relay, true)
