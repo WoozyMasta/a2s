@@ -6,6 +6,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -32,6 +33,7 @@ type Upstream interface {
 // PollerConfig configures refresh timing and state notifications.
 type PollerConfig struct {
 	// OnStateChange receives inactive and recovered transitions.
+	// The callback may be called concurrently and must return promptly.
 	OnStateChange func(StateChange)
 	// TTL is the delay between refreshes while a query is active.
 	TTL time.Duration
@@ -128,6 +130,9 @@ func (p *Poller) Run(ctx context.Context) error {
 		p.runMu.Unlock()
 	}()
 
+	runCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+
 	var group sync.WaitGroup
 	for _, query := range cacheableQueries {
 		if !p.cache.Enabled(query) {
@@ -135,16 +140,24 @@ func (p *Poller) Run(ctx context.Context) error {
 		}
 
 		group.Go(func() {
-			p.runQuery(ctx, query)
+			if err := p.runQuery(runCtx, query); err != nil {
+				cancel(err)
+			}
 		})
 	}
 	group.Wait()
+
+	if cause := context.Cause(runCtx); cause != nil &&
+		!errors.Is(cause, context.Canceled) &&
+		!errors.Is(cause, context.DeadlineExceeded) {
+		return cause
+	}
 
 	return nil
 }
 
 // runQuery owns the independent lifecycle of one cacheable query.
-func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) {
+func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) error {
 	active := false
 	if _, ok := p.cache.Load(query); ok {
 		active = true
@@ -153,54 +166,58 @@ func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) {
 	if !active {
 		packet, err := p.refresh(ctx, query)
 		if ctx.Err() != nil {
-			return
+			return ctx.Err()
 		}
 
 		if err == nil {
 			if err := p.cache.Store(query, packet); err != nil {
-				return
+				return fmt.Errorf("store cache for query 0x%X: %w", query, err)
 			}
 			active = true
 		} else {
-			p.markInactive(query, err)
+			if invalidateErr := p.markInactive(query, err); invalidateErr != nil {
+				return fmt.Errorf("invalidate cache for query 0x%X: %w", query, invalidateErr)
+			}
 		}
 	}
 
 	for {
 		if active {
 			if !p.wait(ctx, p.delay(p.config.TTL)) {
-				return
+				return nil
 			}
 
 			packet, err := p.refresh(ctx, query)
 			if ctx.Err() != nil {
-				return
+				return ctx.Err()
 			}
 
 			if err == nil {
 				if err := p.cache.Store(query, packet); err != nil {
-					return
+					return fmt.Errorf("store cache for query 0x%X: %w", query, err)
 				}
 				continue
 			}
 
-			p.markInactive(query, err)
+			if invalidateErr := p.markInactive(query, err); invalidateErr != nil {
+				return fmt.Errorf("invalidate cache for query 0x%X: %w", query, invalidateErr)
+			}
 			active = false
 			continue
 		}
 
 		if !p.wait(ctx, p.delay(p.config.InactiveTTL)) {
-			return
+			return nil
 		}
 
 		packet, _, err := p.upstream.Query(ctx, query)
 		if ctx.Err() != nil {
-			return
+			return ctx.Err()
 		}
 
 		if err == nil {
 			if err := p.cache.Store(query, packet); err != nil {
-				return
+				return fmt.Errorf("store cache for query 0x%X: %w", query, err)
 			}
 
 			p.notify(StateChange{Query: query, Active: true})
@@ -233,9 +250,13 @@ func (p *Poller) refresh(ctx context.Context, query a2s.QueryType) (a2s.Packet, 
 }
 
 // markInactive invalidates one cache entry and reports its failure transition.
-func (p *Poller) markInactive(query a2s.QueryType, err error) {
-	_ = p.cache.Invalidate(query)
+func (p *Poller) markInactive(query a2s.QueryType, err error) error {
+	if invalidateErr := p.cache.Invalidate(query); invalidateErr != nil {
+		return invalidateErr
+	}
+
 	p.notify(StateChange{Query: query, Err: err})
+	return nil
 }
 
 // notify sends a state transition when a callback is configured.

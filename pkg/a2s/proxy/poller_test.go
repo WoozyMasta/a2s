@@ -336,6 +336,49 @@ func TestPollerTreatsDeadlineAsRuntimeState(t *testing.T) {
 	}
 }
 
+func TestPollerReportsStoreInvariantError(t *testing.T) {
+	cache := mustCache(t, a2s.InfoRequest)
+	upstream := &pollerUpstream{fn: func(a2s.QueryType, int) (a2s.Packet, error) {
+		return a2s.Packet{Type: a2s.ResponseRules}, nil
+	}}
+	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: time.Minute})
+
+	err := poller.Run(context.Background())
+	if !errors.Is(err, ErrCachePacket) {
+		t.Fatalf("Run() error = %v, want ErrCachePacket", err)
+	}
+}
+
+func TestPollerFatalErrorCancelsSiblingQueries(t *testing.T) {
+	cache := mustCache(t, a2s.InfoRequest, a2s.PlayerRequest)
+	upstream := &fatalPollerUpstream{
+		playerStarted: make(chan struct{}),
+		playerStopped: make(chan struct{}),
+	}
+	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: time.Minute})
+
+	err := poller.Run(context.Background())
+	if !errors.Is(err, ErrCachePacket) {
+		t.Fatalf("Run() error = %v, want ErrCachePacket", err)
+	}
+	select {
+	case <-upstream.playerStopped:
+	default:
+		t.Fatal("fatal poller error did not cancel sibling query")
+	}
+}
+
+func TestPollerMarkInactiveReportsCacheError(t *testing.T) {
+	poller := mustPoller(t, mustCache(t, a2s.InfoRequest), &pollerUpstream{}, PollerConfig{
+		TTL: time.Minute,
+	})
+
+	err := poller.markInactive(a2s.PingRequest, errors.New("offline"))
+	if !errors.Is(err, ErrCacheQuery) {
+		t.Fatalf("markInactive() error = %v, want ErrCacheQuery", err)
+	}
+}
+
 func TestPollerCancellationInterruptsUpstreamQuery(t *testing.T) {
 	cache := mustCache(t, a2s.InfoRequest)
 	upstream := &blockingPollerUpstream{started: make(chan struct{})}
@@ -433,4 +476,27 @@ func (u *blockingPollerUpstream) Query(ctx context.Context, _ a2s.QueryType) (a2
 	u.once.Do(func() { close(u.started) })
 	<-ctx.Done()
 	return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+}
+
+type fatalPollerUpstream struct {
+	playerStarted chan struct{}
+	playerStopped chan struct{}
+	playerOnce    sync.Once
+	stopOnce      sync.Once
+}
+
+func (u *fatalPollerUpstream) Query(ctx context.Context, query a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
+	if query == a2s.PlayerRequest {
+		u.playerOnce.Do(func() { close(u.playerStarted) })
+		<-ctx.Done()
+		u.stopOnce.Do(func() { close(u.playerStopped) })
+		return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+	}
+
+	select {
+	case <-u.playerStarted:
+		return a2s.Packet{Type: a2s.ResponseRules}, a2s.QueryMeta{}, nil
+	case <-ctx.Done():
+		return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+	}
 }
