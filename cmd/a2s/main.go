@@ -67,16 +67,15 @@ type PingCommand struct {
 type ProxyCommand struct {
 	Args ServerArgs `positional-args:"yes"`
 
-	Listen string `long:"listen" description-i18n:"option.proxy.listen.description" short:"l" required:"true"`
-
-	CacheOptions     ProxyCacheOptions     `group:"Cache Options"      ini-group:"proxy-cache"      group-i18n:"group.proxy.cache"`
+	Listen           string                `long:"listen" description-i18n:"option.proxy.listen.description" short:"l" required:"true"`
+	CacheOptions     ProxyCacheOptions     `group:"Cache Options" ini-group:"proxy-cache" group-i18n:"group.proxy.cache"`
 	RateLimitOptions ProxyRateLimitOptions `group:"Rate Limit Options" ini-group:"proxy-rate-limit" group-i18n:"group.proxy.rate_limit"`
 	UpstreamPing     bool                  `long:"upstream-ping" description-i18n:"option.proxy.upstream_ping.description"`
 }
 
 // ProxyCacheOptions defines cache refresh and selection settings.
 type ProxyCacheOptions struct {
-	Cache       []string `default:"auto" long:"cache"        description-i18n:"option.proxy.cache.description"        short:"c" choices:"info;players;rules;auto"`
+	Cache       []string `default:"auto" long:"cache"        description-i18n:"option.proxy.cache.description"        short:"c" choices:"info;players;rules;auto;none"`
 	TTL         Duration `default:"15s"  long:"ttl"          description-i18n:"option.proxy.ttl.description"          short:"T" validate-min:"1"`
 	InactiveTTL Duration `default:"0"    long:"inactive-ttl" description-i18n:"option.proxy.inactive_ttl.description"           validate-min:"0"`
 	Jitter      Duration `default:"1s"   long:"jitter"       description-i18n:"option.proxy.jitter.description"       short:"j" validate-min:"0"`

@@ -17,6 +17,8 @@ type HandlerConfig struct {
 	// ChallengeProvider issues tokens for local GETCHALLENGE responses.
 	ChallengeProvider server.ChallengeProvider
 	// LocalPing answers obsolete A2A_PING wire requests without contacting upstream.
+	// This measures downstream reachability;
+	// false relays the request for an end-to-end upstream measurement.
 	LocalPing bool
 }
 

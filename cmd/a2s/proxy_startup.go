@@ -121,6 +121,8 @@ func prepareProxyStartup(
 
 	packets := map[a2s.QueryType]a2s.Packet{a2s.InfoRequest: info}
 	enabledQueries := make([]a2s.QueryType, 0, len(selectors))
+	autoCache := len(command.CacheOptions.Cache) == 1 &&
+		command.CacheOptions.Cache[0] == proxyCacheAuto
 	for _, query := range selectors {
 		if query == a2s.InfoRequest {
 			enabledQueries = append(enabledQueries, query)
@@ -132,6 +134,9 @@ func prepareProxyStartup(
 		if query == a2s.InfoRequest {
 			continue
 		}
+		if !autoCache {
+			enabledQueries = append(enabledQueries, query)
+		}
 
 		packet, _, probeErr := proxyStartupQuery(ctx, preparation.pollClient, query, 0, 0)
 		if probeErr != nil {
@@ -139,7 +144,9 @@ func prepareProxyStartup(
 		}
 
 		packets[query] = packet
-		enabledQueries = append(enabledQueries, query)
+		if autoCache {
+			enabledQueries = append(enabledQueries, query)
+		}
 	}
 
 	cache, err := proxycache.NewCache(enabledQueries)
@@ -249,6 +256,7 @@ func newProxyPacketizer(response a2s.ResponseType) (server.Packetizer, error) {
 }
 
 // proxyCacheQueries expands normalized CLI cache selectors into query types.
+// The none selector intentionally expands to an empty cache.
 func proxyCacheQueries(selectors []string) ([]a2s.QueryType, error) {
 	if len(selectors) == 0 {
 		selectors = []string{proxyCacheAuto}
@@ -263,6 +271,9 @@ func proxyCacheQueries(selectors []string) ([]a2s.QueryType, error) {
 				a2s.PlayerRequest,
 				a2s.RulesRequest,
 			}, nil
+
+		case proxyCacheNone:
+			return nil, nil
 
 		case "info":
 			queries = append(queries, a2s.InfoRequest)

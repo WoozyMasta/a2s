@@ -230,6 +230,15 @@ func TestValidateProxyCommand(t *testing.T) {
 			wantErr: `cache selector "auto" cannot be combined with other values`,
 		},
 		{
+			name: "none selector cannot be combined",
+			command: ProxyCommand{
+				Args:         ServerArgs{Host: "127.0.0.1:27015"},
+				Listen:       ":27016",
+				CacheOptions: ProxyCacheOptions{Cache: []string{"none", "rules"}},
+			},
+			wantErr: `cache selector "none" cannot be combined with other values`,
+		},
+		{
 			name: "invalid upstream endpoint",
 			command: ProxyCommand{
 				Args:   ServerArgs{Host: "127.0.0.1"},

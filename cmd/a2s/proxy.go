@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-const proxyCacheAuto = "auto"
+const (
+	proxyCacheAuto = "auto"
+	proxyCacheNone = "none"
+)
 
 // validateProxyCommand validates and normalizes parsed proxy options.
 // It performs no DNS resolution, socket creation, or upstream request.
@@ -62,7 +65,7 @@ func normalizeProxyCache(values []string) ([]string, error) {
 		}
 
 		switch value {
-		case proxyCacheAuto, "info", "players", "rules":
+		case proxyCacheAuto, proxyCacheNone, "info", "players", "rules":
 		default:
 			return nil, fmt.Errorf("unsupported cache selector %q", value)
 		}
@@ -75,12 +78,16 @@ func normalizeProxyCache(values []string) ([]string, error) {
 		cache = append(cache, value)
 	}
 
-	_, hasAuto := seen[proxyCacheAuto]
-	if len(cache) > 1 && hasAuto {
-		return nil, fmt.Errorf(
-			"cache selector %q cannot be combined with other values",
-			proxyCacheAuto,
-		)
+	if len(cache) > 1 {
+		for _, exclusive := range []string{proxyCacheAuto, proxyCacheNone} {
+			if _, ok := seen[exclusive]; !ok {
+				continue
+			}
+			return nil, fmt.Errorf(
+				"cache selector %q cannot be combined with other values",
+				exclusive,
+			)
+		}
 	}
 
 	return cache, nil

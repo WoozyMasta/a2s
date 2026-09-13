@@ -239,7 +239,7 @@ a2s proxy 127.0.0.1:27015 --listen :27016 --rate-limit 1000 --rate-client-limit 
 
 |Option|Description|Default|Environment|Required|
 |---|---|---|---|---|
-|`-c`, `--cache`|Response types to cache; choices: `info, players, rules, auto`|`auto`|`$A2S_CACHE`|no|
+|`-c`, `--cache`|Response types to cache; choices: `info, players, rules, auto, none`|`auto`|`$A2S_CACHE`|no|
 |`-T`, `--ttl`|Cache refresh interval|`15s`|`$A2S_TTL`|no|
 |`--inactive-ttl`|Inactive cache retry interval (0 = use TTL)|`0`|`$A2S_INACTIVE_TTL`|no|
 |`-j`, `--jitter`|Maximum polling interval jitter|`1s`|`$A2S_JITTER`|no|

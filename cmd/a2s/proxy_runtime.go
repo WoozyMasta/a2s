@@ -54,7 +54,8 @@ func executeProxyContext(
 		preparation.relayClient,
 		proxycache.HandlerConfig{
 			ChallengeProvider: provider,
-			LocalPing:         !command.UpstreamPing,
+			// Keep the default ping fast and local; --upstream-ping opts into relay.
+			LocalPing: !command.UpstreamPing,
 		},
 	)
 	if err != nil {

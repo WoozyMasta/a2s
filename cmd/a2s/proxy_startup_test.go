@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	proxycache "github.com/woozymasta/a2s/pkg/a2s/proxy"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
 )
 
@@ -118,6 +119,69 @@ func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 	}
 	if preparation.cache.Enabled(a2s.RulesRequest) {
 		t.Fatal("auto cache enabled unsupported RULES query")
+	}
+}
+
+func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
+	for _, query := range []a2s.QueryType{a2s.PlayerRequest, a2s.RulesRequest} {
+		t.Run(proxyQueryName(query), func(t *testing.T) {
+			fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+			selector := strings.ToLower(proxyQueryName(query))
+			command := proxyStartupCommand(fixture, []string{selector})
+			clientOptions := proxyStartupClientOptions()
+			clientOptions.Timeout = Duration(10 * time.Millisecond)
+
+			preparation, err := prepareProxyStartup(context.Background(), command, clientOptions)
+			if err != nil {
+				t.Fatalf("prepareProxyStartup() error = %v", err)
+			}
+			defer preparation.close()
+
+			if !preparation.cache.Enabled(query) {
+				t.Fatalf("cache does not enable failed explicit %s query", proxyQueryName(query))
+			}
+			if _, ok := preparation.cache.Load(query); ok {
+				t.Fatalf("failed explicit %s probe unexpectedly seeded cache", proxyQueryName(query))
+			}
+
+			fixture.setExtraResponse(true)
+			poller, err := proxycache.NewPoller(preparation.cache, preparation.pollClient, proxycache.PollerConfig{
+				TTL: time.Millisecond,
+			})
+			if err != nil {
+				t.Fatalf("NewPoller() error = %v", err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+
+			if err := poller.Run(ctx); err != nil {
+				t.Fatalf("Poller.Run() error = %v", err)
+			}
+			if _, ok := preparation.cache.Load(query); !ok {
+				t.Fatalf("recovered %s query was not cached", proxyQueryName(query))
+			}
+		})
+	}
+}
+
+func TestPrepareProxyStartupDisablesCacheForNone(t *testing.T) {
+	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
+	command := proxyStartupCommand(fixture, []string{proxyCacheNone})
+
+	preparation, err := prepareProxyStartup(context.Background(), command, proxyStartupClientOptions())
+	if err != nil {
+		t.Fatalf("prepareProxyStartup() error = %v", err)
+	}
+	defer preparation.close()
+
+	for _, query := range []a2s.QueryType{
+		a2s.InfoRequest,
+		a2s.PlayerRequest,
+		a2s.RulesRequest,
+	} {
+		if preparation.cache.Enabled(query) {
+			t.Fatalf("none cache enabled %s", proxyQueryName(query))
+		}
 	}
 }
 
@@ -425,6 +489,10 @@ func (f *proxyStartupFixture) serve() {
 
 func (f *proxyStartupFixture) setInfoResponse(enabled bool) {
 	f.respondInfo.Store(enabled)
+}
+
+func (f *proxyStartupFixture) setExtraResponse(enabled bool) {
+	f.respondExtra.Store(enabled)
 }
 
 func proxyStartupInfoPacket(responseType a2s.ResponseType) ([]byte, error) {
