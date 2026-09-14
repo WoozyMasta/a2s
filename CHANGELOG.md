@@ -78,7 +78,7 @@ and this project adheres to [Semantic Versioning][].
 * `a3sb` parse the DayZ `dedicated` rule according to its wire value
 * `a3sb` assemble one-based rule pages by page number
   and reject inconsistent, missing, or conflicting pages
-* `keywords` preserve unknown enum values
+* `keywords` preserve unknown enum and platform values
   instead of mapping them to known defaults
 
 ### Removed

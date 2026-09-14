@@ -290,7 +290,11 @@ func TestParseCoordinatesTable(t *testing.T) {
 		{"empty", "", 0, 0},
 		{"single number", "123", 0, 0},
 		{"no dash", "123456", 0, 0},
-		{"multiple dashes", "1-2-3", 1, 2}, // fmt.Sscanf reads only first two numbers
+		{"multiple separators", "1-2-3", 0, 0},
+		{"trailing junk", "1-2junk", 0, 0},
+		{"longitude overflow", "2147483648-0", 0, 0},
+		{"latitude overflow", "0--2147483649", 0, 0},
+		{"negative longitude overflow", "-2147483649-0", 0, 0},
 	}
 
 	for _, tt := range tests {

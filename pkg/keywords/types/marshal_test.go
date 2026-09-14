@@ -20,6 +20,8 @@ func TestUnknownValuesJSONPreserveRawValue(t *testing.T) {
 		{name: "server language", value: ServerLang(65599), want: `"Unknown(65599)"`},
 		{name: "server state", value: ServerState(10), want: `"Unknown(10)"`},
 		{name: "game type", value: GameType("custom_mode"), want: `"custom_mode"`},
+		{name: "unknown platform", value: Platform("x"), want: `"x"`},
+		{name: "known platform", value: OSWLinux, want: `"Linux"`},
 	}
 
 	for _, test := range tests {

@@ -26,6 +26,6 @@ func (p Platform) String() string {
 	case OSWindows:
 		return "Windows"
 	default:
-		return "Undefined"
+		return string(p)
 	}
 }

@@ -17,6 +17,8 @@ func TestUnknownValuesPreserveRawValue(t *testing.T) {
 		{name: "server language", got: ServerLang(65599).String(), want: "Unknown(65599)"},
 		{name: "server state", got: ServerState(10).String(), want: "Unknown(10)"},
 		{name: "game type", got: GameType("custom_mode").String(), want: "custom_mode"},
+		{name: "unknown platform", got: Platform("x").String(), want: "x"},
+		{name: "known platform", got: OSWLinux.String(), want: "Linux"},
 	}
 
 	for _, test := range tests {
