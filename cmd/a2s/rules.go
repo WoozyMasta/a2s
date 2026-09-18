@@ -46,13 +46,40 @@ func executeRules(app *Application, cmd *RulesCommand, clientOptions ClientOptio
 	}
 	defer closeClient(app, client)
 
-	formatter := NewFormatter(cmd.Format, app.Out, app.Localizer)
 	ctx := context.Background()
+	value, err := queryRulesValue(ctx, app, client, cmd)
+	if err != nil {
+		return err
+	}
 
+	formatter := NewFormatter(cmd.Format, app.Out, app.Localizer)
+	switch rules := value.(type) {
+	case map[string]any:
+		return printRules(app, rules, client, formatter)
+
+	case *a3sb.Rules:
+		if formatter.ShouldUseJSON() {
+			return formatter.PrintJSON(rules)
+		}
+
+		return renderA3SBRules(app, rules, formatter, client.Addr().String())
+
+	default:
+		return fmt.Errorf("unexpected rules value type %T", value)
+	}
+}
+
+// queryRulesValue retrieves the existing standalone rules value without output.
+func queryRulesValue(
+	ctx context.Context,
+	app *Application,
+	client *a2s.Client,
+	cmd *RulesCommand,
+) (any, error) {
 	if cmd.Game != "" {
 		appID := gameToAppID(cmd.Game)
 		if appID == 0 {
-			return fmt.Errorf(
+			return nil, fmt.Errorf(
 				"%s",
 				app.localize(
 					"error.unknown_game",
@@ -62,27 +89,26 @@ func executeRules(app *Application, cmd *RulesCommand, clientOptions ClientOptio
 			)
 		}
 		if cmd.Raw {
-			return executeRulesStandard(ctx, app, client, true, formatter)
+			return queryStandardRules(ctx, app, client, true)
 		}
 
-		return executeRulesA3SB(ctx, app, client, appID, formatter)
+		return queryA3SBRules(ctx, app, client, appID)
 	}
 
 	if cmd.Raw {
-		return executeRulesStandard(ctx, app, client, cmd.Raw, formatter)
+		return queryStandardRules(ctx, app, client, true)
 	}
 
-	return executeRulesA3SB(ctx, app, client, 0, formatter)
+	return queryA3SBRules(ctx, app, client, 0)
 }
 
-// executeRulesStandard retrieves and renders ordinary A2S_RULES values.
-func executeRulesStandard(
+// queryStandardRules retrieves ordinary A2S_RULES values.
+func queryStandardRules(
 	ctx context.Context,
 	app *Application,
 	client *a2s.Client,
 	raw bool,
-	formatter *Formatter,
-) error {
+) (map[string]any, error) {
 	var rules map[string]any
 	var err error
 
@@ -98,10 +124,10 @@ func executeRulesStandard(
 	}
 
 	if err != nil {
-		return friendlyQueryError(app, "error.rules", "failed to get rules", err, client.Timeout())
+		return nil, friendlyQueryError(app, "error.rules", "failed to get rules", err, client.Timeout())
 	}
 
-	return printRules(app, rules, client, formatter)
+	return rules, nil
 }
 
 // printRules renders an already fetched rules map using the normal A2S output shape.
@@ -153,31 +179,26 @@ func renderRulesTable(app *Application, rules map[string]any, address string, fo
 	return nil
 }
 
-// executeRulesA3SB retrieves and renders Arma 3/DayZ server-browser rules.
-func executeRulesA3SB(
+// queryA3SBRules retrieves Arma 3/DayZ server-browser rules.
+func queryA3SBRules(
 	ctx context.Context,
 	app *Application,
 	client *a2s.Client,
 	appID uint64,
-	formatter *Formatter,
-) error {
+) (any, error) {
 	a3sbClient := &a3sb.Client{Client: client}
 
 	rules, err := a3sbClient.GetRules(ctx, appID)
 	if err != nil {
-		return friendlyQueryError(app, "error.server_rules", "failed to get server rules", err, client.Timeout())
+		return nil, friendlyQueryError(app, "error.server_rules", "failed to get server rules", err, client.Timeout())
 	}
 
 	if rules.Version == 0 {
 		parsed := a2s.ParseRuleValues(rules.ExtraRules)
-		return printRules(app, parsed, client, formatter)
+		return parsed, nil
 	}
 
-	if formatter.ShouldUseJSON() {
-		return formatter.PrintJSON(rules)
-	}
-
-	return renderA3SBRules(app, rules, formatter, client.Addr().String())
+	return rules, nil
 }
 
 // renderA3SBRules renders human-readable A3SB fields without querying a server.

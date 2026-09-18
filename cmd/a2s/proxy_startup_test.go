@@ -477,7 +477,10 @@ func (f *proxyStartupFixture) serve() {
 
 		case a2s.RulesRequest:
 			if f.respondExtra.Load() {
-				response, _ = a2s.AppendRules(nil, nil)
+				response, _ = a2s.AppendRules(nil, a2s.Rules{{
+					Name:  "hostname",
+					Value: "proxy test",
+				}})
 			}
 		}
 

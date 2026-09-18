@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning][].
 * project requires Go 1.25 or newer
 * `CLI` adapts interactive tables to terminal width
 * `CLI` uses strict command/argument validation and unified version metadata
+* `CLI` emits `all --format json` as one structured JSON document
 * `a2s` separate request and response type bytes
   into `QueryType` and `ResponseType`, removing the ambiguous `Flag` API
 * `a2s` expose ordered, duplicate-safe A2S_RULES entries through `Rules`,

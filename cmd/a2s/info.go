@@ -373,13 +373,23 @@ func formatAppID(id uint64) string {
 // The replacement is intentional for those two game-specific schemas;
 // unsupported games keep the wire-level keyword list unchanged.
 func printInfoJSON(info *a2s.Info, formatter *Formatter) error {
+	jsonMap, err := infoJSONValue(info, formatter)
+	if err != nil {
+		return err
+	}
+
+	return formatter.PrintJSON(jsonMap)
+}
+
+// infoJSONValue returns the standalone INFO JSON representation without output.
+func infoJSONValue(info *a2s.Info, formatter *Formatter) (map[string]any, error) {
 	// Create a map to hold the JSON structure
 	jsonMap := make(map[string]any)
 
 	// Marshal info to JSON first
 	jsonData, err := json.Marshal(info)
 	if err != nil {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"%s: %w",
 			localizeFormatterError(
 				formatter.localizer,
@@ -392,7 +402,7 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) error {
 
 	// Unmarshal into a map to add custom fields
 	if err := json.Unmarshal(jsonData, &jsonMap); err != nil {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"%s: %w",
 			localizeFormatterError(
 				formatter.localizer,
@@ -415,5 +425,5 @@ func printInfoJSON(info *a2s.Info, formatter *Formatter) error {
 		jsonMap["keywords"] = dayZData
 	}
 
-	return formatter.PrintJSON(jsonMap)
+	return jsonMap, nil
 }
