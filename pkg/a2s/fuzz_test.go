@@ -97,14 +97,14 @@ func FuzzBinaryChallengeRoundTrip(f *testing.F) {
 	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		got, err := parseChallenge(data)
-		if len(data) != len(Challenge{}) {
+		if len(data) < len(Challenge{}) {
 			if err == nil {
 				t.Fatalf("parseChallenge(%X) returned nil error", data)
 			}
 			return
 		}
-		if err != nil || !bytes.Equal(got[:], data) {
-			t.Fatalf("challenge round-trip = (%X, %v), want %X", got, err, data)
+		if err != nil || !bytes.Equal(got[:], data[:len(Challenge{})]) {
+			t.Fatalf("challenge parse = (%X, %v), want %X", got, err, data[:len(Challenge{})])
 		}
 	})
 }

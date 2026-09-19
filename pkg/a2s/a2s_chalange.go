@@ -26,7 +26,9 @@ func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
 	return parseChallenge(packet.Payload)
 }
 
-// parseChallenge parses the four-byte challenge payload without reordering it.
+// parseChallenge parses the first four challenge bytes without reordering them.
+// Additional payload bytes are ignored for compatibility with responses
+// that append data after the challenge value.
 func parseChallenge(data []byte) (Challenge, error) {
 	decoder := wire.NewDecoder(data)
 	value, err := decoder.Bytes(len(Challenge{}))

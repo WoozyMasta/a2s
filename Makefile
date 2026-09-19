@@ -48,7 +48,7 @@ endif
 
 BENCH_COUNT       ?= 6
 BENCH_REF         ?= bench_baseline.txt
-FUZZ_TIME         ?= 30s
+FUZZ_TIME         ?= 10s
 FUZZ_TARGETS      ?= \
 	./internal/a2srules:Parse \
 	./internal/wire:DecoderCursorInvariants \

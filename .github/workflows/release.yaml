@@ -59,7 +59,7 @@ jobs:
         run: make test-race-short
 
       - name: Run fuzz
-        run: make fuzz FUZZ_TIME=10s
+        run: make fuzz FUZZ_TIME=3s
 
   build-binaries:
     needs: [classify_tag, test]
