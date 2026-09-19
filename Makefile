@@ -50,32 +50,32 @@ BENCH_COUNT       ?= 6
 BENCH_REF         ?= bench_baseline.txt
 FUZZ_TIME         ?= 30s
 FUZZ_TARGETS      ?= \
-	./internal/a2srules:FuzzParse \
-	./internal/wire:FuzzDecoderCursorInvariants \
-	./pkg/a2s:FuzzParseChallenge \
-	./pkg/a2s:FuzzParseChallengeResponse \
-	./pkg/a2s:FuzzDecodeInfoSource \
-	./pkg/a2s:FuzzDecodeInfoGoldSource \
-	./pkg/a2s:FuzzParsePlayers \
-	./pkg/a2s:FuzzParseTheShipPlayers \
-	./pkg/a2s:FuzzParseRules \
-	./pkg/a2s:FuzzParsePacketHeaders \
-	./pkg/a2s:FuzzDecompressBzip2 \
-	./pkg/a2s:FuzzCreateHeader \
-	./pkg/a2s:FuzzBinaryChallengeRoundTrip \
-	./pkg/a2s/server:FuzzDecodeRequest \
-	./pkg/a2s/server:FuzzDecodePacket \
-	./pkg/a2s/server:FuzzEncodeInfo \
-	./pkg/a2s/server:FuzzEncodePlayers \
-	./pkg/a2s/server:FuzzEncodeRules \
-	./pkg/a2s/server:FuzzPacketizers \
-	./pkg/a2s/server:FuzzChallengeGate \
-	./pkg/a3sb:FuzzReadA3SB \
-	./pkg/a3sb:FuzzBuildPageEnvelope \
-	./pkg/a3sb:FuzzParseAutomaticRules \
-	./pkg/a3sb:FuzzParseRulesDayZ \
-	./pkg/keywords:FuzzParseKeywords \
-	./pkg/keywords:FuzzParseCoordinates
+	./internal/a2srules:Parse \
+	./internal/wire:DecoderCursorInvariants \
+	./pkg/a2s:ParseChallenge \
+	./pkg/a2s:ParseChallengeResponse \
+	./pkg/a2s:DecodeInfoSource \
+	./pkg/a2s:DecodeInfoGoldSource \
+	./pkg/a2s:ParsePlayers \
+	./pkg/a2s:ParseTheShipPlayers \
+	./pkg/a2s:ParseRules \
+	./pkg/a2s:ParsePacketHeaders \
+	./pkg/a2s:DecompressBzip2 \
+	./pkg/a2s:CreateHeader \
+	./pkg/a2s:BinaryChallengeRoundTrip \
+	./pkg/a2s/server:DecodeRequest \
+	./pkg/a2s/server:DecodePacket \
+	./pkg/a2s/server:EncodeInfo \
+	./pkg/a2s/server:EncodePlayers \
+	./pkg/a2s/server:EncodeRules \
+	./pkg/a2s/server:Packetizers \
+	./pkg/a2s/server:ChallengeGate \
+	./pkg/a3sb:ReadA3SB \
+	./pkg/a3sb:BuildPageEnvelope \
+	./pkg/a3sb:ParseAutomaticRules \
+	./pkg/a3sb:ParseRulesDayZ \
+	./pkg/keywords:ParseKeywords \
+	./pkg/keywords:ParseCoordinates
 
 export GOWORK
 export LANG
