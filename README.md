@@ -1,143 +1,221 @@
-<!-- omit in toc -->
 # A2S
 
 <!-- markdownlint-disable-next-line MD033 -->
-<img src="winres/icon64.png" alt="A2S Logo" align="left" width="64">
+<img src="winres/icon256.png" alt="A2S Logo" align="right" width="128">
 
-Powerful command-line utility and Go packages
-for querying Steam A2S server information.
-Built with specific support for Arma 3 and DayZ,
-this tool provides a seamless way to retrieve essential server data.
+Powerful command-line utility and Go toolkit
+for working with Steam A2S game servers.
+Query server information, players, and rules;
+build A2S servers and cached UDP proxies;
+and handle Arma 3 and DayZ Server Browser Protocol responses.
 
 <!-- markdownlint-disable-next-line MD033 -->
-## Description <br clear="right"/>
+## Supported protocols and components <br clear="right"/>
 
-A2S supports querying Steam servers using the following methods:
+### Supported protocols
 
-* `A2S_INFO`: Retrieve basic information about the server, such as name,
-  map, and player count. _(CLI and package)_
-* `A2S_PLAYER`: Get details about each player currently on the server.
-  _(CLI and package)_
-* `A2S_RULES`: Fetch server-specific rules and settings. _(CLI and package)_
-* `A2S_SERVERQUERY_GETCHALLENGE`: Request a challenge number for use in
-  player and rules queries. _(only package)_
-* `A2A_PING`: Measure the ping time to the server for latency insights.
-  _(only package)_
+* Source and GoldSource Server Queries:
+  `A2S_INFO`, `A2S_PLAYER`, and `A2S_RULES`.
+* Source and GoldSource split responses, including reordered fragments;
+  Source bzip2-compressed payloads.
+* A2S challenge exchanges and the legacy-compatible
+  `A2S_SERVERQUERY_GETCHALLENGE` and `A2A_PING` requests exposed by the Go API.
+* Arma 3 and DayZ Server Browser Protocol ([A3SB][]) responses
+  carried by `A2S_RULES`, with automatic detection,
+  explicit layouts and native A2S fallback.
 
-Additionally, this tool features an extension
-for the Arma 3 Server Browser Protocol (A3SBP).
-This extension overrides the standard `GetRules()` method,
-enabling compatibility with the unique protocol
-used by Arma 3's server browser.
+### Project components
 
-## CLI Installation
+* `cmd/a2s`: CLI for queries, diagnostics and cached proxy operation;
+* `pkg/a2s`: context-aware A2S client and transport-independent codecs;
+* `pkg/a2s/server`: UDP A2S server runtime with challenges and packetization;
+* `pkg/a2s/proxy`: reusable cache, polling, relay, and rate-limit components;
+* `pkg/a3sb`: typed Arma 3 and DayZ Server Browser Protocol parser and codec;
+* `pkg/keywords`: typed parsers for Arma 3 and DayZ `A2S_INFO` keywords;
+* `pkg/appid`: curated Steam AppID registry for A2S-compatible games.
 
-You can download the latest version of the programme by following the links:
+## Installation
 
-|           | MacOS              | Linux             | Windows             |
-| --------- | ------------------ | ----------------- | ------------------- |
-| **AMD64** | [a2s-darwin-amd64] | [a2s-linux-amd64] | [a2s-windows-amd64] |
-| **ARM64** | [a2s-darwin-arm64] | [a2s-linux-arm64] | [a2s-windows-arm64] |
+### Go library
 
-You can also use the command (for Linux amd64, adjust for your platform):
-
-```bash
-curl -#SfLo /usr/bin/a2s \
-  https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-linux-amd64
-chmod +x /usr/bin/a2s
-a2s -h && a2s -v
+```shell
+go get github.com/woozymasta/a2s
 ```
 
-## Container images
+### CLI
 
-```sh
-docker run --rm -ti ghcr.io/woozymasta/a2s:latest info host:port
-docker run --rm -ti docker.io/woozymasta/a2s:latest info host:port
+Download the latest CLI release for your platform:
+
+Arch/OS | macOS | Linux | Windows
+------- | ----- | ----- | -------
+**AMD64** | [a2s-darwin-amd64][] | [a2s-linux-amd64][] | [a2s-windows-amd64][]
+**ARM64** | [a2s-darwin-arm64][] | [a2s-linux-arm64][] | [a2s-windows-arm64][]
+
+Download the latest release with curl in Bash:
+
+```shell
+case "$(uname -s)" in
+  Linux*) OS=linux;;
+  Darwin*) OS=darwin;;
+  MINGW*|MSYS*|CYGWIN*) OS=windows; EXT=.exe;;
+  *) exit 1;;
+esac
+case "$(uname -m)" in
+  x86_64|amd64) ARCH=amd64;;
+  aarch64|arm64) ARCH=arm64;;
+  *) exit 1;;
+esac
+BIN="./a2s$EXT"
+
+curl -#SfLo "$BIN" \
+  "https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-$OS-$ARCH$EXT"
+chmod +x "$BIN"
+"$BIN" -h && "$BIN" -v
 ```
 
-## A2S CLI
+### Container image
 
-Command-line utility for querying Steam A2S server information
-with support for Arma 3 and DayZ servers.
+Prebuilt images are available from GitHub Container Registry and Docker Hub:
 
-The utility supports the following commands:
+* `ghcr.io/woozymasta/a2s:latest`
+* `docker.io/woozymasta/a2s:latest`
 
-* `info` - Retrieve server information `A2S_INFO`
-* `rules` - Retrieve server rules `A2S_RULES`
-* `players` - Retrieve player list `A2S_PLAYERS`
-* `all` - Retrieve all available server information
-* `ping` - Ping the server with `A2S_INFO`
-* `proxy` - Run a cached A2S proxy
+Example using a container image:
 
-For detailed information about available options and flags, run `a2s --help`.
+```shell
+docker pull ghcr.io/woozymasta/a2s:latest
+docker run --rm -ti \
+  -e A2S_TIMEOUT=3s \
+  -e A2S_BUFFER_SIZE=8192 \
+  ghcr.io/woozymasta/a2s:latest info host:port
+```
 
-For deployment, prefer a separate game query endpoint behind the proxy.
-If the game must keep the advertised UDP port,
-use external NAT or selective packet steering;
-`SO_REUSEPORT` and `SO_REUSEADDR` are not A2S demultiplexers.
-The proxy does not configure firewall, NAT,
-container, or operating-system rules.
+## CLI usage
 
-## Packages
+The CLI queries A2S servers, formats responses, and runs a cached proxy.
+See the [CLI reference][CLI] for all commands, options, defaults,
+environment variables, and generated examples.
 
-### A2S Packages
+### Commands
 
-Example of use:
+* `info`: query server metadata;
+* `players`: list current players;
+* `rules`: query native A2S or A3SB rules;
+* `all`: query metadata, rules, and players together;
+* `ping`: measure repeated query response times;
+* `proxy`: expose a cached UDP endpoint for an upstream server.
+
+### Examples
+
+```shell
+# Query server metadata.
+a2s info 127.0.0.1:27015
+
+# Export all responses as one JSON document.
+a2s all 127.0.0.1:27015 --format json | jq
+
+# Parse Arma 3 server-browser rules explicitly.
+a2s rules 127.0.0.1:2303 --game arma3
+
+# Print only ping values for five queries.
+a2s ping 127.0.0.1:27015 --ping-count 5 --compact
+
+# Cache an upstream server on a local UDP endpoint.
+a2s proxy 127.0.0.1:27015 --listen :27016
+```
+
+## Module usage
+
+The Go packages cover both sides of the protocol:
+querying existing servers and serving or proxying A2S responses.
+These examples show the main building blocks without covering every option.
+
+### Client example
+
+Use `pkg/a2s` for standard server queries.
 
 ```go
-client, err := a2s.New("127.0.0.1", 27016,
-  a2s.WithBufferSize(2048),
-  a2s.WithTimeout(3*time.Second),
-)
+ctx := context.Background()
+client, err := a2s.New("127.0.0.1", 27015, a2s.WithTimeout(3*time.Second))
 if err != nil {
   panic(err)
 }
 defer client.Close()
 
-info, err := client.GetInfo()
+info, err := client.GetInfo(ctx)
 if err != nil {
   panic(err)
 }
-
-rules, err := client.GetRules()
-if err != nil {
-  panic(err)
-}
+_ = info
 ```
 
-* `github.com/woozymasta/a2s.GetInfo()` -> `A2S_INFO`
-* `github.com/woozymasta/a2s.GetPlayers()` -> `A2S_PLAYER`
-* `github.com/woozymasta/a2s.GetRules()` -> `A2S_RULES`
-* `github.com/woozymasta/a2s.GetChallenge()` -> `A2S_SERVERQUERY_GETCHALLENGE`
-* `github.com/woozymasta/a2s.GetPing()` -> `A2A_PING`
+#### A3SB client
 
-### A3SB Packages
-
-Example of use:
+Wrap an existing `a2s.Client` with `pkg/a3sb` for Arma 3 and DayZ rules:
 
 ```go
-client, err := a2s.New("127.0.0.1", 27016)
+a3sClient := &a3sb.Client{Client: client}
+rules, err := a3sClient.GetRules(ctx, 0) // Automatic classification.
 if err != nil {
   panic(err)
 }
-defer client.Close()
+_ = rules
 
-// Wrap client
-a3Client := &a3sb.Client{Client: client}
-
-// Game id must be passed as the second argument
-// to properly read the Arma 3 or Dayz rules
-rules, err := a3Client.GetRules(221100)
-if err != nil {
-  panic(err)
-}
-
-// Can also perform standard a2s methods
-info, err := a3Client.GetInfo()
-if err != nil {
-  panic(err)
-}
+// Explicit layout: a3sClient.GetRules(ctx, appid.DayZ)
 ```
+
+### Server example
+
+To publish your own server data,
+implement a `Handler` and pass it to `server.New`.
+The server handles UDP transport, challenge validation,
+and response packetization.
+
+```go
+handler := server.HandlerFunc(func(
+  _ context.Context,
+  request *server.Request,
+) (server.Response, error) {
+  if request.Query.Type != a2s.InfoRequest {
+    return nil, server.ErrDrop
+  }
+  return server.InfoResponse{Info: a2s.Info{
+    Format: a2s.InfoFormat(a2s.ResponseInfo),
+    Name:   "Example A2S server",
+  }}, nil
+})
+
+srv, err := server.New(handler)
+if err != nil {
+  panic(err)
+}
+conn, err := net.ListenPacket("udp", ":27015")
+if err != nil {
+  panic(err)
+}
+defer conn.Close()
+go srv.Serve(conn)
+defer srv.Shutdown(context.Background())
+```
+
+### Proxy example
+
+Compose `pkg/a2s/proxy` with `pkg/a2s/server` to serve cached responses and
+relay uncached queries. Use a `Poller` to refresh selected cache entries from
+the upstream client.
+
+```go
+cache, _ := proxy.NewCache([]a2s.QueryType{
+  a2s.InfoRequest, a2s.RulesRequest,
+})
+handler, _ := proxy.NewHandler(cache, upstream, proxy.HandlerConfig{
+  ChallengeProvider: provider,
+  LocalPing:         true,
+})
+srv, _ := server.New(handler, server.WithChallengeProvider(provider))
+```
+
+Run a `Poller` to refresh the cache and serve `srv` on a UDP `PacketConn`.
 
 ## Protocol Documentation
 
@@ -146,17 +224,15 @@ refer to the official documentation:
 
 * [Steam Server Queries][]
 * [Arma 3 Server Browser Protocol v3][]
-* [A3SB Protocol v3 Specification 🇬🇧][]
-* [A3SB Protocol v3 Specification 🇷🇺][]
+* [A3SB Protocol v3 Specification][A3SB]
 
 ## Tested Games
 
-During development, the functionality of `a2s` was
-thoroughly tested across a diverse range of popular games that utilize the
-Steam server query protocols.
-This ensures compatibility and reliable performance.
+During development, the functionality of `a2s` was thoroughly tested
+across a diverse range of popular games
+that utilize the Steam server query protocols.
 
-The following games were used for testing:
+The implementation has been tested against servers from these games:
 
 * Counter-Strike 1.6
 * Counter-Strike: Source
@@ -173,27 +249,16 @@ The following games were used for testing:
 * Conan Exiles
 * Unturned
 
-These games represent a wide array of server types and implementations,
-highlighting the versatility of the tools in querying servers effectively
-across various scenarios.
-
-Feel free to contribute or report issues if you find any compatibility
-problems with additional games!
-
-> [!NOTE]  
-> Implementation of `bzip2` compression for multi-packet response is not
-> implemented, as I did not find any servers that would respond in this
-> format. If you know of one, please write me in issue.
-
-## 👉 [Support Me](https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea)
+## 👉 [Support Me][]
 
 Your support is greatly appreciated!
 
 <!-- Links -->
 [Steam Server Queries]: https://developer.valvesoftware.com/wiki/Server_queries
 [Arma 3 Server Browser Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
-[A3SB Protocol v3 Specification 🇬🇧]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md "🇬🇧"
-[A3SB Protocol v3 Specification 🇷🇺]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README_ru.md "🇷🇺"
+
+[A3SB]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md "Arma 3 Server Browser Protocol v3"
+[CLI]: https://github.com/WoozyMasta/a2s/blob/master/CLI.md "Generated command-line reference"
 
 [a2s-darwin-arm64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-darwin-arm64 "MacOS arm64 file"
 [a2s-darwin-amd64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-darwin-amd64 "MacOS amd64 file"
@@ -201,3 +266,5 @@ Your support is greatly appreciated!
 [a2s-linux-arm64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-linux-arm64 "Linux arm64 file"
 [a2s-windows-amd64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-windows-amd64.exe "Windows amd64 file"
 [a2s-windows-arm64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-windows-arm64.exe "Windows arm64 file"
+
+[Support Me]: https://gist.github.com/WoozyMasta/7b0cabb538236b7307002c1fbc2d94ea
