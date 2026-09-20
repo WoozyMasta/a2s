@@ -86,3 +86,20 @@ func TestDecodeRulesRejectsWrongResponseType(t *testing.T) {
 		t.Fatalf("DecodeRules() error = %v, want ErrRuleRead", err)
 	}
 }
+
+func TestDecodeRulesIgnoresTrailingData(t *testing.T) {
+	payload := []byte{
+		1, 0,
+		'h', 'o', 's', 't', 0,
+		't', 'e', 's', 't', 0,
+		0xFF, 0x00,
+	}
+
+	rules, err := DecodeRules(Packet{Type: ResponseRules, Payload: payload})
+	if err != nil {
+		t.Fatalf("DecodeRules() error = %v", err)
+	}
+	if len(rules) != 1 || rules[0].Name != "host" || rules[0].Value != "test" {
+		t.Fatalf("rules = %#v, want one host=test rule", rules)
+	}
+}

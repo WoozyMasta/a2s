@@ -81,6 +81,8 @@ func (c *Client) GetRules(ctx context.Context) (Rules, error) {
 //
 // The response type must be ResponseRules.
 // Rule order and duplicate names are preserved in the returned slice.
+// Trailing bytes after the declared entries are ignored for compatibility;
+// A3SB applies its own stricter envelope policy to the same bytes.
 func DecodeRules(packet Packet) (Rules, error) {
 	if packet.Type != ResponseRules {
 		return nil, errors.Join(ErrRuleRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
