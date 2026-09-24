@@ -659,5 +659,15 @@ func contextError(ctx context.Context, err error) error {
 		return ctxErr
 	}
 
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		// The socket deadline is derived from ctx,
+		// but the network poller can report its timeout
+		// before the context timer publishes ctx.Err().
+		if _, ok := ctx.Deadline(); ok {
+			return context.DeadlineExceeded
+		}
+	}
+
 	return err
 }

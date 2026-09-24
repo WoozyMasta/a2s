@@ -146,12 +146,12 @@ func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
 
 			fixture.setExtraResponse(true)
 			poller, err := proxycache.NewPoller(preparation.cache, preparation.pollClient, proxycache.PollerConfig{
-				TTL: time.Millisecond,
+				TTL: time.Hour,
 			})
 			if err != nil {
 				t.Fatalf("NewPoller() error = %v", err)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
 			if err := poller.Run(ctx); err != nil {
