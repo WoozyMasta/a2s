@@ -18,7 +18,10 @@ WINRES            ?= go-winres
 WINRES_VERSION    ?= v0.3.3
 WINRES_OUT        ?= ./cmd/$(BINARY)/rsrc
 BENCHSTAT         ?= benchstat
+
 RUMDL             ?= rumdl
+MKDOCS_IMAGE      ?= docker.io/squidfunk/mkdocs-material:9.7
+MKDOCS_ADDR       ?= 127.0.0.1:8000
 
 RELEASE_MATRIX    ?= \
 	linux/amd64 linux/arm64 \
@@ -260,7 +263,13 @@ release-notes:
 	END { flush() } \
 	' CHANGELOG.md
 
-.PHONY: markdown-lint markdown-fix
+.PHONY: mkdocs-run markdown-lint markdown-fix
+
+mkdocs-run:
+	docker run --rm -it -p $(MKDOCS_ADDR):8000 \
+		-v "$(CURDIR):/docs/docs" \
+		-v "$(CURDIR)/mkdocs.yml:/docs/mkdocs.yml:ro" \
+		$(MKDOCS_IMAGE) serve --dev-addr=0.0.0.0:8000
 
 define run-rumdl
 	@if command -v $(RUMDL) &>/dev/null; then \

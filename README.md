@@ -26,13 +26,20 @@ and handle Arma 3 and DayZ Server Browser Protocol responses.
 
 ### Project components
 
-* `cmd/a2s`: CLI for queries, diagnostics and cached proxy operation;
-* `pkg/a2s`: context-aware A2S client and transport-independent codecs;
-* `pkg/a2s/server`: UDP A2S server runtime with challenges and packetization;
-* `pkg/a2s/proxy`: reusable cache, polling, relay, and rate-limit components;
-* `pkg/a3sb`: typed Arma 3 and DayZ Server Browser Protocol parser and codec;
-* `pkg/keywords`: typed parsers for Arma 3 and DayZ `A2S_INFO` keywords;
-* `pkg/appid`: curated Steam AppID registry for A2S-compatible games.
+* [`cmd/a2s`][CLI]:
+  CLI for queries, diagnostics and cached proxy operation;
+* [`pkg/a2s`][Go a2s]:
+  context-aware A2S client and transport-independent codecs;
+* [`pkg/a2s/server`][Go server]:
+  UDP A2S server runtime with challenges and packetization;
+* [`pkg/a2s/proxy`][Go proxy]:
+  reusable cache, polling, relay, and rate-limit components;
+* [`pkg/a3sb`][Go a3sb]:
+  typed Arma 3 and DayZ Server Browser Protocol parser and codec;
+* [`pkg/keywords`][Go keywords]:
+  typed parsers for Arma 3 and DayZ `A2S_INFO` keywords;
+* [`pkg/appid`][Go appid]:
+  curated Steam AppID registry for A2S-compatible games.
 
 ## Installation
 
@@ -128,11 +135,12 @@ a2s proxy 127.0.0.1:27015 --listen :27016
 
 The Go packages cover both sides of the protocol:
 querying existing servers and serving or proxying A2S responses.
-These examples show the main building blocks without covering every option.
+For the complete public API, see the [Go module documentation][Go module].
+The examples below show the main building blocks.
 
 ### Client example
 
-Use `pkg/a2s` for standard server queries.
+Use [`pkg/a2s`][Go a2s] for standard server queries.
 
 ```go
 ctx := context.Background()
@@ -151,7 +159,8 @@ _ = info
 
 #### A3SB client
 
-Wrap an existing `a2s.Client` with `pkg/a3sb` for Arma 3 and DayZ rules:
+Wrap an existing `a2s.Client` with [`pkg/a3sb`][Go a3sb]
+for Arma 3 and DayZ rules:
 
 ```go
 a3sClient := &a3sb.Client{Client: client}
@@ -166,7 +175,7 @@ _ = rules
 
 ### Server example
 
-To publish your own server data,
+Use [`pkg/a2s/server`][Go server] to publish your own server data:
 implement a `Handler` and pass it to `server.New`.
 The server handles UDP transport, challenge validation,
 and response packetization.
@@ -200,9 +209,9 @@ defer srv.Shutdown(context.Background())
 
 ### Proxy example
 
-Compose `pkg/a2s/proxy` with `pkg/a2s/server` to serve cached responses and
-relay uncached queries. Use a `Poller` to refresh selected cache entries from
-the upstream client.
+Use [`pkg/a2s/proxy`][Go proxy] with [`pkg/a2s/server`][Go server]
+to serve cached responses and relay uncached queries.
+Use a `Poller` to refresh selected cache entries from the upstream client.
 
 ```go
 cache, _ := proxy.NewCache([]a2s.QueryType{
@@ -222,8 +231,8 @@ Run a `Poller` to refresh the cache and serve `srv` on a UDP `PacketConn`.
 For a deeper understanding of the protocols used,
 refer to the official documentation:
 
-* [Steam Server Queries][]
-* [Arma 3 Server Browser Protocol v3][]
+* [Steam Server Queries][Valve A2S wiki]
+* [Arma 3 Server Browser Protocol v3][A3SB BI wiki]
 * [A3SB Protocol v3 Specification][A3SB]
 
 ## Tested Games
@@ -254,11 +263,19 @@ The implementation has been tested against servers from these games:
 Your support is greatly appreciated!
 
 <!-- Links -->
-[Steam Server Queries]: https://developer.valvesoftware.com/wiki/Server_queries
-[Arma 3 Server Browser Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
+[Valve A2S wiki]: https://developer.valvesoftware.com/wiki/Server_queries "Valve A2S wiki"
+[A3SB BI wiki]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3 "A3SB bistudio wiki"
 
-[A3SB]: https://github.com/WoozyMasta/a2s/blob/master/pkg/a3sb/docs/README.md "Arma 3 Server Browser Protocol v3"
-[CLI]: https://github.com/WoozyMasta/a2s/blob/master/CLI.md "Generated command-line reference"
+[A3SB]: ./pkg/a3sb/docs/README.md "Arma 3 Server Browser Protocol v3"
+[CLI]: ./CLI.md "Generated command-line reference"
+
+[Go module]: https://pkg.go.dev/github.com/woozymasta/a2s/
+[Go a2s]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s
+[Go a3sb]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a3sb
+[Go server]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/server
+[Go proxy]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/proxy
+[Go keywords]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/keywords
+[Go appid]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/appid
 
 [a2s-darwin-arm64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-darwin-arm64 "MacOS arm64 file"
 [a2s-darwin-amd64]: https://github.com/WoozyMasta/a2s/releases/latest/download/a2s-darwin-amd64 "MacOS amd64 file"

@@ -1,0 +1,53 @@
+name: Docs
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      - uses: rvben/rumdl@v0
+
+      - name: Build docs
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}:/docs/docs:ro"
+          -v "${{ github.workspace }}/mkdocs.yml:/docs/mkdocs.yml:ro"
+          -v "${{ github.workspace }}/site:/docs/site"
+          docker.io/squidfunk/mkdocs-material:9.7
+          build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
