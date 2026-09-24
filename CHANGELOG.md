@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
-## Unreleased
+## [0.4.0][] - 2026-09-25
 
 ### Added
 
@@ -85,6 +85,8 @@ and this project adheres to [Semantic Versioning][].
 * `a2s`: ambiguous `Info.ID` field
 * `a2s`: transport-only `Info.Ping` field
 * `github.com/woozymasta/steam` dependency in favor of the local AppID registry
+
+[0.4.0]: https://github.com/WoozyMasta/a2s/compare/v0.3.2...v0.4.0
 
 ## [0.3.2][] - 2026-03-07
 
