@@ -31,6 +31,8 @@ For A3SB responses, [Rules.ExtraRules] contains ordinary outer A2S properties
 that are not represented by typed fields.
 Binary A3SB page carriers are consumed by the parser
 and are not exposed as ordinary rule strings.
+The parsed [Rules] model is intentionally lossy;
+use the original response for byte-preserving round-trips or transparent proxying.
 
 Close the embedded A2S client when it is no longer needed.
 Runnable API examples are available in the package example tests.
