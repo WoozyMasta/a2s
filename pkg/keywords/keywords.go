@@ -1,23 +1,26 @@
-// Package keywords provide additional parsers for tags (sv_tag) from the A2S_INFO response
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
+// Package keywords provides parsers for sv_tag values from A2S_INFO responses.
 package keywords
 
 import (
 	"fmt"
 	"strconv"
 
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
-// Parse universal function for outputting result depending on application ID,
-// if parser exists it will return updated structure, otherwise it will return error
+// Parse selects the keyword parser for the supplied Steam application ID.
 func Parse(id uint64, keywords []string) (any, error) {
 	switch id {
-	case appid.Arma3.Uint64():
+	case appid.Arma3:
 		data := &Arma3{}
 		data.Parse(keywords)
 		return data, nil
 
-	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+	case appid.DayZ, appid.DayZExperimental:
 		data := &DayZ{}
 		data.Parse(keywords)
 		return data, nil
@@ -52,7 +55,7 @@ func ParseUint16(val string) uint16 {
 	return uint16(num) // #nosec G115
 }
 
-// parseUint32 parses a string into a uint16 with overflow checking.
+// parseUint32 parses a string into a uint32 with overflow checking.
 func parseUint32(val string) uint32 {
 	num, err := strconv.ParseUint(val, 10, 32)
 	if err != nil || num > 4294967295 {
@@ -73,8 +76,9 @@ func parseFloat64(val string) float64 {
 }
 
 // parseCoordinates parses a coordinate string formatted as "lon-lat",
-// where lon and lat can be negative. Examples:
-// "-21--52", "11--22", "-15-32", "7-32"
+// where lon and lat can be negative.
+//
+// Examples: "-21--52", "11--22", "-15-32", "7-32"
 //
 // Returns:
 //   - longitude as int32
@@ -109,41 +113,10 @@ func parseCoordinates(val string) (int32, int32) {
 
 // parseInt32 parses a string into int32.
 func parseInt32(s string) (int32, error) {
-	if len(s) == 0 {
-		return 0, strconv.ErrSyntax
+	n, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, err
 	}
 
-	neg := false
-	start := 0
-	if s[0] == '-' {
-		neg = true
-		start = 1
-		if len(s) == 1 {
-			return 0, strconv.ErrSyntax
-		}
-	}
-
-	var n int32
-	for i := start; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			break // Stop at first non-digit (for cases like "2-3")
-		}
-
-		digit := int32(s[i] - '0')
-		if neg && n == 214748364 && digit == 8 && i == len(s)-1 {
-			return -2147483648, nil
-		}
-
-		if n > (2147483647-digit)/10 {
-			return 0, strconv.ErrRange
-		}
-
-		n = n*10 + digit
-	}
-
-	if neg {
-		n = -n
-	}
-
-	return n, nil
+	return int32(n), nil // #nosec G115 -- ParseInt constrains the value to int32.
 }

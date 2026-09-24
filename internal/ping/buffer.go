@@ -1,9 +1,14 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package ping
 
 import (
 	"time"
 )
 
+// pingBuffSize is the maximum number of samples retained by a Buffer.
 const pingBuffSize = 65535
 
 // Stats holds aggregated ping statistics such as minimum,

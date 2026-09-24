@@ -1,6 +1,10 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package types
 
-// Platform represent game-server platform (OS)
+// Platform represents a game-server operating system keyword.
 type Platform string
 
 const (
@@ -10,7 +14,7 @@ const (
 	OSWindows Platform = "w" // Windows
 )
 
-// String return string represent of char
+// String returns the human-readable operating system name.
 func (p Platform) String() string {
 	switch p {
 	case OSWLinux:
@@ -22,6 +26,6 @@ func (p Platform) String() string {
 	case OSWindows:
 		return "Windows"
 	default:
-		return "Undefined"
+		return string(p)
 	}
 }

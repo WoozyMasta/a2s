@@ -1,0 +1,88 @@
+site_name: A2S
+site_description: Steam A2S client, server, proxy, and CLI for game servers.
+repo_name: WoozyMasta/a2s
+repo_url: https://github.com/WoozyMasta/a2s
+edit_uri: edit/master/
+
+exclude_docs: |
+  internal/testfixtures/data/README.md
+  pkg/a3sb/docs/README_ru.md
+  site/
+
+copyright: Copyright &copy; 2025-2026 WoozyMasta
+
+extra:
+  generator: false
+
+theme:
+  name: material
+  logo: winres/icon256.png
+  favicon: winres/icon32.png
+  features:
+    - content.code.copy
+    - content.tabs.link
+    - toc.integrate
+    - navigation.top
+    - navigation.indexes
+    - navigation.path
+    - navigation.sections
+    - navigation.expand
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+  font:
+    text: Roboto
+    code: JetBrains Mono
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+plugins:
+  - search
+
+nav:
+  - Home: README.md
+  - CLI: CLI.md
+  - A3SB: pkg/a3sb/docs/README.md
+  - API:
+      - Client: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s
+      - Server: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/server
+      - Proxy: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/proxy
+      - A3SB: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a3sb
+      - AppID registry: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/appid
+      - Keywords: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/keywords
+      - Keyword types: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/keywords/types
+  - Release notes: CHANGELOG.md

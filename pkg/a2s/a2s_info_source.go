@@ -1,41 +1,46 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
 	"errors"
+	"io"
 
-	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // readSourceInfo parses Source protocol A2S_INFO response.
-func (i *Info) readSourceInfo(r *bread.Reader) error {
+func (i *Info) readSourceInfo(r *wire.Decoder) error {
 	var err error
 
 	if i.Protocol, err = r.Byte(); err != nil {
 		return errors.Join(ErrInfoProtocol, err)
 	}
 
-	if i.Name, err = r.String(); err != nil {
+	if i.Name, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoServerName, err)
 	}
 
-	if i.Map, err = r.String(); err != nil {
+	if i.Map, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoMapName, err)
 	}
 
-	if i.Folder, err = r.String(); err != nil {
+	if i.Folder, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoFolderName, err)
 	}
 
-	if i.Game, err = r.String(); err != nil {
+	if i.Game, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoGameName, err)
 	}
 
-	id, err := r.Uint16()
+	appID, err := r.Uint16()
 	if err != nil {
-		return errors.Join(ErrInfoGameID, err)
+		return errors.Join(ErrInfoAppID, err)
 	}
-	i.ID = uint64(id)
+	i.AppID = appID
 
 	if i.Players, err = r.Byte(); err != nil {
 		return errors.Join(ErrInfoPlayerCount, err)
@@ -61,27 +66,30 @@ func (i *Info) readSourceInfo(r *bread.Reader) error {
 	}
 	i.Environment = Environment(environment)
 
-	if i.Visibility, err = r.Bool(); err != nil {
+	if i.Visibility, err = readInfoBool(r); err != nil {
 		return errors.Join(ErrInfoVisibility, err)
 	}
 
-	if i.VAC, err = r.Bool(); err != nil {
+	if i.VAC, err = readInfoBool(r); err != nil {
 		return errors.Join(ErrInfoVAC, err)
 	}
 
-	if i.ID == appid.TheShip.Uint64() {
+	if i.EffectiveID() == appid.TheShip {
+		// The Ship inserts its game-specific block
+		// before the common version and EDF fields.
 		if i.TheShip, err = readTheShipInfo(r); err != nil {
 			return errors.Join(ErrInfoTheShip, err)
 		}
 	}
 
-	if i.Version, err = r.String(); err != nil {
+	if i.Version, err = r.CString(); err != nil {
 		return errors.Join(ErrInfoVersion, err)
 	}
 
 	edf, err := r.Byte()
 	if err != nil {
-		if errors.Is(err, bread.ErrUnderflow) {
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			// EDF was added after the base response and may be absent.
 			return nil
 		}
 		return errors.Join(ErrInfoEDF, err)

@@ -1,30 +1,40 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 /*
-Read protocol version and try set game ID if not set
+readVersion reads and validates the A3SB protocol version for the selected game layout.
 
-There are two described versions of the [Protocol v3] and [Protocol v2] for Arma 3.
+Arma 3 currently responds with [Protocol v3].
+DayZ currently responds with [Protocol v2],
+but its v2 layout is not the same as the v2 layout described for Arma 3:
+DayZ does not contain the two difficulty bytes present in the Arma 3 payload.
+In practice, these are separate game layouts sharing the version field.
 
-Currently Arma 3 responds with v3, and DayZ with v2, but v2 DayZ is not equal to the described v2 Arma 3,
-DayZ does not have 5 and 6 bytes with bit flags describing the difficulty,
-i.e. v2 DayZ has its own protocol with its own versioning.
-Considering that at the time of writing the protocol versions of the games are different,
-we will automatically assume that v2 is the DayZ response,
-and v3 is the response for Arma 3 if the game was not specified explicitly.
+When the game is not specified, parseAutomatic currently uses this observed distinction
+as a parser-selection heuristic: v2 is tried as DayZ first and v3 as Arma 3 first.
+The version byte is not treated as a permanent game identity;
+the opposite parser is attempted when the preferred layout fails.
 
-! Most likely it will break when DayZ switches to protocol v3 !
+A future DayZ protocol change may initially break automatic detection
+or cause the wrong layout to be selected if the new payload remains structurally valid.
+The fallback reduces this risk but does not eliminate it;
+the selection rule and fixtures must be updated when that protocol change occurs.
+
+! Warning: this heuristic may break when DayZ switches to protocol v3 !
 
 [Protocol v3]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol3
 [Protocol v2]: https://community.bistudio.com/wiki/Arma_3:_ServerBrowserProtocol2
 */
-func (r *Rules) readVersion(reader *bread.Reader) error {
+func (r *Rules) readVersion(reader *wire.Decoder) error {
 	version, err := reader.Byte()
 	if err != nil {
 		return err
@@ -35,17 +45,12 @@ func (r *Rules) readVersion(reader *bread.Reader) error {
 		return ErrProtoV1
 
 	case 3:
-		if r.id == 0 {
-			r.id = appid.Arma3.Uint64()
-		}
-		if r.id == appid.DayZ.Uint64() {
+		if r.Layout == LayoutDayZ {
 			return ErrProtoV3
 		}
 
 	case 2:
-		if r.id == 0 {
-			r.id = appid.DayZ.Uint64()
-		}
+		// Both known layouts use a v2 version byte; their field layouts differ.
 
 	default:
 		return fmt.Errorf("%w: protocol version %d", ErrProtoNewest, version)

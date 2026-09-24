@@ -1,40 +1,59 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package main
 
 import (
+	"context"
 	"fmt"
-	"os"
+	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/woozymasta/a2s/pkg/a2s"
 )
 
-func executePlayers(cmd *PlayersCommand) {
-	if cmd.Args.Host == "" {
-		fatal("Host must be provided")
-	}
-
-	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer closeClient(client)
-
-	players, err := client.GetPlayers()
+// executePlayers queries A2S_PLAYER and renders the available player fields.
+func executePlayers(app *Application, cmd *PlayersCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
 	if err != nil {
-		fatalf("Failed to get players: %s", err)
+		return app.wrapError("error.client_create", "failed to create client", err)
+	}
+	defer closeClient(app, client)
+
+	players, err := client.GetPlayers(context.Background())
+	if err != nil {
+		return friendlyQueryError(app, "error.players", "failed to get players", err, client.Timeout())
 	}
 
-	formatter := NewFormatter(cmd.Format)
+	formatter := NewFormatter(cmd.Format, app.Out, app.Localizer)
 
 	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(players)
-		return
+		return formatter.PrintJSON(players)
 	}
 
-	if len(*players) == 0 {
-		fmt.Println("The server is empty and there are no players to print ...")
-		return
+	return renderPlayersTable(app, players, client.Addr().String(), formatter)
+}
+
+// renderPlayersTable renders human-readable player data without querying a server.
+func renderPlayersTable(app *Application, players []a2s.Player, address string, formatter *Formatter) error {
+	if len(players) == 0 {
+		_, _ = fmt.Fprintln(app.Out, app.localize(
+			"players.empty",
+			"The server is empty and there are no players to print ...",
+		))
+		return nil
 	}
 
-	// Determine which columns to show
+	// Show only columns containing at least one non-zero value
+	// so sparse server responses do not produce empty table columns.
 	counter := [4]byte{}
-	for _, player := range *players {
+	for _, player := range players {
 		if player.Duration != 0 {
 			counter[0]++
 		}
@@ -49,50 +68,53 @@ func executePlayers(cmd *PlayersCommand) {
 		}
 	}
 
-	columns := []interface{}{"#"}
+	columns := []any{app.localize("table.number", "#")}
 	if counter[0] > 0 {
-		columns = append(columns, "PlayTime")
+		columns = append(columns, app.localize("players.play_time", "PlayTime"))
 	}
 	if counter[1] > 0 {
-		columns = append(columns, "Score")
+		columns = append(columns, app.localize("players.score", "Score"))
 	}
 	if counter[2] > 0 {
-		columns = append(columns, "Name")
+		columns = append(columns, app.localize("players.name", "Name"))
 	}
 	if counter[3] > 0 {
-		columns = append(columns, "Index")
+		columns = append(columns, app.localize("players.index", "Index"))
 	}
 
-	t := table.NewWriter()
-	if formatter.IsTableFormat() {
-		t.SetOutputMirror(os.Stdout)
-	}
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row(columns))
-
-	for i, player := range *players {
-		row := []interface{}{fmt.Sprintf("%d", i+1)}
+	rows := make([]table.Row, 0, len(players))
+	for i, player := range players {
+		row := []any{strconv.Itoa(i + 1)}
 
 		if counter[0] > 0 {
 			row = append(row, player.Duration.String())
 		}
 		if counter[1] > 0 {
-			row = append(row, fmt.Sprint(player.Score))
+			row = append(row, strconv.Itoa(int(player.Score)))
 		}
 		if counter[2] > 0 {
 			row = append(row, player.Name)
 		}
 		if counter[3] > 0 {
-			row = append(row, fmt.Sprint(player.Index))
+			row = append(row, strconv.FormatUint(uint64(player.Index), 10))
 		}
 
-		t.AppendRow(table.Row(row))
+		rows = append(rows, table.Row(row))
 	}
 
-	formatter.PrintTable(t)
+	t := formatter.NewTable(table.Row(columns), rows)
+	if err := formatter.PrintTable(t); err != nil {
+		return app.wrapError("error.render_players", "failed to render players", err)
+	}
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_PLAYERS response for %s\n", client.Address)
+		_, _ = fmt.Fprintf(
+			app.Out,
+			"%s\n",
+			app.localize("footer.players", "A2S_PLAYERS response for %s", address),
+		)
 	}
+
+	return nil
 }

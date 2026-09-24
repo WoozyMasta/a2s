@@ -1,113 +1,157 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"slices"
 	"strconv"
 	"unicode/utf8"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/a2srules"
 )
+
+// Rule is one ordered A2S_RULES key/value pair.
+type Rule struct {
+	// Name is the rule key as received on the wire.
+	Name string `json:"name" yaml:"name"`
+
+	// Value is the rule value as received on the wire.
+	Value string `json:"value" yaml:"value"`
+}
+
+// Rules preserves A2S_RULES entry order and duplicate names.
+type Rules []Rule
+
+// Get returns the last value for name, matching the old map representation.
+func (r Rules) Get(name string) (string, bool) {
+	for _, v := range slices.Backward(r) {
+		if v.Name == name {
+			return v.Value, true
+		}
+	}
+
+	return "", false
+}
+
+// Values returns all values for name in wire order.
+func (r Rules) Values(name string) []string {
+	var values []string
+	for _, rule := range r {
+		if rule.Name == name {
+			values = append(values, rule.Value)
+		}
+	}
+
+	return values
+}
+
+// Map converts rules to a map using the last value for duplicate names.
+// The conversion loses entry order and duplicate values.
+func (r Rules) Map() map[string]string {
+	if len(r) == 0 {
+		return nil
+	}
+
+	rules := make(map[string]string, len(r))
+	for _, rule := range r {
+		rules[rule.Name] = rule.Value
+	}
+
+	return rules
+}
 
 // GetRules queries server rules (A2S_RULES).
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
-func (c *Client) GetRules() (map[string]string, error) {
-	data, _, _, err := c.Get(RulesRequest)
+func (c *Client) GetRules(ctx context.Context) (Rules, error) {
+	packet, _, err := c.Query(ctx, RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return DecodeRules(packet)
+}
 
-	reader := bread.NewReader(c.parseData)
-	count, err := reader.Uint16()
+// DecodeRules parses a logical A2S_RULES response packet.
+//
+// The response type must be ResponseRules.
+// Rule order and duplicate names are preserved in the returned slice.
+// Trailing bytes after the declared entries are ignored for compatibility;
+// A3SB applies its own stricter envelope policy to the same bytes.
+func DecodeRules(packet Packet) (Rules, error) {
+	if packet.Type != ResponseRules {
+		return nil, errors.Join(ErrRuleRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
+	}
+
+	result, err := a2srules.Parse(packet.Payload)
 	if err != nil {
-		return nil, errors.Join(ErrRuleCount, err)
-	}
+		switch {
+		case errors.Is(err, a2srules.ErrCount):
+			return nil, errors.Join(ErrRuleCount, err)
 
-	if count == 0 {
-		return nil, nil
-	}
+		case errors.Is(err, a2srules.ErrInsufficientData):
+			return nil, errors.Join(ErrInsufficientData, err)
 
-	rules := make(map[string]string, int(count))
-
-	for i := 0; i < int(count); i++ {
-		if reader.Len() < 4 {
-			return nil, ErrInsufficientData
-		}
-
-		key, err := reader.String()
-		if err != nil {
+		case errors.Is(err, a2srules.ErrKey):
 			return nil, errors.Join(ErrRuleKey, err)
-		}
 
-		value, err := reader.String()
-		if err != nil {
+		case errors.Is(err, a2srules.ErrValue):
 			return nil, errors.Join(ErrRuleValue, err)
-		}
 
-		rules[key] = value
+		default:
+			return nil, err
+		}
+	}
+
+	rules := make(Rules, 0, len(result.Entries))
+	for _, entry := range result.Entries {
+		rules = append(rules, Rule{
+			Name:  string(entry.Key),
+			Value: string(entry.Value),
+		})
 	}
 
 	return rules, nil
 }
 
-// GetParsedRules queries server rules and parses values into appropriate types.
-// Attempts to parse as int64, float64, bool, or base64-encoded string. Falls back to string if parsing fails.
-func (c *Client) GetParsedRules() (map[string]any, error) {
-	data, _, _, err := c.Get(RulesRequest)
+// GetParsedRules queries server rules and converts values into convenient Go types.
+// Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
+// Duplicate names use the last value, like Rules.Get and Rules.Map.
+func (c *Client) GetParsedRules(ctx context.Context) (map[string]any, error) {
+	data, err := c.GetRules(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return ParseRuleValues(data), nil
+}
 
-	reader := bread.NewReader(c.parseData)
-	count, err := reader.Uint16()
-	if err != nil {
-		return nil, errors.Join(ErrRuleCount, err)
-	}
-
-	if count == 0 {
-		return nil, nil
+// ParseRuleValues converts already fetched A2S rules
+// into convenient Go values without issuing another network request.
+// Numeric, boolean, and valid UTF-8 Base64 values are converted heuristically.
+// The input rules are not modified.
+func ParseRuleValues(data Rules) map[string]any {
+	if data == nil {
+		return nil
 	}
 
-	rules := make(map[string]any, int(count))
-
+	rules := make(map[string]any, len(data))
 	var base64Buf []byte
-
-	for i := 0; i < int(count); i++ {
-		if reader.Len() < 4 {
-			return nil, ErrInsufficientData
-		}
-
-		key, err := reader.String()
-		if err != nil {
-			return nil, errors.Join(ErrRuleKey, err)
-		}
-
-		value, err := reader.String()
-		if err != nil {
-			return nil, errors.Join(ErrRuleValue, err)
-		}
-
-		parsed := parseRuleValue(value, &base64Buf)
-		rules[key] = parsed
+	for _, rule := range data {
+		rules[rule.Name] = parseRuleValue(rule.Value, &base64Buf)
 	}
 
-	return rules, nil
+	return rules
 }
 
-// parseRuleValue attempts to parse value string into int64, float64, bool, or base64-decoded string.
-// Uses reusable base64Buf to minimize allocations.
+// parseRuleValue attempts to parse a rule value
+// as an integer, float, boolean, or UTF-8 Base64 string.
+// It returns the original value when no conversion fits.
 func parseRuleValue(v string, base64Buf *[]byte) any {
 	vLen := len(v)
 	if vLen == 0 {
@@ -132,11 +176,9 @@ func parseRuleValue(v string, base64Buf *[]byte) any {
 		}
 	}
 
-	var floatStr string
+	floatStr := v
 	if vLen > 1 && v[vLen-1] == 'f' {
 		floatStr = v[:vLen-1]
-	} else {
-		floatStr = v
 	}
 	if num, err := strconv.ParseFloat(floatStr, 64); err == nil {
 		return num

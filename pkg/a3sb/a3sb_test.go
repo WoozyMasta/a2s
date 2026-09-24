@@ -1,13 +1,17 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
 // testServersConfig represents the structure of test_servers.json
@@ -59,6 +63,14 @@ func readTestServers() ([]string, error) {
 	return servers, nil
 }
 
+// requireLiveTest skips tests that query public servers in short mode.
+func requireLiveTest(t testing.TB) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping live server test in short mode")
+	}
+}
+
 // readTestServersArma3 reads Arma 3 server addresses from test_servers.json
 func readTestServersArma3() ([]string, error) {
 	config, err := readTestServersJSON()
@@ -79,6 +91,7 @@ func readTestServersDayZ() ([]string, error) {
 
 // getFirstTestServer returns the first server from test_servers.json (all servers combined)
 func getFirstTestServer(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -109,10 +122,10 @@ func TestRulesSingle(t *testing.T) {
 	defer client.Close()
 
 	// Try to get rules with Arma 3 AppID first, then DayZ
-	rules, err := client.GetRulesArma3()
+	rules, err := client.GetRulesArma3(context.Background())
 	if err != nil {
 		// If Arma 3 fails, try DayZ
-		rules, err = client.GetRulesDayZ()
+		rules, err = client.GetRulesDayZ(context.Background())
 		if err != nil {
 			t.Fatalf("GetRules failed for both Arma 3 and DayZ: %v", err)
 		}
@@ -152,7 +165,7 @@ func TestRulesArma3Single(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRulesArma3()
+	rules, err := client.GetRulesArma3(context.Background())
 	if err != nil {
 		t.Skipf("GetRulesArma3 failed (server might not be Arma 3): %v", err)
 	}
@@ -191,7 +204,7 @@ func TestRulesDayZSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRulesDayZ()
+	rules, err := client.GetRulesDayZ(context.Background())
 	if err != nil {
 		t.Skipf("GetRulesDayZ failed (server might not be DayZ): %v", err)
 	}
@@ -225,6 +238,7 @@ func TestRulesDayZSingle(t *testing.T) {
 
 // TestRulesMultiple tests A2S_RULES query on all servers from test_servers.json
 func TestRulesMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -245,7 +259,7 @@ func TestRulesMultiple(t *testing.T) {
 		}
 
 		// Try Arma 3 first
-		rules, err := client.GetRulesArma3()
+		rules, err := client.GetRulesArma3(context.Background())
 		if err == nil && rules != nil {
 			successCount++
 			arma3Count++
@@ -256,7 +270,7 @@ func TestRulesMultiple(t *testing.T) {
 		}
 
 		// Try DayZ
-		rules, err = client.GetRulesDayZ()
+		rules, err = client.GetRulesDayZ(context.Background())
 		client.Close()
 
 		if err == nil && rules != nil {
@@ -275,6 +289,7 @@ func TestRulesMultiple(t *testing.T) {
 
 // TestRulesArma3Multiple tests A2S_RULES for Arma 3 on all servers
 func TestRulesArma3Multiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServersArma3()
 	if err != nil {
 		t.Skipf("Cannot read Arma 3 test servers file: %v", err)
@@ -291,7 +306,7 @@ func TestRulesArma3Multiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRulesArma3()
+		rules, err := client.GetRulesArma3(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -311,6 +326,7 @@ func TestRulesArma3Multiple(t *testing.T) {
 
 // TestRulesDayZMultiple tests A2S_RULES for DayZ on all servers
 func TestRulesDayZMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServersDayZ()
 	if err != nil {
 		t.Skipf("Cannot read DayZ test servers file: %v", err)
@@ -327,7 +343,7 @@ func TestRulesDayZMultiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRulesDayZ()
+		rules, err := client.GetRulesDayZ(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -345,40 +361,9 @@ func TestRulesDayZMultiple(t *testing.T) {
 	t.Logf("Successfully queried %d/%d DayZ servers", successCount, len(servers))
 }
 
-// BenchmarkRules benchmarks A2S_RULES query (auto-detect game)
-func BenchmarkRules(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	// Try Arma 3 first, then DayZ
-	var gameID uint64
-	_, err = client.GetRulesArma3()
-	if err != nil {
-		// If Arma 3 fails, use DayZ
-		gameID = 221100 // DayZ AppID
-	} else {
-		gameID = 107410 // Arma 3 AppID
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(gameID)
-		if err != nil {
-			b.Fatalf("GetRules failed: %v", err)
-		}
-	}
-}
-
 // getFirstTestServerArma3 returns the first Arma 3 server from test_servers.json
 func getFirstTestServerArma3(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServersArma3()
 	if err != nil {
 		t.Skipf("Cannot read Arma 3 test servers file: %v", err)
@@ -391,6 +376,7 @@ func getFirstTestServerArma3(t testing.TB) string {
 
 // getFirstTestServerDayZ returns the first DayZ server from test_servers.json
 func getFirstTestServerDayZ(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServersDayZ()
 	if err != nil {
 		t.Skipf("Cannot read DayZ test servers file: %v", err)
@@ -399,48 +385,4 @@ func getFirstTestServerDayZ(t testing.TB) string {
 		t.Skip("No DayZ test servers found in test_servers.json")
 	}
 	return servers[0]
-}
-
-// BenchmarkRulesArma3 benchmarks A2S_RULES for Arma 3
-func BenchmarkRulesArma3(b *testing.B) {
-	serverAddr := getFirstTestServerArma3(b)
-	if serverAddr == "" {
-		b.Skip("No Arma 3 test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.Arma3.Uint64())
-		if err != nil {
-			b.Fatalf("GetRules failed for Arma 3: %v", err)
-		}
-	}
-}
-
-// BenchmarkRulesDayZ benchmarks A2S_RULES for DayZ
-func BenchmarkRulesDayZ(b *testing.B) {
-	serverAddr := getFirstTestServerDayZ(b)
-	if serverAddr == "" {
-		b.Skip("No DayZ test server available")
-	}
-
-	client, err := createA3SBClient(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules(appid.DayZ.Uint64())
-		if err != nil {
-			b.Fatalf("GetRules failed for DayZ: %v", err)
-		}
-	}
 }

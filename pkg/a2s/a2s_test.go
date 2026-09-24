@@ -1,7 +1,12 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,8 +49,17 @@ func readTestServers() ([]string, error) {
 	return servers, nil
 }
 
+// requireLiveTest skips tests that query public servers in short mode.
+func requireLiveTest(t testing.TB) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping live server test in short mode")
+	}
+}
+
 // getFirstTestServer returns the first server from test_servers.conf
 func getFirstTestServer(t testing.TB) string {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -66,19 +80,19 @@ func TestSimple(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, err := client.GetInfo(); err != nil {
+	if _, err := client.GetInfo(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetRules(); err != nil {
+	if _, err := client.GetRules(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetParsedRules(); err != nil {
+	if _, err := client.GetParsedRules(context.Background()); err != nil {
 		t.Error(err)
 	}
 
-	if _, err := client.GetPlayers(); err != nil {
+	if _, err := client.GetPlayers(context.Background()); err != nil {
 		t.Error(err)
 	}
 }
@@ -93,7 +107,7 @@ func TestInfoSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	info, err := client.GetInfo()
+	info, meta, err := client.GetInfoWithMeta(context.Background())
 	if err != nil {
 		t.Fatalf("GetInfo failed: %v", err)
 	}
@@ -114,7 +128,7 @@ func TestInfoSingle(t *testing.T) {
 	}
 
 	t.Logf("Server: %s | Map: %s | Players: %d/%d | Ping: %v",
-		info.Name, info.Map, info.Players, info.MaxPlayers, info.Ping)
+		info.Name, info.Map, info.Players, info.MaxPlayers, meta.Duration)
 }
 
 // TestRulesSingle tests A2S_RULES query on first server from test_servers.conf
@@ -127,7 +141,7 @@ func TestRulesSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetRules()
+	rules, err := client.GetRules(context.Background())
 	if err != nil {
 		t.Fatalf("GetRules failed: %v", err)
 	}
@@ -137,8 +151,8 @@ func TestRulesSingle(t *testing.T) {
 	}
 
 	t.Logf("Retrieved %d rules", len(rules))
-	for key, value := range rules {
-		t.Logf("  %s = %s", key, value)
+	for _, rule := range rules {
+		t.Logf("  %s = %s", rule.Name, rule.Value)
 	}
 }
 
@@ -152,7 +166,7 @@ func TestRulesParsedSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	rules, err := client.GetParsedRules()
+	rules, err := client.GetParsedRules(context.Background())
 	if err != nil {
 		t.Fatalf("GetParsedRules failed: %v", err)
 	}
@@ -174,17 +188,13 @@ func TestPlayersSingle(t *testing.T) {
 	}
 	defer client.Close()
 
-	players, err := client.GetPlayers()
+	players, err := client.GetPlayers(context.Background())
 	if err != nil {
 		t.Fatalf("GetPlayers failed: %v", err)
 	}
 
-	if players == nil {
-		t.Fatal("GetPlayers returned nil")
-	}
-
-	t.Logf("Retrieved %d players", len(*players))
-	for i, player := range *players {
+	t.Logf("Retrieved %d players", len(players))
+	for i, player := range players {
 		t.Logf("  Player %d: %s (Score: %d, Duration: %v)",
 			i+1, player.Name, player.Score, player.Duration)
 	}
@@ -192,6 +202,7 @@ func TestPlayersSingle(t *testing.T) {
 
 // TestInfoMultiple tests A2S_INFO query on all servers from test_servers.conf
 func TestInfoMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -208,7 +219,7 @@ func TestInfoMultiple(t *testing.T) {
 			continue
 		}
 
-		info, err := client.GetInfo()
+		info, meta, err := client.GetInfoWithMeta(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -219,7 +230,7 @@ func TestInfoMultiple(t *testing.T) {
 		if info != nil {
 			successCount++
 			t.Logf("✓ %s: %s | Map: %s | Players: %d/%d | Ping: %v",
-				serverAddr, info.Name, info.Map, info.Players, info.MaxPlayers, info.Ping)
+				serverAddr, info.Name, info.Map, info.Players, info.MaxPlayers, meta.Duration)
 		}
 	}
 
@@ -228,6 +239,7 @@ func TestInfoMultiple(t *testing.T) {
 
 // TestRulesMultiple tests A2S_RULES query on all servers from test_servers.conf
 func TestRulesMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -244,7 +256,7 @@ func TestRulesMultiple(t *testing.T) {
 			continue
 		}
 
-		rules, err := client.GetRules()
+		rules, err := client.GetRules(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -263,6 +275,7 @@ func TestRulesMultiple(t *testing.T) {
 
 // TestPlayersMultiple tests A2S_PLAYER query on all servers from test_servers.conf
 func TestPlayersMultiple(t *testing.T) {
+	requireLiveTest(t)
 	servers, err := readTestServers()
 	if err != nil {
 		t.Skipf("Cannot read test servers file: %v", err)
@@ -279,7 +292,7 @@ func TestPlayersMultiple(t *testing.T) {
 			continue
 		}
 
-		players, err := client.GetPlayers()
+		players, err := client.GetPlayers(context.Background())
 		client.Close()
 
 		if err != nil {
@@ -287,99 +300,9 @@ func TestPlayersMultiple(t *testing.T) {
 			continue
 		}
 
-		if players != nil {
-			successCount++
-			t.Logf("✓ %s: Retrieved %d players", serverAddr, len(*players))
-		}
+		successCount++
+		t.Logf("✓ %s: Retrieved %d players", serverAddr, len(players))
 	}
 
 	t.Logf("Successfully queried %d/%d servers", successCount, len(servers))
-}
-
-// BenchmarkInfo benchmarks A2S_INFO query
-func BenchmarkInfo(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := NewWithString(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetInfo()
-		if err != nil {
-			b.Fatalf("GetInfo failed: %v", err)
-		}
-	}
-}
-
-// BenchmarkRules benchmarks A2S_RULES query
-func BenchmarkRules(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := NewWithString(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetRules()
-		if err != nil {
-			b.Fatalf("GetRules failed: %v", err)
-		}
-	}
-}
-
-// BenchmarkRulesParsed benchmarks A2S_RULES with parsing
-func BenchmarkRulesParsed(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := NewWithString(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetParsedRules()
-		if err != nil {
-			b.Fatalf("GetParsedRules failed: %v", err)
-		}
-	}
-}
-
-// BenchmarkPlayers benchmarks A2S_PLAYER query
-func BenchmarkPlayers(b *testing.B) {
-	serverAddr := getFirstTestServer(b)
-	if serverAddr == "" {
-		b.Skip("No test server available")
-	}
-
-	client, err := NewWithString(serverAddr)
-	if err != nil {
-		b.Fatalf("Failed to create client: %v", err)
-	}
-	defer client.Close()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := client.GetPlayers()
-		if err != nil {
-			b.Fatalf("GetPlayers failed: %v", err)
-		}
-	}
 }

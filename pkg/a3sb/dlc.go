@@ -1,21 +1,25 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
 	"fmt"
 	"math/bits"
 
-	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
-// DLC 3rd and 4th bytes of the server browser protocol store the DLC bitmask flags
+// DLC identifies a bit in the server browser protocol DLC mask.
 type DLC uint16
 
-// DLCInfo store information about DLC
+// DLCInfo stores information about one DLC entry.
 type DLCInfo struct {
-	Name string `json:"name,omitempty"` // DLC name from predefined maps
-	ID   uint64 `json:"id,omitempty"`   // DCL Steam AppID
-	Hash uint32 `json:"hash,omitempty"` // DLC short hash
+	Name string `json:"name,omitempty"` // DLC name from predefined maps.
+	ID   uint64 `json:"id,omitempty"`   // DLC Steam AppID.
+	Hash uint32 `json:"hash,omitempty"` // DLC short hash.
+	Flag DLC    `json:"flag"`           // DLC bit present in the wire mask.
 }
 
 // DayZ DLC Map for DLC byte blocks
@@ -47,12 +51,14 @@ var arma3DLC = map[DLC]DLCInfo{
 }
 
 // readDLC parses DLC information from bitmask and reads hashes.
-func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
-	switch r.id {
-	case appid.Arma3.Uint64():
+func (r *Rules) readDLC(reader *wire.Decoder, dlcMask uint16) error {
+	switch r.Layout {
+	case LayoutArma3:
 		r.DLC = parseDLC(dlcMask, arma3DLC)
-	case appid.DayZ.Uint64(), appid.DayZExp.Uint64():
+
+	case LayoutDayZ:
 		r.DLC = parseDLC(dlcMask, dayzDLC)
+
 	default:
 		r.DLC = parseDLC(dlcMask, map[DLC]DLCInfo{})
 	}
@@ -62,7 +68,7 @@ func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 		return nil
 	}
 
-	for i := 0; i < dlcCount; i++ {
+	for i := range dlcCount {
 		hash, err := reader.Uint32()
 		if err != nil {
 			return err
@@ -75,34 +81,29 @@ func (r *Rules) readDLC(reader *bread.Reader, dlcMask uint16) error {
 
 // parseDLC parses DLC bitmask into DLCInfo slice.
 func parseDLC(mask uint16, dlcs map[DLC]DLCInfo) []DLCInfo {
-	dlc := DLC(mask)
-
-	bitCount := bits.OnesCount16(uint16(dlc))
+	bitCount := bits.OnesCount16(mask)
 	if bitCount == 0 {
 		return nil
 	}
 
 	result := make([]DLCInfo, 0, bitCount)
 
-	// Processing of known DLCs
-	for bit, info := range dlcs {
-		if dlc&bit != 0 {
-			result = append(result, info)
-			dlc &^= bit // Removing match DLC from the mask
+	for bit := DLC(1); bit != 0; bit <<= 1 {
+		if DLC(mask)&bit == 0 {
+			continue
 		}
-	}
 
-	// Checking the remaining bits for unknown DLCs
-	bit := DLC(1) // Start with the least significant bit
-	for dlc != 0 {
-		if dlc&bit != 0 {
-			result = append(result, DLCInfo{
-				ID:   0,
-				Name: fmt.Sprintf("Unknown DLC %d", bit),
-			})
-			dlc &^= bit // Remove the processed bit from the mask
+		if info, ok := dlcs[bit]; ok {
+			info.Flag = bit
+			result = append(result, info)
+			continue
 		}
-		bit <<= 1 // Move on to the next bit
+
+		result = append(result, DLCInfo{
+			Flag: bit,
+			ID:   0,
+			Name: fmt.Sprintf("Unknown DLC %d", bit),
+		})
 	}
 
 	return result

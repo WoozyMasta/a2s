@@ -1,196 +1,455 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/a2srules"
+	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
-	"github.com/woozymasta/steam/utils/appid"
 )
 
-// DefaultRulesBufferSize is default buffer size for A3SB rules responses.
-const DefaultRulesBufferSize uint16 = 8192
+// DefaultRulesBufferSize is the A3SB-compatible A2S receive buffer size.
+const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
 
 // Rules contains parsed A3SB rules response data.
+//
+// When GetRules receives a known non-zero game AppID,
+// the binary rules payload is parsed using the corresponding explicit layout.
+// Unknown non-zero AppIDs retain their identity and use LayoutUnknown.
+// For automatic mode, the response is classified as either native A2S
+// or A3SB before the payload is parsed.
+//
+// A native A2S result has Version == 0, keeps its complete ordinary rules in ExtraRules,
+// and leaves the typed A3SB fields at their zero values.
+// An A3SB result has a non-zero Version and exposes the fields decoded from its binary payload.
 type Rules struct {
-	Flags           *Flags            `json:"flags,omitempty"`            // Flags, I don't know what's actually encoded there
-	Difficulty      *Difficulty       `json:"difficulty,omitempty"`       // Difficulty (Arma 3 only)
-	ExtraRules      map[string]string `json:"extra_rules,omitempty"`      // Extra not standard rules if exists
-	Description     string            `json:"description,omitempty"`      // Server description
-	Island          string            `json:"island,omitempty"`           // Name of world [DayZ]
-	Platform        string            `json:"platform,omitempty"`         // Server OS [DayZ]
-	DLC             []DLCInfo         `json:"dlcs,omitempty"`             // List of information about DLC
-	CreatorDLC      []DLCInfo         `json:"creator_dlc,omitempty"`      // List of information about Creator DLC (Arma 3 only)
-	Mods            []Mod             `json:"mods,omitempty"`             // List of information about modifications
-	Signatures      []string          `json:"signatures,omitempty"`       // List of signatures
-	id              uint64            ``                                  // Steam AppID
-	Language        types.ServerLang  `json:"language,omitempty"`         // DayZ Server Language [DayZ]
-	AllowedBuild    uint16            `json:"allowed_build,omitempty"`    // Allowed client build for connect [DayZ]
-	ClientPort      uint16            `json:"client_port,omitempty"`      // Client port [DayZ]
-	RequiredBuild   uint16            `json:"required_build,omitempty"`   // Required client build for connect [DayZ]
-	RequiredVersion uint16            `json:"required_version,omitempty"` // Required client version for connect [DayZ]
-	TimeLeft        uint16            `json:"time_left,omitempty"`        // Time for respawn [DayZ]
-	stats           [4]byte           ``                                  // a3sb pages count raw/pager/blank/overflow
-	Version         byte              `json:"version"`                    // Protocol version
-	Dedicated       bool              `json:"dedicated,omitempty"`        // Dedicated [DayZ]
+	// Flags contains the currently undocumented A3SB flags.
+	// It is nil when the response flags byte is zero.
+	Flags *Flags `json:"flags,omitempty"`
+
+	// Difficulty contains Arma 3 difficulty settings.
+	// It is nil for DayZ and when the Arma 3 response reports no difficulty settings.
+	Difficulty *Difficulty `json:"difficulty,omitempty"`
+
+	// ExtraRules contains ordinary A2S key/value properties
+	// that are not represented by typed fields.
+	//
+	// In native A2S automatic fallback it contains the complete ordered rules.
+	// For A3SB responses it contains non-page outer properties
+	// that were not consumed by a game-specific parser.
+	// It never contains A3SB page carriers, including carriers rejected as malformed.
+	ExtraRules a2s.Rules `json:"extra_rules,omitempty"`
+
+	// Description is the DayZ server description.
+	// It is not part of the Arma 3 layout.
+	Description string `json:"description,omitempty"`
+
+	// Island is the DayZ world or island name.
+	Island string `json:"island,omitempty"`
+
+	// Platform is the normalized DayZ server platform name.
+	Platform string `json:"platform,omitempty"`
+
+	// PlatformRaw is the original DayZ platform rule value.
+	PlatformRaw string `json:"platform_raw,omitempty"`
+
+	// DLC contains the DLC entries reported by the server in protocol mask order.
+	// Each entry may include its protocol hash.
+	DLC []DLCInfo `json:"dlcs,omitempty"`
+
+	// CreatorDLC contains Arma 3 Creator DLC entries reported by the server.
+	CreatorDLC []DLCInfo `json:"creator_dlc,omitempty"`
+
+	// Mods contains regular server modifications.
+	// A mod may have ID zero when it is private or local to the server.
+	Mods []Mod `json:"mods,omitempty"`
+
+	// Signatures contains the signature names reported by the server.
+	Signatures []string `json:"signatures,omitempty"`
+
+	// Layout identifies the binary layout used to decode the A3SB payload.
+	// It is LayoutUnknown for native A2S fallback results.
+	Layout Layout `json:"layout,omitempty"`
+
+	// appID identifies the game requested or inferred for this result.
+	appID uint64 `json:"-"`
+
+	// Language is the DayZ server language value.
+	Language types.ServerLang `json:"language,omitempty"`
+
+	// AllowedBuild is the DayZ client build allowed to connect to the server.
+	AllowedBuild uint16 `json:"allowed_build,omitempty"`
+
+	// ClientPort is the DayZ game/client port advertised by the server.
+	ClientPort uint16 `json:"client_port,omitempty"`
+
+	// RequiredBuild is the DayZ client build required by the server.
+	RequiredBuild uint16 `json:"required_build,omitempty"`
+
+	// RequiredVersion is the DayZ client version required by the server.
+	RequiredVersion uint16 `json:"required_version,omitempty"`
+
+	// TimeLeft is the DayZ time-left value.
+	TimeLeft uint16 `json:"time_left,omitempty"`
+
+	// Version is the A3SB binary protocol version.
+	// It is zero for a native A2S automatic fallback result.
+	Version byte `json:"version"`
+
+	// Dedicated reports whether the DayZ server is dedicated.
+	Dedicated bool `json:"dedicated,omitempty"`
+}
+
+// a3sbEnvelope contains the validated outer response and assembled page data.
+// The assembled page buffer owns its data;
+// individual entry slices are used only while the envelope is being built.
+type a3sbEnvelope struct {
+	extraRules   a2s.Rules
+	encodedPages []byte
 }
 
 // GetRulesArma3 returns A2S_RULES for Arma 3.
-func (c *Client) GetRulesArma3() (*Rules, error) {
-	return c.GetRules(appid.Arma3.Uint64())
+func (c *Client) GetRulesArma3(ctx context.Context) (*Rules, error) {
+	return c.GetRules(ctx, appid.Arma3)
 }
 
 // GetRulesDayZ returns A2S_RULES for DayZ.
-func (c *Client) GetRulesDayZ() (*Rules, error) {
-	return c.GetRules(appid.DayZ.Uint64())
+func (c *Client) GetRulesDayZ(ctx context.Context) (*Rules, error) {
+	return c.GetRules(ctx, appid.DayZ)
 }
 
-// GetRules parses A2S_RULES response using A3SB for Arma 3 and DayZ.
-func (c *Client) GetRules(game uint64) (*Rules, error) {
-	if c.BufferSize == a2s.DefaultBufferSize {
-		c.SetBufferSize(DefaultRulesBufferSize)
-	}
-
-	data, _, _, err := c.Get(a2s.RulesRequest)
+// GetRules parses A2S_RULES using the selected A3SB layout.
+//
+// A non-zero game selects an explicit layout and never falls back to native A2S parsing.
+// With game set to zero, the complete response is classified automatically:
+// native A2S rules are returned in ExtraRules,
+// while A3SB version 2 and version 3 select DayZ and Arma 3 respectively.
+func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
+	packet, _, err := c.Query(ctx, a2s.RulesRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	reader := bread.NewReader(data)
-
-	count, err := reader.Uint16()
+	result, err := a2srules.Parse(packet.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("%w count: 0x%X", ErrRules, data[:4])
+		return nil, fmt.Errorf("%w: %w", ErrRules, err)
 	}
 
-	var a3sb []byte
-	var rawRules map[string]string
-	rules := &Rules{id: game, stats: [4]byte{data[1], 0, 0, 0}}
+	if game == 0 {
+		return parseAutomatic(result)
+	}
 
-	for i := 0; i < int(count); i++ {
-		key, err := reader.BytesPage()
-		if err != nil {
-			return nil, fmt.Errorf("%w key: %w", ErrRules, err)
-		}
-		value, err := reader.BytesPage()
-		if err != nil {
-			return nil, fmt.Errorf("%w value: %w", ErrRules, err)
-		}
+	layout := layoutForAppID(game)
 
-		if len(key) == 0 {
-			rules.stats[2]++
+	envelope, err := buildPageEnvelope(result.Entries, result.Remaining, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return parseA3SBEnvelope(envelope, layout, game)
+}
+
+// parseAutomatic classifies one already fetched A2S_RULES response.
+func parseAutomatic(result a2srules.Result) (*Rules, error) {
+	if !hasPageOneCandidate(result.Entries) {
+		return nativeRules(result.Entries), nil
+	}
+
+	envelope, err := buildPageEnvelope(result.Entries, result.Remaining, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(envelope.encodedPages) == 0 {
+		return nil, ErrRulesPageMissing
+	}
+
+	version := envelope.encodedPages[0]
+	var firstLayout, secondLayout Layout
+	switch version {
+	case 1:
+		return nil, ErrProtoV1
+
+	case 2:
+		firstLayout, secondLayout = LayoutDayZ, LayoutArma3
+
+	case 3:
+		firstLayout, secondLayout = LayoutArma3, LayoutDayZ
+
+	default:
+		return nil, fmt.Errorf("%w: protocol version %d", ErrProtoNewest, version)
+	}
+
+	first, firstErr := parseA3SBEnvelope(envelope, firstLayout, appIDForLayout(firstLayout))
+	if firstErr == nil {
+		return first, nil
+	}
+
+	second, secondErr := parseA3SBEnvelope(envelope, secondLayout, appIDForLayout(secondLayout))
+	if secondErr == nil {
+		return second, nil
+	}
+
+	// A coherent A3SB envelope must not degrade into binary strings
+	// in ExtraRules after both known layouts reject it.
+	return nil, errors.Join(firstErr, secondErr)
+}
+
+// nativeRules returns ordinary A2S rules only when no A3SB page-1 candidate was found.
+// This prevents binary carrier pages from leaking into ExtraRules.
+func nativeRules(entries []a2srules.Entry) *Rules {
+	return &Rules{ExtraRules: rulesFromEntries(entries)}
+}
+
+// rulesFromEntries converts shared parser entries without discarding order or duplicates.
+func rulesFromEntries(entries []a2srules.Entry) a2s.Rules {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	rules := make(a2s.Rules, 0, len(entries))
+	for _, entry := range entries {
+		rules = append(rules, a2s.Rule{
+			Name:  string(entry.Key),
+			Value: string(entry.Value),
+		})
+	}
+
+	return rules
+}
+
+// hasPageOneCandidate checks only the unambiguous first A3SB page marker.
+// Other two-byte keys are not enough to classify an ordinary A2S response.
+func hasPageOneCandidate(entries []a2srules.Entry) bool {
+	for _, entry := range entries {
+		if len(entry.Key) == 2 && entry.Key[0] == 1 && entry.Key[1] != 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// buildPageEnvelope validates and assembles A3SB pages.
+// When requirePageOne is true, page 1 must be present;
+// explicit game mode passes false to retain the existing strict error for responses without any pages.
+func buildPageEnvelope(entries []a2srules.Entry, remaining []byte, requirePageOne bool) (a3sbEnvelope, error) {
+	if len(remaining) != 0 {
+		return a3sbEnvelope{}, ErrRulesDataRemains
+	}
+
+	pageValues := make(map[byte][]byte)
+	var pageCount byte
+	var rawRules a2s.Rules
+	pageOnePresent := false
+
+	for _, entry := range entries {
+		if len(entry.Key) == 0 {
 			continue
 		}
 
-		if len(value) > 127 {
-			rules.stats[3]++
+		if len(entry.Key) != 2 {
+			rawRules = append(rawRules, a2s.Rule{
+				Name:  string(entry.Key),
+				Value: string(entry.Value),
+			})
+			continue
 		}
 
-		// A3SBP pages have 2-byte keys: [page_number, page_count]
-		if len(key) == 2 && key[0] <= key[1] {
-			if a3sb == nil {
-				remainingPages := int(count) - i
-				estimatedSize := remainingPages * 64
-				if estimatedSize > len(data) {
-					estimatedSize = len(data)
-				}
-				a3sb = make([]byte, 0, estimatedSize)
-			}
-			a3sb = bread.AppendEscapeSequences(a3sb, value)
-		} else {
-			if rawRules == nil {
-				rawRules = make(map[string]string, 8)
-			}
-			rawRules[string(key)] = string(value)
+		pageNumber := entry.Key[0]
+		advertisedCount := entry.Key[1]
+		if pageNumber == 1 {
+			pageOnePresent = true
+		}
+		if pageNumber == 0 || advertisedCount == 0 || pageNumber > advertisedCount {
+			return a3sbEnvelope{}, fmt.Errorf(
+				"%w: page %d of %d",
+				ErrRulesPageMetadata,
+				pageNumber,
+				advertisedCount,
+			)
 		}
 
-		if rules.stats[1] == 0 {
-			rules.stats[1] = key[1]
+		if pageCount == 0 {
+			pageCount = advertisedCount
+		} else if pageCount != advertisedCount {
+			return a3sbEnvelope{}, fmt.Errorf(
+				"%w: page %d advertises %d, want %d",
+				ErrRulesPageMetadata,
+				pageNumber,
+				advertisedCount,
+				pageCount,
+			)
 		}
+
+		if previous, ok := pageValues[pageNumber]; ok {
+			if !bytes.Equal(previous, entry.Value) {
+				return a3sbEnvelope{}, fmt.Errorf("%w: page %d", ErrRulesPageConflict, pageNumber)
+			}
+
+			continue
+		}
+
+		pageValues[pageNumber] = entry.Value
 	}
 
-	if reader.Len() != 0 {
-		return nil, ErrRulesDataRemains
+	if requirePageOne && !pageOnePresent {
+		return a3sbEnvelope{}, ErrRulesPageMissing
 	}
 
-	if err := rules.readA3SB(a3sb); err != nil {
+	encodedPages, err := assemblePages(pageValues, pageCount)
+	if err != nil {
+		return a3sbEnvelope{}, err
+	}
+
+	// assemblePages returns an owned buffer, so escape decoding can reuse it.
+	return a3sbEnvelope{
+		encodedPages: appendDecodedEscapeSequences(nil, encodedPages),
+		extraRules:   rawRules,
+	}, nil
+}
+
+// parseA3SBEnvelope parses one validated payload with one explicit layout.
+func parseA3SBEnvelope(envelope a3sbEnvelope, layout Layout, game uint64) (*Rules, error) {
+	rules := &Rules{
+		Layout: layout,
+		appID:  game,
+	}
+
+	if err := rules.readA3SB(envelope.encodedPages); err != nil {
 		return nil, err
 	}
 
-	if err := rules.parseRulesDayZ(rawRules); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrRulesDayZ, err)
+	if layout == LayoutDayZ {
+		if err := rules.parseRulesDayZ(envelope.extraRules); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrRulesDayZ, err)
+		}
+	} else {
+		rules.ExtraRules = envelope.extraRules
 	}
 
 	return rules, nil
 }
 
+// layoutForAppID identifies the known A3SB layout for a game AppID.
+func layoutForAppID(game uint64) Layout {
+	switch game {
+	case appid.Arma3:
+		return LayoutArma3
+
+	case appid.DayZ, appid.DayZExperimental:
+		return LayoutDayZ
+
+	default:
+		return LayoutUnknown
+	}
+}
+
+// appIDForLayout returns the canonical AppID for automatic layout selection.
+func appIDForLayout(layout Layout) uint64 {
+	switch layout {
+	case LayoutArma3:
+		return appid.Arma3
+
+	case LayoutDayZ:
+		return appid.DayZ
+
+	default:
+		return 0
+	}
+}
+
+// assemblePages orders one-based A3SB pages and concatenates their raw values.
+func assemblePages(pages map[byte][]byte, pageCount byte) ([]byte, error) {
+	if pageCount == 0 {
+		return nil, fmt.Errorf("%w: no pages", ErrRulesPageMetadata)
+	}
+
+	totalSize := 0
+	for pageNumber := 1; pageNumber <= int(pageCount); pageNumber++ {
+		page, ok := pages[byte(pageNumber)]
+		if !ok {
+			return nil, fmt.Errorf("%w: page %d of %d", ErrRulesPageMissing, pageNumber, pageCount)
+		}
+		totalSize += len(page)
+	}
+
+	assembled := make([]byte, 0, totalSize)
+	for pageNumber := 1; pageNumber <= int(pageCount); pageNumber++ {
+		assembled = append(assembled, pages[byte(pageNumber)]...)
+	}
+
+	return assembled, nil
+}
+
 // readA3SB parses Arma 3 Server Browser Protocol data.
 func (r *Rules) readA3SB(data []byte) error {
-	reader := bread.NewReader(data)
+	decoder := wire.NewDecoder(data)
 	var err error
 
-	if err := r.readVersion(reader); err != nil {
+	if err := r.readVersion(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrVersion, err)
 	}
 
-	if err := r.readFlags(reader); err != nil {
+	if err := r.readFlags(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrFlags, err)
 	}
 
-	dlcMask, err := reader.Uint16()
+	dlcMask, err := decoder.Uint16()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDLC, err)
 	}
 
-	if err := r.readDifficulty(reader); err != nil {
+	if err := r.readDifficulty(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrDifficulty, err)
 	}
 
 	if dlcMask != 0 {
-		if err := r.readDLC(reader, dlcMask); err != nil {
+		if err := r.readDLC(&decoder, dlcMask); err != nil {
 			return fmt.Errorf("%w: %w", ErrDLC, err)
 		}
 	}
 
-	if err := r.readMods(reader); err != nil {
+	if err := r.readMods(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrMod, err)
 	}
 
-	if err := r.readSignatures(reader); err != nil {
+	if err := r.readSignatures(&decoder); err != nil {
 		return fmt.Errorf("%w: %w", ErrSignature, err)
 	}
 
-	// Stop here for arma3
-	if reader.Len() == 0 {
+	// Arma 3 ends after signatures; remaining bytes identify the DayZ suffix.
+	if decoder.Empty() {
 		return nil
 	}
 
 	// DayZ-specific: server description
-	descLen, err := reader.Byte()
+	descLen, err := decoder.Byte()
 	if err != nil {
 		return fmt.Errorf("%w length: %w", ErrDescription, err)
 	}
-	if r.Description, err = reader.StringLen(int(descLen)); err != nil {
+	if r.Description, err = decoder.FixedString(int(descLen)); err != nil {
 		return fmt.Errorf("%w: %w", ErrDescription, err)
 	}
 
-	if reader.Len() > 0 {
-		// Get remaining bytes for error message
-		pos := reader.Pos()
-		remaining := data[pos:]
+	if !decoder.Empty() {
+		remaining := decoder.Tail()
 		return fmt.Errorf("%w: 0x%X (%s)", ErrRulesDataRemains, remaining, remaining)
 	}
 
 	return nil
 }
 
-// GetAppID returns the Steam AppID.
+// GetAppID returns the Steam AppID requested or inferred for the result.
 func (r *Rules) GetAppID() uint64 {
-	return r.id
-}
-
-// GetReaderStats returns parsing statistics: [raw, pager, blank, overflow].
-func (r *Rules) GetReaderStats() [4]byte {
-	return r.stats
+	return r.appID
 }

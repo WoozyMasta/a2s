@@ -1,17 +1,24 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
+	"fmt"
 	"strconv"
 
+	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
 // parseRulesDayZ parses DayZ-specific rules from A2S_RULES key-value pairs.
-func (r *Rules) parseRulesDayZ(data map[string]string) error {
+func (r *Rules) parseRulesDayZ(data a2s.Rules) error {
 	var err error
-	var extra map[string]string
+	var extra a2s.Rules
 
-	for k, v := range data {
+	for _, rule := range data {
+		k, v := rule.Name, rule.Value
 		switch k {
 		case "allowedBuild":
 			r.AllowedBuild, err = strToUint16(v)
@@ -26,7 +33,14 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			}
 
 		case "dedicated":
-			r.Dedicated = (v == "0")
+			switch v {
+			case "0":
+				r.Dedicated = false
+			case "1":
+				r.Dedicated = true
+			default:
+				return fmt.Errorf("%w: %q", ErrRulesDayZDedicated, v)
+			}
 
 		case "island":
 			r.Island = v
@@ -39,6 +53,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			r.Language = types.ServerLang(language) // #nosec G115
 
 		case "platform":
+			r.PlatformRaw = v
 			switch v {
 			case "win":
 				r.Platform = "Windows"
@@ -67,10 +82,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 			}
 
 		default:
-			if extra == nil {
-				extra = make(map[string]string, 4)
-			}
-			extra[k] = v
+			extra = append(extra, rule)
 		}
 	}
 
@@ -81,6 +93,7 @@ func (r *Rules) parseRulesDayZ(data map[string]string) error {
 	return nil
 }
 
+// strToUint16 parses a decimal DayZ rule value as a uint16.
 func strToUint16(str string) (uint16, error) {
 	number, err := strconv.ParseUint(str, 10, 16)
 	if err != nil {

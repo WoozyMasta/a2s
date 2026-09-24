@@ -1,30 +1,43 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
+	"context"
 	"errors"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
-// GetChallenge queries challenge number (A2S_SERVERQUERY_GETCHALLENGE).
-// Deprecated: challenge is handled automatically by Get() method.
-func (c *Client) GetChallenge() (uint32, error) {
-	data, _, _, err := c.Get(ChallengeRequest)
+// GetChallenge queries an opaque challenge token
+// (A2S_SERVERQUERY_GETCHALLENGE).
+//
+// The A2S_SERVERQUERY_GETCHALLENGE wire request is obsolete for ordinary queries
+// because Query handles challenge exchanges automatically,
+// but this method remains supported for explicit protocol access.
+func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
+	packet, _, err := c.Query(ctx, ChallengeRequest)
 	if err != nil {
-		return 0, err
+		return Challenge{}, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return parseChallenge(packet.Payload)
+}
 
-	reader := bread.NewReader(c.parseData)
-	challenge, err := reader.Uint32()
+// parseChallenge parses the first four challenge bytes without reordering them.
+// Additional payload bytes are ignored for compatibility with responses
+// that append data after the challenge value.
+func parseChallenge(data []byte) (Challenge, error) {
+	decoder := wire.NewDecoder(data)
+	value, err := decoder.Bytes(len(Challenge{}))
 	if err != nil {
-		return 0, errors.Join(ErrChallengeValue, err)
+		return Challenge{}, errors.Join(ErrChallengeValue, err)
 	}
+
+	var challenge Challenge
+	copy(challenge[:], value)
 
 	return challenge, nil
 }

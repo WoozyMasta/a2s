@@ -1,0 +1,8 @@
+.github
+.rumdl_cache
+build
+_layouts
+assets
+winres
+*.md
+_config.yml

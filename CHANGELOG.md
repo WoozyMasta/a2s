@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD024 -->
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -12,6 +13,78 @@ and this project adheres to [Semantic Versioning][].
 ### Changed
 ### Removed
 -->
+
+## Unreleased
+
+### Added
+
+* `CLI`: `proxy` command
+* `CLI`: Russian, German, Italian, Spanish, Czech,
+  and Chinese localization with English fallback
+* `CLI`: environment-variable configuration
+* container image with the `a2s` CLI
+* `a2s/server`: package for serving A2S queries over UDP
+* `a2s/proxy`: package for cached and passthrough A2S proxying
+* `a3sb`: binary rules encoding and A2S_RULES page generation
+* `appid`: public curated Steam AppID registry for A2S-compatible games
+* `a2s`: `QueryMeta` and `GetInfoWithMeta` for query transport metadata
+* `a2s`: separate `AppID` and `GameID` fields with `Info.EffectiveID()`
+* `a2s`: lossless logical `Packet` codec
+* `a2s`: ordered, duplicate-preserving A2S_RULES entries
+  with raw and parsed views
+
+### Changed
+
+* minimum supported Go version is now 1.25
+* `CLI`: interactive tables adapt to terminal width
+* `CLI`: mod and DLC tables use compact IDs when full URLs do not fit
+* `CLI`: compact ping output and optional summary suppression
+* `CLI`: strict command and argument validation
+* `CLI`: `all --format json` emits one structured JSON document
+* `CLI`: unified build and version metadata
+* `a2s`: request and response types are separated
+  into `QueryType` and `ResponseType`, replacing `Flag`
+* `a2s`: query methods accept `context.Context`
+* `a2s`: query latency covers complete logical requests,
+  including challenge retries and split responses
+* `a2s`: address-aware client constructors, options, accessors,
+  and idempotent lifecycle management
+* `a2s`: player query methods return slices directly
+* `a2s` and `a3sb`: shared bounds-checked wire decoder
+* `a2s`: default UDP receive buffer increased to 8192 bytes
+* `a3sb`: automatic A2S/A3SB rules detection from a single A2S_RULES response
+
+### Fixed
+
+* `CLI`: generic A2S_INFO keywords are preserved in JSON output
+* `CLI`: interrupted ping queries stop before final statistics are printed
+* `a2s` and `a3sb`: malformed and truncated responses no longer cause panics
+* `a2s`: reordered split responses are assembled correctly
+* `a2s`: inconsistent split fragments are rejected
+  and response allocations are bounded
+* `a2s`: bounded challenge transactions
+  and obsolete `GetChallenge` retry behavior
+* `a2s`: concurrent queries on a single client are serialized safely
+* `a2s`: SourceTV fields, server type and visibility keys,
+  and signed player scores
+* `a2s`: empty A2A_PING acknowledgements are accepted
+* `a2s/proxy`: cache refresh and recovery behavior
+* `a2s/proxy`: global and per-client rate-limit accounting
+* `a2s/proxy`: bounded per-client rate-limit state
+* `a2s/proxy`: fatal poller errors are reported
+  instead of silently stopping refresh loops
+* `a3sb`: deterministic DLC bit and hash ordering
+* `a3sb`: DayZ-specific field parsing
+* `a3sb`: rules page ordering and malformed page-set validation
+* `keywords`: unknown enum and platform values are preserved
+
+### Removed
+
+* `CLI`: misleading `--format raw` mode
+* `CLI`: redundant `--skip-info` rules option
+* `a2s`: ambiguous `Info.ID` field
+* `a2s`: transport-only `Info.Ping` field
+* `github.com/woozymasta/steam` dependency in favor of the local AppID registry
 
 ## [0.3.2][] - 2026-03-07
 
@@ -135,7 +208,8 @@ Refactoring and Simplification
 ### Removed
 
 * heavy and unnecessary logging packages and CLI parameter parsing
-* appid package migrated to [woozymasta/steam](https://github.com/WoozyMasta/steam/tree/master/utils/appid)
+* appid package migrated to
+  [woozymasta/steam](https://github.com/WoozyMasta/steam/tree/master/utils/appid)
 
 [0.2.0]: https://github.com/WoozyMasta/a2s/compare/v0.1.0...v0.2.0
 

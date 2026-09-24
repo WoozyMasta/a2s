@@ -1,13 +1,17 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
 	"errors"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // readEDF parses Extra Data Flag fields from Source protocol response.
-func (i *Info) readEDF(r *bread.Reader, edf EDF) error {
+func (i *Info) readEDF(r *wire.Decoder, edf EDF) error {
 	var err error
 	i.EDF = edf
 
@@ -27,13 +31,13 @@ func (i *Info) readEDF(r *bread.Reader, edf EDF) error {
 		if i.SourceTVPort, err = r.Uint16(); err != nil {
 			return errors.Join(ErrInfoEDFSourceTVPort, err)
 		}
-		if i.SourceTVName, err = r.String(); err != nil {
+		if i.SourceTVName, err = r.CString(); err != nil {
 			return errors.Join(ErrInfoEDFSourceTVName, err)
 		}
 	}
 
 	if (edf & edfKeywords) != 0 {
-		kwBytes, err := r.BytesPage()
+		kwBytes, err := r.CStringBytes()
 		if err != nil {
 			return errors.Join(ErrInfoEDFKeywords, err)
 		}
@@ -64,9 +68,11 @@ func (i *Info) readEDF(r *bread.Reader, edf EDF) error {
 	}
 
 	if (edf & edfGameID) != 0 {
-		if i.ID, err = r.Uint64(); err != nil {
-			return errors.Join(ErrInfoEDFGameID, err)
+		gameID, readErr := r.Uint64()
+		if readErr != nil {
+			return errors.Join(ErrInfoEDFGameID, readErr)
 		}
+		i.GameID = &gameID
 	}
 
 	return nil

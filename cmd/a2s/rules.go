@@ -1,15 +1,20 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package main
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a3sb"
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/pkg/appid"
 )
 
 // gameToAppID converts a game name string to AppID.
@@ -17,234 +22,399 @@ import (
 func gameToAppID(game string) uint64 {
 	switch strings.ToLower(game) {
 	case "arma3", "arma":
-		return appid.Arma3.Uint64()
+		return appid.Arma3
+
 	case "dayz":
-		return appid.DayZ.Uint64()
+		return appid.DayZ
+
 	default:
 		return 0
 	}
 }
 
-// isA3SBGame checks if the given AppID corresponds to Arma3 or DayZ.
-func isA3SBGame(id uint64) bool {
-	return id == appid.Arma3.Uint64() || id == appid.DayZ.Uint64() || id == appid.DayZExp.Uint64()
-}
+// executeRules selects the standard or automatic A3SB rules parser and renders its output.
+// Automatic mode uses one A2S_RULES request and does not require A2S_INFO merely to choose a parser.
+func executeRules(app *Application, cmd *RulesCommand, clientOptions ClientOptions) error {
+	client, err := createClient(
+		cmd.Args.Host,
+		cmd.Args.Port,
+		clientOptions.Timeout,
+		clientOptions.Buffer,
+	)
+	if err != nil {
+		return app.wrapError("error.client_create", "failed to create client", err)
+	}
+	defer closeClient(app, client)
 
-func executeRules(cmd *RulesCommand) {
-	if cmd.Args.Host == "" {
-		fatal("Host must be provided")
+	ctx := context.Background()
+	value, err := queryRulesValue(ctx, app, client, cmd)
+	if err != nil {
+		return err
 	}
 
-	client := createClient(cmd.Args.Host, cmd.Args.Port, cmd.Timeout, cmd.Buffer)
-	defer closeClient(client)
+	formatter := NewFormatter(cmd.Format, app.Out, app.Localizer)
+	switch rules := value.(type) {
+	case map[string]any:
+		return printRules(app, rules, client, formatter)
 
-	formatter := NewFormatter(cmd.Format)
+	case *a3sb.Rules:
+		if formatter.ShouldUseJSON() {
+			return formatter.PrintJSON(rules)
+		}
 
-	// Determine if we should use a3sb parser
-	useA3SB := false
-	var appID uint64
+		return renderA3SBRules(app, rules, formatter, client.Addr().String())
 
-	// Convert game string to AppID if specified
+	default:
+		return fmt.Errorf("unexpected rules value type %T", value)
+	}
+}
+
+// queryRulesValue retrieves the existing standalone rules value without output.
+func queryRulesValue(
+	ctx context.Context,
+	app *Application,
+	client *a2s.Client,
+	cmd *RulesCommand,
+) (any, error) {
 	if cmd.Game != "" {
-		appID = gameToAppID(cmd.Game)
+		appID := gameToAppID(cmd.Game)
 		if appID == 0 {
-			fatalf("Unknown game: %s. Supported games: arma3, dayz", cmd.Game)
+			return nil, fmt.Errorf(
+				"%s",
+				app.localize(
+					"error.unknown_game",
+					"unknown game: %s. Supported games: arma3, dayz",
+					cmd.Game,
+				),
+			)
 		}
-		useA3SB = true
-	} else if !cmd.SkipInfo && !cmd.Raw {
-		// If game not specified and skip-info is not set, try to detect from server info
-		info, err := client.GetInfo()
-		if err == nil {
-			appID = info.ID
-			if isA3SBGame(appID) {
-				useA3SB = true
-			}
+		if cmd.Raw {
+			return queryStandardRules(ctx, app, client, true)
 		}
+
+		return queryA3SBRules(ctx, app, client, appID)
 	}
 
-	if useA3SB && !cmd.Raw {
-		executeRulesA3SB(client, appID, formatter)
-	} else {
-		executeRulesStandard(client, cmd.Raw, formatter)
+	if cmd.Raw {
+		return queryStandardRules(ctx, app, client, true)
 	}
+
+	return queryA3SBRules(ctx, app, client, 0)
 }
 
-func executeRulesStandard(client *a2s.Client, raw bool, formatter *Formatter) {
-	var rules map[string]string
+// queryStandardRules retrieves ordinary A2S_RULES values.
+func queryStandardRules(
+	ctx context.Context,
+	app *Application,
+	client *a2s.Client,
+	raw bool,
+) (map[string]any, error) {
+	var rules map[string]any
 	var err error
 
 	if raw {
-		rules, err = client.GetRules()
+		rawRules, rawErr := client.GetRules(ctx)
+		err = rawErr
+		rules = make(map[string]any, len(rawRules))
+		for _, rule := range rawRules {
+			rules[rule.Name] = rule.Value
+		}
 	} else {
-		parsedRules, err2 := client.GetParsedRules()
-		if err2 != nil {
-			fatalf("Failed to get rules: %s", err2)
-		}
-
-		rules = make(map[string]string)
-		for k, v := range parsedRules {
-			rules[k] = fmt.Sprint(v)
-		}
+		rules, err = client.GetParsedRules(ctx)
 	}
 
 	if err != nil {
-		fatalf("Failed to get rules: %s", err)
+		return nil, friendlyQueryError(app, "error.rules", "failed to get rules", err, client.Timeout())
 	}
 
+	return rules, nil
+}
+
+// printRules renders an already fetched rules map using the normal A2S output shape.
+// Values remain typed for JSON and are formatted as text in tables.
+func printRules(app *Application, rules map[string]any, client *a2s.Client, formatter *Formatter) error {
 	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(rules)
-		return
+		return formatter.PrintJSON(rules)
 	}
 
-	t := table.NewWriter()
-	if formatter.IsTableFormat() {
-		t.SetOutputMirror(os.Stdout)
-	}
-	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"Rule", "Value"})
+	return renderRulesTable(app, rules, client.Addr().String(), formatter)
+}
 
-	// Sort keys for better output
+// renderRulesTable renders ordinary A2S rules without querying a server.
+func renderRulesTable(app *Application, rules map[string]any, address string, formatter *Formatter) error {
+	header := table.Row{
+		app.localize("table.rule", "Rule"),
+		app.localize("table.value", "Value"),
+	}
+	rows := make([]table.Row, 0, len(rules))
+
+	// Sort keys so table and text output is deterministic.
 	keys := make([]string, 0, len(rules))
 	for k := range rules {
 		keys = append(keys, k)
 	}
+
 	sort.Strings(keys)
 	for _, k := range keys {
-		t.AppendRow(table.Row{k, rules[k]})
+		value := rules[k]
+		if boolValue, ok := value.(bool); ok {
+			value = app.formatBool(boolValue)
+		}
+		rows = append(rows, table.Row{k, value})
 	}
 
-	formatter.PrintTable(t)
-	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Address)
+	t := formatter.NewTable(header, rows)
+	if err := formatter.PrintTable(t); err != nil {
+		return app.wrapError("error.render_rules", "failed to render rules", err)
 	}
+
+	if formatter.IsTableFormat() {
+		_, _ = fmt.Fprintf(
+			app.Out,
+			"%s\n",
+			app.localize("footer.rules", "A2S_RULES response for %s", address),
+		)
+	}
+
+	return nil
 }
 
-func executeRulesA3SB(client *a2s.Client, appID uint64, formatter *Formatter) {
+// queryA3SBRules retrieves Arma 3/DayZ server-browser rules.
+func queryA3SBRules(
+	ctx context.Context,
+	app *Application,
+	client *a2s.Client,
+	appID uint64,
+) (any, error) {
 	a3sbClient := &a3sb.Client{Client: client}
 
-	rules, err := a3sbClient.GetRules(appID)
+	rules, err := a3sbClient.GetRules(ctx, appID)
 	if err != nil {
-		fatalf("Failed to get server rules: %s", err)
+		return nil, friendlyQueryError(app, "error.server_rules", "failed to get server rules", err, client.Timeout())
 	}
 
-	if formatter.ShouldUseJSON() {
-		formatter.PrintJSON(rules)
-		return
+	if rules.Version == 0 {
+		parsed := a2s.ParseRuleValues(rules.ExtraRules)
+		return parsed, nil
 	}
 
+	return rules, nil
+}
+
+// renderA3SBRules renders human-readable A3SB fields without querying a server.
+func renderA3SBRules(app *Application, rules *a3sb.Rules, formatter *Formatter, address string) error {
 	// Print Island/Description info (DayZ specific)
 	if rules.Island != "" {
-		formatter.PrintSectionHeader("Server Information")
-		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
+		formatter.PrintSectionHeader(app.localize("section.server_information", "Server Information"))
+		header := table.Row{
+			app.localize("table.option", "Option"),
+			app.localize("table.value", "Value"),
 		}
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"Option", "Value"})
+		rows := make([]table.Row, 0, 10)
 
 		if rules.Description != "" {
-			t.AppendRow(table.Row{"Description:", rules.Description})
+			rows = append(rows, table.Row{
+				app.localize("rules.description", "Description:"),
+				rules.Description,
+			})
 		}
 
-		t.AppendRows([]table.Row{
-			{"Allowed build:", fmt.Sprintf("%d", rules.AllowedBuild)},
-			{"Client port:", fmt.Sprintf("%d", rules.ClientPort)},
-			{"Dedicated:", fmt.Sprintf("%t", rules.Dedicated)},
-			{"Island:", rules.Island},
-			{"Language:", rules.Language.String()},
-			{"Platform:", rules.Platform},
-			{"Required build:", fmt.Sprintf("%d", rules.RequiredBuild)},
-			{"Required version:", fmt.Sprintf("%d", rules.RequiredVersion)},
-			{"TimeLeft:", fmt.Sprintf("%d", rules.TimeLeft)},
-		})
+		rows = append(rows, []table.Row{
+			{
+				app.localize("rules.allowed_build", "Allowed build:"),
+				strconv.FormatUint(uint64(rules.AllowedBuild), 10),
+			},
+			{
+				app.localize("rules.client_port", "Client port:"),
+				strconv.FormatUint(uint64(rules.ClientPort), 10),
+			},
+			{
+				app.localize("rules.dedicated", "Dedicated:"),
+				strconv.FormatBool(rules.Dedicated),
+			},
+			{
+				app.localize("rules.island", "Island:"),
+				rules.Island,
+			},
+			{
+				app.localize("rules.language", "Language:"),
+				rules.Language.String(),
+			},
+			{
+				app.localize("rules.platform", "Platform:"),
+				rules.Platform,
+			},
+			{
+				app.localize("rules.required_build", "Required build:"),
+				strconv.FormatUint(uint64(rules.RequiredBuild), 10),
+			},
+			{
+				app.localize("rules.required_version", "Required version:"),
+				strconv.FormatUint(uint64(rules.RequiredVersion), 10),
+			},
+			{
+				app.localize("rules.time_left", "TimeLeft:"),
+				strconv.FormatUint(uint64(rules.TimeLeft), 10),
+			},
+		}...)
 
-		formatter.PrintTable(t)
+		t := formatter.NewTable(header, rows)
+		if err := formatter.PrintTable(t); err != nil {
+			return app.wrapError("error.render_rules", "failed to render rules", err)
+		}
 	}
 
 	// Print Difficulty (Arma3 specific)
 	if rules.Difficulty != nil {
-		formatter.PrintSectionHeader("Difficulty Settings")
-		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
+		formatter.PrintSectionHeader(app.localize("section.difficulty", "Difficulty Settings"))
+		header := table.Row{
+			app.localize("table.option", "Option"),
+			app.localize("table.value", "Value"),
 		}
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"Option", "Value"})
-		t.AppendRows([]table.Row{
-			{"Difficulty Level:", fmt.Sprintf("%d", rules.Difficulty.Level)},
-			{"AI Level:", fmt.Sprintf("%d", rules.Difficulty.AILevel)},
-			{"Advanced Flight:", fmt.Sprintf("%t", rules.Difficulty.AdvanceFlight)},
-			{"Third Person:", fmt.Sprintf("%t", rules.Difficulty.ThirdPerson)},
-			{"Crosshair:", fmt.Sprintf("%t", rules.Difficulty.Crosshair)},
-		})
-		formatter.PrintTable(t)
+
+		rows := []table.Row{
+			{
+				app.localize("rules.difficulty_level", "Difficulty Level:"),
+				strconv.FormatUint(uint64(rules.Difficulty.Level), 10),
+			},
+			{
+				app.localize("rules.ai_level", "AI Level:"),
+				strconv.FormatUint(uint64(rules.Difficulty.AILevel), 10),
+			},
+			{
+				app.localize("rules.advanced_flight", "Advanced Flight:"),
+				strconv.FormatBool(rules.Difficulty.AdvanceFlight),
+			},
+			{
+				app.localize("rules.third_person", "Third Person:"),
+				strconv.FormatBool(rules.Difficulty.ThirdPerson),
+			},
+			{
+				app.localize("rules.crosshair", "Crosshair:"),
+				strconv.FormatBool(rules.Difficulty.Crosshair),
+			},
+		}
+
+		t := formatter.NewTable(header, rows)
+		if err := formatter.PrintTable(t); err != nil {
+			return app.wrapError("error.render_rules", "failed to render rules", err)
+		}
 	}
 
-	// Print DLC
-	if len(rules.DLC) > 0 {
-		formatter.PrintSectionHeader("DLC")
-		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"#", "DLC Name", "DLC URL"})
-
-		for i, dlc := range rules.DLC {
-			t.AppendRow(table.Row{
-				fmt.Sprintf("%d", i+1),
-				dlc.Name,
-				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
-			})
-		}
-
-		formatter.PrintTable(t)
+	// Print DLC and Creator DLC with the same compact-link layout.
+	if err := renderDLCSection(
+		app,
+		formatter,
+		app.localize("section.dlc", "DLC"),
+		app.localize("rules.dlc_name", "DLC Name"),
+		app.localize("rules.dlc_url", "DLC URL"),
+		rules.DLC,
+	); err != nil {
+		return err
 	}
-
-	// Print Creator DLC
-	if len(rules.CreatorDLC) > 0 {
-		formatter.PrintSectionHeader("Creator DLC")
-		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
-		}
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"#", "Creator DLC Name", "Creator DLC URL"})
-
-		for i, dlc := range rules.CreatorDLC {
-			t.AppendRow(table.Row{
-				fmt.Sprintf("%d", i+1),
-				dlc.Name,
-				fmt.Sprintf("https://store.steampowered.com/app/%d", dlc.ID),
-			})
-		}
-
-		formatter.PrintTable(t)
+	if err := renderDLCSection(
+		app,
+		formatter,
+		app.localize("section.creator_dlc", "Creator DLC"),
+		app.localize("rules.creator_dlc_name", "Creator DLC Name"),
+		app.localize("rules.creator_dlc_url", "Creator DLC URL"),
+		rules.CreatorDLC,
+	); err != nil {
+		return err
 	}
 
 	// Print Mods
 	if len(rules.Mods) > 0 {
-		formatter.PrintSectionHeader("Mods")
-		t := table.NewWriter()
-		if formatter.IsTableFormat() {
-			t.SetOutputMirror(os.Stdout)
+		formatter.PrintSectionHeader(app.localize("section.mods", "Mods"))
+		header := table.Row{
+			app.localize("table.number", "#"),
+			app.localize("rules.mod_name", "Mod Name"),
+			app.localize("rules.mod_url", "Mod URL"),
 		}
-		t.SetStyle(table.StyleRounded)
-		t.AppendHeader(table.Row{"#", "Mod Name", "Mod URL"})
+		rows := make([]table.Row, 0, len(rules.Mods))
 
 		for i, mod := range rules.Mods {
-			t.AppendRow(table.Row{
-				fmt.Sprintf("%d", i+1),
+			rows = append(rows, table.Row{
+				strconv.Itoa(i + 1),
 				mod.Name,
 				fmt.Sprintf("https://steamcommunity.com/sharedfiles/filedetails/?id=%d", mod.ID),
 			})
 		}
+		if shouldCompactLinkTable(formatter, header, rows) {
+			header[2] = app.localize("rules.workshop_id", "WORKSHOP ID")
+			for index, mod := range rules.Mods {
+				rows[index][2] = strconv.FormatUint(mod.ID, 10)
+			}
+		}
 
-		formatter.PrintTable(t)
+		t := formatter.NewTable(header, rows)
+		if err := formatter.PrintTable(t); err != nil {
+			return err
+		}
 	}
 
 	// Only print footer message for table format
 	if formatter.IsTableFormat() {
-		fmt.Printf("A2S_RULES response for %s\n", client.Address)
+		_, _ = fmt.Fprintf(
+			app.Out,
+			"%s\n",
+			app.localize("footer.rules", "A2S_RULES response for %s", address),
+		)
 	}
+
+	return nil
+}
+
+// renderDLCSection renders one DLC collection with optional compact IDs.
+func renderDLCSection(
+	app *Application,
+	formatter *Formatter,
+	section string,
+	nameHeader string,
+	urlHeader string,
+	entries []a3sb.DLCInfo,
+) error {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	formatter.PrintSectionHeader(section)
+	header := table.Row{
+		app.localize("table.number", "#"),
+		nameHeader,
+		urlHeader,
+	}
+	rows := make([]table.Row, 0, len(entries))
+	for i, entry := range entries {
+		rows = append(rows, table.Row{
+			strconv.Itoa(i + 1),
+			entry.Name,
+			fmt.Sprintf("https://store.steampowered.com/app/%d", entry.ID),
+		})
+	}
+
+	if shouldCompactLinkTable(formatter, header, rows) {
+		header[2] = app.localize("rules.app_id", "APP ID")
+		for index, entry := range entries {
+			rows[index][2] = strconv.FormatUint(entry.ID, 10)
+		}
+	}
+
+	t := formatter.NewTable(header, rows)
+	if err := formatter.PrintTable(t); err != nil {
+		return app.wrapError("error.render_rules", "failed to render rules", err)
+	}
+
+	return nil
+}
+
+// shouldCompactLinkTable selects the compact human-readable representation
+// only when the full link table cannot reach its preferred layout.
+func shouldCompactLinkTable(formatter *Formatter, header table.Row, rows []table.Row) bool {
+	if formatter == nil || !formatter.IsTableFormat() || formatter.terminalWidth <= 0 {
+		return false
+	}
+
+	layout, err := planTableLayout(formatter.terminalWidth, header, rows, nil)
+	return err == nil && !layout.FitsPreferred
 }

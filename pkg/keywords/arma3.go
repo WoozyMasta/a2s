@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package keywords
 
 import (
@@ -6,8 +10,9 @@ import (
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
-// Arma3 keywords
-// https://community.bistudio.com/wiki/Arma_3:_STEAMWORKSquery
+// Arma3 contains parsed Arma 3 server keywords.
+//
+// See https://community.bistudio.com/wiki/Arma_3:_STEAMWORKSquery
 type Arma3 struct {
 	GameType            types.GameType    `json:"gametype,omitempty"`             // Type of game
 	Platform            types.Platform    `json:"platform,omitempty"`             // Server OS
@@ -33,7 +38,7 @@ type Arma3 struct {
 	AllowedFilePatching bool              `json:"allowed_filepatching,omitempty"` // Enabled fle patching
 }
 
-// ParseArma3 parser for Arma3 keywords
+// ParseArma3 parses Arma 3 server keywords.
 func ParseArma3(keywords []string) *Arma3 {
 	data := &Arma3{}
 	data.Parse(keywords)
@@ -41,7 +46,7 @@ func ParseArma3(keywords []string) *Arma3 {
 	return data
 }
 
-// Parse A2S INFO gametype data for Arma3
+// Parse fills the Arma3 fields from A2S_INFO keywords and preserves unknowns.
 func (d *Arma3) Parse(keywords []string) {
 	if len(keywords) > 0 {
 		d.Unknowns = make([]string, 0, len(keywords)/10+1)

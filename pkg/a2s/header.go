@@ -1,51 +1,37 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
-import (
-	"encoding/binary"
-)
-
 // createHeader builds A2S protocol request header.
+//
 // InfoRequest includes "Source Engine Query" payload, other requests include challenge value.
 //   - InfoRequest      = 0x54
 //   - PlayerRequest    = 0x55
 //   - RulesRequest     = 0x56
-//   - ChallengeRequest = 0x57 (DEPRECATED)
-//   - PingRequest      = 0x69 (DEPRECATED)
-func createHeader(requestType Flag, challenge uint32) ([]byte, error) {
-	var req []byte
-	payloadLen := len(infoPayload)
-
+//   - ChallengeRequest = 0x57 (OBSOLETE WIRE REQUEST)
+//   - PingRequest      = 0x69 (OBSOLETE WIRE REQUEST)
+func createHeader(requestType QueryType, challenge Challenge) ([]byte, error) {
+	var hasChallenge bool
 	switch requestType {
 	case InfoRequest:
-		// Pre-allocate with exact capacity: 4 (header) + 1 (type) + payload + 1 (null) + 4 (challenge, optional)
-		capacity := 4 + 1 + payloadLen + 1
-		if challenge != singlePacket {
-			capacity += 4
-		}
-		req = make([]byte, 0, capacity)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		req = append(req, []byte(infoPayload)...)
-		req = append(req, 0x00)
-		if challenge != singlePacket {
-			req = binary.BigEndian.AppendUint32(req, challenge)
-		}
-		return req, nil
+		hasChallenge = challenge != InitialChallenge
 
 	case PlayerRequest, RulesRequest:
-		req = make([]byte, 0, 9)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		req = binary.BigEndian.AppendUint32(req, challenge)
-		return req, nil
+		hasChallenge = true
 
-	case PingRequest, ChallengeRequest:
-		req = make([]byte, 0, 5)
-		req = binary.BigEndian.AppendUint32(req, singlePacket)
-		req = append(req, byte(requestType))
-		return req, nil
+	case ChallengeRequest, PingRequest:
 
 	default:
 		return nil, ErrHeaderWrongRequest
 	}
+
+	request := Request{
+		Type:         requestType,
+		Challenge:    challenge,
+		HasChallenge: hasChallenge,
+	}
+
+	return AppendRequest(nil, request)
 }

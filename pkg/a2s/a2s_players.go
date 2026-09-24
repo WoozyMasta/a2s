@@ -1,36 +1,51 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"math"
 	"time"
 
-	"github.com/woozymasta/a2s/internal/bread"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
 // Player contains player information from A2S_PLAYER query.
+//
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_2
 type Player struct {
-	Name     string        `json:"name,omitempty"`
-	Duration time.Duration `json:"duration,omitempty"`
-	Score    uint32        `json:"score,omitempty"`
-	Index    byte          `json:"index,omitempty"`
+	Name     string        `json:"name,omitempty"`     // Player name.
+	Duration time.Duration `json:"duration,omitempty"` // Session duration.
+	Score    int32         `json:"score,omitempty"`    // Signed game score.
+	Index    byte          `json:"index,omitempty"`    // Index in the response.
 }
 
-// GetPlayers queries player list (A2S_PLAYER).
-func (c *Client) GetPlayers() (*[]Player, error) {
-	data, _, _, err := c.Get(PlayerRequest)
+// GetPlayers queries the player list (A2S_PLAYER).
+// It returns a non-nil empty slice when the server reports no players.
+func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
+	packet, _, err := c.Query(ctx, PlayerRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	if cap(c.parseData) < len(data) {
-		c.parseData = make([]byte, len(data)+64)
-	}
-	c.parseData = c.parseData[:len(data)]
-	copy(c.parseData, data)
+	return DecodePlayers(packet)
+}
 
-	reader := bread.NewReader(c.parseData)
-	count, err := reader.Byte()
+// DecodePlayers parses a standard logical A2S_PLAYER response packet.
+//
+// The response type must be ResponsePlayers.
+// The Ship's extended player payload remains available through GetTheShipPlayers.
+func DecodePlayers(packet Packet) ([]Player, error) {
+	if packet.Type != ResponsePlayers {
+		return nil, errors.Join(ErrPlayerRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
+	}
+
+	decoder := wire.NewDecoder(packet.Payload)
+	count, err := decoder.Byte()
 	if err != nil {
 		return nil, errors.Join(ErrPlayerCount, err)
 	}
@@ -40,24 +55,33 @@ func (c *Client) GetPlayers() (*[]Player, error) {
 	for i := 0; i < int(count); i++ {
 		player := Player{}
 
-		if player.Index, err = reader.Byte(); err != nil {
+		if player.Index, err = decoder.Byte(); err != nil {
 			return nil, errors.Join(ErrPlayerIndex, err)
 		}
 
-		if player.Name, err = reader.String(); err != nil {
+		if player.Name, err = decoder.CString(); err != nil {
 			return nil, errors.Join(ErrPlayerName, err)
 		}
 
-		if player.Score, err = reader.Uint32(); err != nil {
+		if player.Score, err = decoder.Int32(); err != nil {
 			return nil, errors.Join(ErrPlayerScore, err)
 		}
 
-		if player.Duration, err = reader.Duration32(); err != nil {
+		var seconds float32
+		if seconds, err = decoder.Float32(); err != nil {
 			return nil, errors.Join(ErrPlayerDuration, err)
 		}
+		player.Duration = durationFromSeconds32(seconds)
 
 		players = append(players, player)
 	}
 
-	return &players, nil
+	return players, nil
+}
+
+// durationFromSeconds32 converts the float32 seconds
+// used by A2S_PLAYER to a time.Duration
+// while preserving the protocol's fractional-second rounding.
+func durationFromSeconds32(seconds float32) time.Duration {
+	return time.Duration(math.Round(float64(seconds) * float64(time.Second)))
 }

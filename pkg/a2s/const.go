@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a2s
 
 import (
@@ -5,38 +9,64 @@ import (
 )
 
 const (
-	DefaultDeadlineTimeout time.Duration = 5    // Default deadline timeout in seconds
-	DefaultBufferSize      uint16        = 4096 // conservative default to avoid UDP truncation
+	// DefaultDeadlineTimeout is the default UDP read deadline.
+	DefaultDeadlineTimeout time.Duration = 5 * time.Second
+	// DefaultBufferSize is the default UDP receive buffer size.
+	// It accommodates the largest supported single A2S/A3SB datagrams.
+	DefaultBufferSize uint16 = 8192
 
-	singlePacket uint32 = 0xFFFFFFFF // A2S single-packet header
-	multiPacket  uint32 = 0xFFFFFFFE // A2S multi-packet header
+	// singlePacket identifies a complete response in the A2S packet header.
+	singlePacket uint32 = 0xFFFFFFFF
+	// multiPacket identifies a response split across multiple A2S packets.
+	multiPacket uint32 = 0xFFFFFFFE
 
-	// A2S_INFO Basic information about the server.
-	InfoRequest            Flag   = 0x54
-	infoResponseGoldSource Flag   = 0x6D
-	infoResponseSource     Flag   = 0x49
-	infoPayload            string = "Source Engine Query"
+	// A2S_INFO
 
-	// Extra Data Flag (EDF) in A2S_INFO
-	edfPort     EDF = 0x80
-	edfSteamID  EDF = 0x10
+	// InfoRequest requests basic information about the server.
+	InfoRequest QueryType = 0x54
+	// ResponseInfoGoldSource identifies an obsolete GoldSource response.
+	ResponseInfoGoldSource ResponseType = 0x6D
+	// ResponseInfo identifies a Source A2S_INFO response.
+	ResponseInfo ResponseType = 0x49
+	// infoPayload is the payload used by an A2S_INFO request.
+	infoPayload string = "Source Engine Query"
+
+	// edfPort indicates that the game port follows the base response.
+	edfPort EDF = 0x80
+	// edfSteamID indicates that the server SteamID follows the base response.
+	edfSteamID EDF = 0x10
+	// edfSourceTV indicates that SourceTV port and name follow the base response.
 	edfSourceTV EDF = 0x40
+	// edfKeywords indicates that server keywords follow the base response.
 	edfKeywords EDF = 0x20
-	edfGameID   EDF = 0x01
+	// edfGameID indicates that the full 64-bit game ID follows the base response.
+	edfGameID EDF = 0x01
 
-	// A2S_PLAYER Details about each player on the server
-	PlayerRequest  Flag = 0x55
-	playerResponse Flag = 0x44
+	// A2S_PLAYER
 
-	// A2S_RULES The rules the server is using
-	RulesRequest  Flag = 0x56
-	rulesResponse Flag = 0x45
+	// PlayerRequest requests details about each player on the server.
+	PlayerRequest QueryType = 0x55
+	// ResponsePlayers identifies an A2S_PLAYER response.
+	ResponsePlayers ResponseType = 0x44
 
-	// A2S_SERVERQUERY_GETCHALLENGE Returns a challenge number for use in the player and rules query
-	ChallengeRequest  Flag = 0x57 // (DEPRECATED)
-	challengeResponse Flag = 0x41
+	// A2S_RULES
 
-	// A2A_PING Ping the server (DEPRECATED)
-	PingRequest  Flag = 0x69
-	pingResponse Flag = 0x6A
+	// RulesRequest requests the rules used by the server.
+	RulesRequest QueryType = 0x56
+	// ResponseRules identifies an A2S_RULES response.
+	ResponseRules ResponseType = 0x45
+
+	// A2S_SERVERQUERY_GETCHALLENGE wire request (OBSOLETE)
+
+	// ChallengeRequest requests a challenge for player and rules queries.
+	ChallengeRequest QueryType = 0x57
+	// ResponseChallenge identifies an A2S challenge response.
+	ResponseChallenge ResponseType = 0x41
+
+	// A2A_PING wire request (OBSOLETE)
+
+	// PingRequest requests a legacy A2A_PING response.
+	PingRequest QueryType = 0x69
+	// ResponsePing identifies an A2A_PING response.
+	ResponsePing ResponseType = 0x6A
 )

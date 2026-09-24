@@ -1,13 +1,16 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package a3sb
 
 import (
 	"fmt"
 
-	"github.com/woozymasta/a2s/internal/bread"
-	"github.com/woozymasta/steam/utils/appid"
+	"github.com/woozymasta/a2s/internal/wire"
 )
 
-// Difficulty represents Arma 3 server difficulty settings as bits:
+// Difficulty represents Arma 3 server difficulty settings decoded from two bytes:
 //   - 0 - newbie
 //   - 1 - normal
 //   - 2 - expert
@@ -20,15 +23,22 @@ type Difficulty struct {
 	Crosshair     bool `json:"crosshair"`      // Second byte, bit 0
 }
 
-// readDifficulty parses difficulty settings (Arma 3 only).
-func (r *Rules) readDifficulty(reader *bread.Reader) error {
-	if r.id != appid.Arma3.Uint64() {
+// readDifficulty parses difficulty settings for Arma 3.
+// It still consumes both protocol bytes
+// before checking whether the first byte contains settings.
+func (r *Rules) readDifficulty(reader *wire.Decoder) error {
+	if r.Layout != LayoutArma3 {
 		return nil
 	}
 
 	value, err := reader.Byte()
 	if err != nil {
 		return fmt.Errorf("first byte: %w", err)
+	}
+
+	crosshair, err := reader.Byte()
+	if err != nil {
+		return fmt.Errorf("second byte: %w", err)
 	}
 	if value == 0 {
 		return nil
@@ -39,11 +49,6 @@ func (r *Rules) readDifficulty(reader *bread.Reader) error {
 		AILevel:       (value >> 3) & 0b00000111, // Shift 3 bits right, then mask for next 3 bits
 		AdvanceFlight: value&(1<<6) == 0,         // Checking bit 6
 		ThirdPerson:   value&(1<<7) != 0,         // Checking bit 7
-	}
-
-	crosshair, err := reader.Byte()
-	if err != nil {
-		return fmt.Errorf("second byte: %w", err)
 	}
 	r.Difficulty.Crosshair = (crosshair & 0x01) != 0
 

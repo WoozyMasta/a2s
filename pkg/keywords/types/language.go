@@ -1,6 +1,12 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
+// Source: https://github.com/WoozyMasta/a2s
+
 package types
 
-// ServerLang represent game-server language
+import "fmt"
+
+// ServerLang represents a game-server language keyword.
 type ServerLang uint32
 
 const (
@@ -18,9 +24,8 @@ const (
 	LangPortuguese ServerLang = 65558 // Portuguese
 )
 
-// String return string represent of uint32 value in:
-//   - language keyword in A2S_RULES for DayZ
-//   - g* GameTags in A2S_INFO for Arma3
+// String returns the human-readable language name
+// used by DayZ A2S_RULES and Arma 3 A2S_INFO keywords.
 func (sl ServerLang) String() string {
 	switch sl {
 	case LangEnglish:
@@ -48,6 +53,6 @@ func (sl ServerLang) String() string {
 	case LangPortuguese:
 		return "Portuguese"
 	default:
-		return "English"
+		return fmt.Sprintf("Unknown(%d)", uint32(sl))
 	}
 }
