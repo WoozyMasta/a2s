@@ -3,7 +3,7 @@ BINARY            ?= a2s
 OUTPUT_DIR        ?= build
 CGO_ENABLED       ?= 0
 GOFLAGS           ?= -buildvcs=auto -trimpath
-TEST_GOFLAGS      ?= -tags forceposix
+GO_FLAGS_SHELL    ?= bash
 LDFLAGS           ?= -s -w
 GOWORK            ?= off
 LANG              ?= C
@@ -82,6 +82,7 @@ FUZZ_TARGETS      ?= \
 
 export GOWORK
 export LANG
+export GO_FLAGS_SHELL
 
 .PHONY: clean build compile release
 
@@ -117,29 +118,29 @@ ci: download generate-check tools-ci verify tidy-check fmt-check vet vulncheck l
 .PHONY: test test-short test-race test-race-short fuzz
 
 test:
-	$(GO) test $(TEST_GOFLAGS) ./...
+	$(GO) test ./...
 
 test-short:
-	$(GO) test $(TEST_GOFLAGS) -short ./...
+	$(GO) test -short ./...
 
 test-race:
-	CGO_ENABLED=1 $(GO) test $(TEST_GOFLAGS) -race ./...
+	CGO_ENABLED=1 $(GO) test -race ./...
 
 test-race-short:
-	CGO_ENABLED=1 $(GO) test $(TEST_GOFLAGS) -short -race ./...
+	CGO_ENABLED=1 $(GO) test -short -race ./...
 
 fuzz:
 	@set -e; \
 	for target in $(FUZZ_TARGETS); do \
 		echo "fuzz target: $${target##*:} from $${target%%:*}"; \
-		$(GO) test $(TEST_GOFLAGS) $${target%%:*} -run='^$$' -fuzz='^Fuzz'$${target##*:}'$$' -fuzztime=$(FUZZ_TIME); \
+		$(GO) test $${target%%:*} -run='^$$' -fuzz='^Fuzz'$${target##*:}'$$' -fuzztime=$(FUZZ_TIME); \
 	done
 
 .PHONY: bench bench-fast bench-reset
 
 bench:
 	@tmp=$$(mktemp); \
-	$(GO) test $(TEST_GOFLAGS) ./... -run=^$$ -bench 'Benchmark' -benchmem -count=$(BENCH_COUNT) | tee "$$tmp"; \
+	$(GO) test ./... -run=^$$ -bench 'Benchmark' -benchmem -count=$(BENCH_COUNT) | tee "$$tmp"; \
 	if [ -f "$(BENCH_REF)" ]; then \
 		$(BENCHSTAT) "$(BENCH_REF)" "$$tmp"; \
 	else \
@@ -148,7 +149,7 @@ bench:
 	rm -f "$$tmp"
 
 bench-fast:
-	$(GO) test $(TEST_GOFLAGS) ./... -run=^$$ -bench 'Benchmark' -benchmem
+	$(GO) test ./... -run=^$$ -bench 'Benchmark' -benchmem
 
 bench-reset:
 	rm -f "$(BENCH_REF)"
