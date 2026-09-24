@@ -18,79 +18,73 @@ and this project adheres to [Semantic Versioning][].
 
 ### Added
 
-* `CLI` adds the `proxy` command
-* `CLI` localizes in Russian, German, Italian, Spanish, Czech, and Chinese
-  with English fallback
-* `a2s/server` provides a UDP A2S server
-  with secure challenge-by-default handling,
-  bounded Source/GoldSource packetization, controlled shutdown,
-  panic isolation, atomic snapshots, middleware, and proxy composition
-* `a2s/proxy` provides reusable cached response storage, polling,
-  optional global and per-client rate limits, bounded live passthrough,
-  local challenge handling, and recovery lifecycle
-* `appid` exposes the curated Steam AppID registry for A2S-compatible games
-* `a2s` adds `QueryMeta` and `GetInfoWithMeta` for query transport metadata
-* `a2s` exposes protocol-faithful `AppID` and `GameID` fields,
-  with `Info.EffectiveID()` for effective game ID lookup
-* `a2s` exposes a lossless logical `Packet` codec for single-packet responses
+* `CLI`: `proxy` command
+* `CLI`: Russian, German, Italian, Spanish, Czech,
+  and Chinese localization with English fallback
+* `CLI`: environment-variable configuration
+* container image with the `a2s` CLI
+* `a2s/server`: package for serving A2S queries over UDP
+* `a2s/proxy`: package for cached and passthrough A2S proxying
+* `a3sb`: binary rules encoding and A2S_RULES page generation
+* `appid`: public curated Steam AppID registry for A2S-compatible games
+* `a2s`: `QueryMeta` and `GetInfoWithMeta` for query transport metadata
+* `a2s`: separate `AppID` and `GameID` fields with `Info.EffectiveID()`
+* `a2s`: lossless logical `Packet` codec
+* `a2s`: ordered, duplicate-preserving A2S_RULES entries
+  with raw and parsed views
 
 ### Changed
 
-* project requires Go 1.25 or newer
-* `CLI` adapts interactive tables to terminal width
-* `CLI` uses strict command/argument validation and unified version metadata
-* `CLI` emits `all --format json` as one structured JSON document
-* `a2s` separate request and response type bytes
-  into `QueryType` and `ResponseType`, removing the ambiguous `Flag` API
-* `a2s` expose ordered, duplicate-safe A2S_RULES entries through `Rules`,
-  with explicit lossy map conversion; `a3sb` preserves the same semantics
-* `a2s` and `a3sb` replace the legacy binary reader with a shared,
-  bounds-checked wire decoder across protocol parsers,
-  preserving malformed packet handling and improving parser performance
-* `a2s` uses an 8192-byte default UDP receive buffer
-  shared by A2S and A3SB queries without mutating client configuration
-* `a2s` query methods accept `context.Context` for cancellation
-  and total query deadlines
-* `a2s` report complete logical query latency consistently
-  across challenge retries and split responses
-* `a2s` player query methods return slices directly
-  instead of pointers to slices
-* `a2s` expose raw and parsed A2S_RULES views
-* `a2s` replace legacy client construction with address-aware constructors,
-  options, accessors, and idempotent lifecycle management
-* `a3sb` automatically detects native A2S rules and known A3SB versions
-  from one rules response without an additional A2S_INFO request
+* minimum supported Go version is now 1.25
+* `CLI`: interactive tables adapt to terminal width
+* `CLI`: mod and DLC tables use compact IDs when full URLs do not fit
+* `CLI`: compact ping output and optional summary suppression
+* `CLI`: strict command and argument validation
+* `CLI`: `all --format json` emits one structured JSON document
+* `CLI`: unified build and version metadata
+* `a2s`: request and response types are separated
+  into `QueryType` and `ResponseType`, replacing `Flag`
+* `a2s`: query methods accept `context.Context`
+* `a2s`: query latency covers complete logical requests,
+  including challenge retries and split responses
+* `a2s`: address-aware client constructors, options, accessors,
+  and idempotent lifecycle management
+* `a2s`: player query methods return slices directly
+* `a2s` and `a3sb`: shared bounds-checked wire decoder
+* `a2s`: default UDP receive buffer increased to 8192 bytes
+* `a3sb`: automatic A2S/A3SB rules detection from a single A2S_RULES response
 
 ### Fixed
 
-* `CLI` preserve generic A2S_INFO keywords in JSON output
-* `CLI` stops an active ping query on interrupt before printing final statistics
-* `a2s` and `a3sb` reject malformed and truncated UDP responses without panics
-* `a2s` assemble reordered split responses using metadata from fragment zero
-* `a2s` reject inconsistent split fragments and bound response allocations
-* `a2s` handle challenge responses through bounded transactions
-  and keep obsolete `GetChallenge` path from retrying its final response
-* `a2s` serialize concurrent query transactions on one client
-* `a2s` align response models with A2S wire and JSON contracts,
-  including SourceTV fields, server type/visibility keys, and signed scores
-* `a2s` accepts empty A2A_PING acknowledgements
-  while retaining textual payload support
-* `a3sb` preserve deterministic DLC bit and hash ordering
-* `a3sb` parse the DayZ `dedicated` rule according to its wire value
-* `a3sb` assemble one-based rule pages by page number
-  and reject inconsistent, missing, or conflicting pages
-* `keywords` preserve unknown enum and platform values
-  instead of mapping them to known defaults
+* `CLI`: generic A2S_INFO keywords are preserved in JSON output
+* `CLI`: interrupted ping queries stop before final statistics are printed
+* `a2s` and `a3sb`: malformed and truncated responses no longer cause panics
+* `a2s`: reordered split responses are assembled correctly
+* `a2s`: inconsistent split fragments are rejected
+  and response allocations are bounded
+* `a2s`: bounded challenge transactions
+  and obsolete `GetChallenge` retry behavior
+* `a2s`: concurrent queries on a single client are serialized safely
+* `a2s`: SourceTV fields, server type and visibility keys,
+  and signed player scores
+* `a2s`: empty A2A_PING acknowledgements are accepted
+* `a2s/proxy`: cache refresh and recovery behavior
+* `a2s/proxy`: global and per-client rate-limit accounting
+* `a2s/proxy`: bounded per-client rate-limit state
+* `a2s/proxy`: fatal poller errors are reported
+  instead of silently stopping refresh loops
+* `a3sb`: deterministic DLC bit and hash ordering
+* `a3sb`: DayZ-specific field parsing
+* `a3sb`: rules page ordering and malformed page-set validation
+* `keywords`: unknown enum and platform values are preserved
 
 ### Removed
 
-* `CLI` removes the misleading `--format raw` output mode
-* `a2s` removes the ambiguous `Info.ID` field
-* `a2s` removes transport-only `Info.Ping` from the A2S_INFO model and JSON
-* remove the redundant `--skip-info` rules option
-  after rules detection stopped requiring `A2S_INFO`
-* remove the `github.com/woozymasta/steam` dependency
-  in favor of a curated local A2S AppID registry
+* `CLI`: misleading `--format raw` mode
+* `CLI`: redundant `--skip-info` rules option
+* `a2s`: ambiguous `Info.ID` field
+* `a2s`: transport-only `Info.Ping` field
+* `github.com/woozymasta/steam` dependency in favor of the local AppID registry
 
 ## [0.3.2][] - 2026-03-07
 
