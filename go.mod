@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.8.3
-	github.com/woozymasta/flags v0.14.1
+	github.com/woozymasta/flags v0.14.2
 )
 
 require (

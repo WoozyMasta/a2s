@@ -82,7 +82,7 @@ Query server metadata, rules, and players in one command.
 
 #### Examples
 
-```text
+```shell
 a2s all 127.0.0.1:27015 --format json
 ```
 
@@ -111,11 +111,11 @@ Query server metadata with A2S_INFO.
 
 #### Examples
 
-```text
+```shell
 a2s info 127.0.0.1:27015
 ```
 
-```text
+```shell
 a2s info 127.0.0.1:27015 --format json | jq '.name, .players, .map'
 ```
 
@@ -142,19 +142,19 @@ Measure server response time with repeated A2S_INFO queries.
 
 #### Examples
 
-```text
+```shell
 a2s ping 127.0.0.1:27015 --ping-count 5
 ```
 
-```text
+```shell
 a2s ping 127.0.0.1:27015 --ping-count 10 --ping-period 2s
 ```
 
-```text
+```shell
 a2s ping 127.0.0.1:27015 --compact --no-summary
 ```
 
-```text
+```shell
 a2s ping 127.0.0.1:27015 --query players --compact
 ```
 
@@ -185,11 +185,11 @@ Query the current player list with A2S_PLAYER.
 
 #### Examples
 
-```text
+```shell
 a2s players 127.0.0.1:27015
 ```
 
-```text
+```shell
 a2s players 127.0.0.1:27015 --format json | jq '.[] | {name, score}'
 ```
 
@@ -216,15 +216,15 @@ Expose a cached UDP proxy for an upstream A2S server. Optional rate limits reduc
 
 #### Examples
 
-```text
+```shell
 a2s proxy 127.0.0.1:27015 --listen :27016
 ```
 
-```text
+```shell
 a2s proxy 127.0.0.1:27015 --listen :27016 --cache info --cache players --cache rules --ttl 30s
 ```
 
-```text
+```shell
 a2s proxy 127.0.0.1:27015 --listen :27016 --rate-limit 1000 --rate-client-limit 30 --rate-window 1s
 ```
 
@@ -270,11 +270,11 @@ Query server rules with A2S_RULES or automatic A3SB parsing.
 
 #### Examples
 
-```text
+```shell
 a2s rules example.org:2303 --game arma3
 ```
 
-```text
+```shell
 a2s rules example.org:2303 --raw --format json | jq 'to_entries[] | "\(.key)=\(.value)"'
 ```
 
