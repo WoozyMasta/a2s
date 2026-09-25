@@ -79,6 +79,7 @@ nav:
   - A3SB: pkg/a3sb/docs/README.md
   - API:
       - Client: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s
+      - Pool: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/pool
       - Transport: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/transport
       - Server: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/server
       - Proxy: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/proxy

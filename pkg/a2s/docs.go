@@ -12,21 +12,21 @@ and A2A_PING wire requests for protocol compatibility.
 Challenge exchanges, split responses, query deadlines,
 and response validation are handled by the client.
 
-Create a Client with New, NewWithString, or NewWithAddr.
+Create a [Client] with [New], [NewWithString], or [NewWithAddr].
 Query methods accept a context.Context
 and return typed results where the protocol has a defined structure.
-GetRules preserves server rule order, duplicate names, and string values;
-Rules.Map provides an explicitly lossy map conversion;
-GetParsedRules and ParseRuleValues provide
-optional heuristic conversion to convenient Go values.
+[Client.GetRules] preserves server rule order, duplicate names, and string values;
+[Rules.Map] provides an explicitly lossy map conversion;
+[Client.GetParsedRules] and [ParseRuleValues]
+provide optional heuristic conversion to convenient Go values.
 
 Use [Client.GetInfo] for server metadata,
 or [Client.GetInfoWithMeta] when query latency is also needed,
 [Client.GetPlayers] for the current player list,
 and [Client.GetRules] for server-defined key/value properties.
 Use [Client.Query] when the complete logical response packet is needed.
-Use the public pkg/a2s/transport package for low-level wire types, framing
-codecs, sentinel errors, or a custom transaction engine.
+Use the public [transport package] for low-level wire types,
+framing codecs, sentinel errors, or a custom transaction engine.
 
 A2S_INFO exposes the 16-bit AppID and optional EDF GameID separately.
 Use [Info.EffectiveID] when an effective game identifier is needed.
@@ -35,9 +35,13 @@ Use [DecodePlayers] and [AppendPlayers] for standard A2S_PLAYER codecs;
 The Ship's extended player response remains a separate API.
 Use [DecodeRules] and [AppendRules] for ordered A2S_RULES codecs.
 
-Complete query transactions on one Client are serialized.
+Complete query transactions on one [Client] are serialized.
 Use separate clients when independent queries must run in parallel.
 The client does not require an A2S_INFO request before querying players or rules.
+
+For bounded concurrent queries across multiple targets, use [pool package].
+It reuses worker-owned UDP sockets, includes queue wait in its configured total timeout,
+and provides [pool.Endpoint] values that can also be used as [proxy package] upstreams.
 
 Close the client when it is no longer needed.
 Runnable API examples are available in the package example tests.
@@ -45,5 +49,9 @@ Runnable API examples are available in the package example tests.
 See the Valve protocol documentation for wire-level details: [Server queries].
 
 [Server queries]: https://developer.valvesoftware.com/wiki/Server_queries
+[transport package]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/transport
+[pool package]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/pool
+[pool.Endpoint]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/pool#Endpoint
+[proxy package]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/proxy
 */
 package a2s

@@ -29,13 +29,16 @@ and handle Arma 3 and DayZ Server Browser Protocol responses.
 * [`cmd/a2s`][CLI]:
   CLI for queries, diagnostics and cached proxy operation;
 * [`pkg/a2s`][Go a2s]:
-  context-aware A2S client and transport-independent codecs;
+  context-aware A2S client and standard response codecs;
+* [`pkg/a2s/pool`][Go pool]:
+  bounded concurrent queries over reusable UDP worker sockets;
 * [`pkg/a2s/transport`][Go transport]:
-  public low-level wire types, framing codecs, errors, and transaction engine;
+  public low-level wire types, framing codecs, and transaction contracts;
 * [`pkg/a2s/server`][Go server]:
-  UDP A2S server runtime with challenges and packetization;
+  transport-independent A2S server contracts and UDP runtime with challenges,
+  middleware, state, and packetization;
 * [`pkg/a2s/proxy`][Go proxy]:
-  reusable cache, polling, relay, and rate-limit components;
+  reusable response cache, polling, relay, and rate-limiting components;
 * [`pkg/a3sb`][Go a3sb]:
   typed Arma 3 and DayZ Server Browser Protocol parser and codec;
 * [`pkg/keywords`][Go keywords]:
@@ -175,6 +178,45 @@ _ = rules
 // Explicit layout: a3sClient.GetRules(ctx, appid.DayZ)
 ```
 
+### Shared pool example
+
+Use [`pkg/a2s/pool`][Go pool] when querying many targets.
+The pool bounds concurrency and reuses worker-owned UDP sockets;
+one worker runs one complete A2S transaction at a time.
+
+```go
+queryPool, err := pool.New(
+  pool.WithWorkers(8),
+  pool.WithQueueSize(64),
+  pool.WithTimeout(3*time.Second),
+)
+if err != nil {
+  panic(err)
+}
+defer queryPool.Close()
+
+requests := make(chan pool.Request, len(targets))
+for _, target := range targets {
+  requests <- pool.Request{
+    Target: target, // resolved netip.AddrPort
+    Query:  transport.InfoRequest,
+  }
+}
+close(requests)
+
+for result := range queryPool.Stream(ctx, requests) {
+  if result.Err != nil {
+    continue
+  }
+  // Results arrive in completion order; result.Index is submission order.
+  _ = result.Packet
+}
+```
+
+Use `Bind` when a target starts as `host:port`:
+DNS is resolved once and is not repeated by subsequent `Endpoint.Query` calls.
+A bound endpoint also implements upstream contract expected by proxy package.
+
 ### Server example
 
 Use [`pkg/a2s/server`][Go server] to publish your own server data:
@@ -273,6 +315,7 @@ Your support is greatly appreciated!
 
 [Go module]: https://pkg.go.dev/github.com/woozymasta/a2s/
 [Go a2s]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s
+[Go pool]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/pool
 [Go transport]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/transport
 [Go a3sb]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a3sb
 [Go server]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/server
