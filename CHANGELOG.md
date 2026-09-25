@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning][].
 * `a2s/transport`: public low-level A2S wire types, codecs,
   transaction engine, and sentinel errors
 * `a2s/pool`: bounded worker pool, reusable per-family UDP sockets,
-  and one-time-resolved endpoints
+  one-time-resolved endpoints, and bounded streaming queries
 
 ### Changed
 

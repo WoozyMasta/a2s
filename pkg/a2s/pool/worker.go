@@ -75,6 +75,12 @@ func (p *Pool) worker() {
 
 // execute runs one complete logical query and never blocks on result delivery.
 func (w *worker) execute(job workItem) {
+	defer func() {
+		if job.cleanup != nil {
+			job.cleanup()
+		}
+	}()
+
 	if err := job.ctx.Err(); err != nil {
 		w.publish(job, queryResult{err: err})
 		return
@@ -108,6 +114,15 @@ func (w *worker) execute(job workItem) {
 
 // publish sends one result to the buffered job channel.
 func (w *worker) publish(job workItem, result queryResult) {
+	if job.stream != nil {
+		job.stream.publish(streamCompletion{
+			index:   job.index,
+			request: job.request,
+			result:  result,
+		})
+		return
+	}
+
 	select {
 	case job.result <- result:
 	default:

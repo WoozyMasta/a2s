@@ -33,14 +33,19 @@ type Pool struct {
 	closeOnce  sync.Once
 	bufferSize uint16
 	closed     bool
+	window     int
 }
 
 // workItem is one accepted query and its private completion path.
 type workItem struct {
-	ctx    context.Context
-	result chan queryResult
-	target netip.AddrPort
-	query  transport.QueryType
+	ctx     context.Context
+	result  chan queryResult
+	stream  *streamSink
+	cleanup context.CancelFunc
+	target  netip.AddrPort
+	request Request
+	index   uint64
+	query   transport.QueryType
 }
 
 // queryResult is the worker-to-caller completion value.
@@ -78,6 +83,7 @@ func New(options ...Option) (*Pool, error) {
 		timeout:    config.timeout,
 		bufferSize: config.bufferSize,
 		resolver:   lookupHost,
+		window:     config.workers + config.queueSize,
 	}
 
 	p.workers.Add(config.workers)
@@ -160,9 +166,24 @@ func (p *Pool) Close() error {
 		p.cancel()
 		close(p.done)
 		p.workers.Wait()
+		p.cleanupQueuedJobs()
 	})
 
 	return nil
+}
+
+// cleanupQueuedJobs releases stream contexts left in the queue during shutdown.
+func (p *Pool) cleanupQueuedJobs() {
+	for {
+		select {
+		case job := <-p.jobs:
+			if job.cleanup != nil {
+				job.cleanup()
+			}
+		default:
+			return
+		}
+	}
 }
 
 // queryContext creates a context bounded by the pool root, caller, and timeout.
