@@ -19,12 +19,14 @@ import (
 //
 // One worker owns one transaction at a time.
 // The pool never multiplexes concurrent transactions over the same UDP socket.
+// Use New to construct a pool; the zero value is not ready for queries.
 type Pool struct {
 	root       context.Context
 	cancel     context.CancelFunc
 	jobs       chan workItem
 	queueSpace chan struct{}
 	done       chan struct{}
+	resolver   func(context.Context, string) ([]netip.Addr, error)
 	workers    sync.WaitGroup
 	timeout    time.Duration
 	stateMu    sync.RWMutex
@@ -75,6 +77,7 @@ func New(options ...Option) (*Pool, error) {
 		done:       make(chan struct{}),
 		timeout:    config.timeout,
 		bufferSize: config.bufferSize,
+		resolver:   lookupHost,
 	}
 
 	p.workers.Add(config.workers)
@@ -100,6 +103,9 @@ func (p *Pool) Query(
 	}
 	if ctx == nil {
 		return transport.Packet{}, transport.QueryMeta{}, ErrNilContext
+	}
+	if err := p.ensureOpen(); err != nil {
+		return transport.Packet{}, transport.QueryMeta{}, err
 	}
 	if err := validateTarget(target); err != nil {
 		return transport.Packet{}, transport.QueryMeta{}, err
@@ -143,7 +149,7 @@ func (p *Pool) Query(
 // Close stops workers, cancels accepted queries, and releases worker sockets.
 // It is safe to call Close more than once.
 func (p *Pool) Close() error {
-	if p == nil {
+	if p == nil || p.root == nil {
 		return nil
 	}
 
