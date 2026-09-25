@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
 	"math"
 	"net"
@@ -20,7 +21,7 @@ func BenchmarkParseInfoSourceFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
@@ -32,7 +33,7 @@ func BenchmarkParseInfoGoldSourceFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
@@ -44,7 +45,7 @@ func BenchmarkParsePlayersFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
@@ -56,7 +57,7 @@ func BenchmarkParseRulesFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := DecodeRules(Packet{Type: ResponseRules, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
@@ -69,7 +70,7 @@ func BenchmarkParseSplitHeadersFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, packet := range packets {
 			if _, err := parseSplitHeader(packet); err != nil {
 				b.Fatal(err)
@@ -91,11 +92,86 @@ func BenchmarkGetSplitFixture(b *testing.B) {
 	b.SetBytes(int64(len(assembled)))
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, _, _, err := client.Get(context.Background(), RulesRequest); err != nil {
 			b.Fatal(err)
 		}
 	}
+}
+
+func BenchmarkGetChallengeFixture(b *testing.B) {
+	challenge := singlePacketFixture(ResponseChallenge, []byte{1, 2, 3, 4})
+	response := singlePacketFixture(ResponseRules, []byte("rules"))
+	server := newBenchmarkUDPResponder(b, func(request []byte) []byte {
+		if len(request) >= 9 && bytes.Equal(request[5:9], InitialChallenge[:]) {
+			return challenge
+		}
+
+		return response
+	})
+	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Second))
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer client.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if _, _, _, err := client.Get(context.Background(), RulesRequest); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkGetTimeoutFixture(b *testing.B) {
+	server := newBenchmarkUDPResponder(b, func([]byte) []byte { return nil })
+	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Millisecond))
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer client.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if _, _, _, err := client.Get(context.Background(), InfoRequest); !errors.Is(err, context.DeadlineExceeded) {
+			b.Fatalf("Get() error = %v, want context deadline", err)
+		}
+	}
+}
+
+func BenchmarkManyTargetsCurrent(b *testing.B) {
+	const targetCount = 16
+
+	response := singlePacketFixture(ResponseInfo, benchmarkSourceInfo())
+	targets := make([]*net.UDPConn, targetCount)
+	for index := range targets {
+		targets[index] = newBenchmarkUDPResponder(b, func([]byte) []byte {
+			return response
+		})
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		for _, target := range targets {
+			client, err := NewWithAddr(target.LocalAddr().(*net.UDPAddr))
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			if _, _, _, err := client.Get(context.Background(), InfoRequest); err != nil {
+				_ = client.Close()
+				b.Fatal(err)
+			}
+			if err := client.Close(); err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+	b.ReportMetric(float64(targetCount), "sockets/op")
+	b.ReportMetric(float64(targetCount), "queries/op")
 }
 
 func BenchmarkDecompressSplitFixture(b *testing.B) {
@@ -109,7 +185,7 @@ func BenchmarkDecompressSplitFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := decompressBzip2(compressed, uint32(len(assembled)), checksum); err != nil {
 			b.Fatal(err)
 		}
@@ -196,6 +272,40 @@ func newBenchmarkUDPServer(b *testing.B, packets [][]byte) *net.UDPConn {
 				if _, err := server.WriteToUDP(packet, address); err != nil {
 					return
 				}
+			}
+		}
+	}()
+
+	b.Cleanup(func() {
+		_ = server.Close()
+		<-done
+	})
+	return server
+}
+
+func newBenchmarkUDPResponder(b *testing.B, respond func([]byte) []byte) *net.UDPConn {
+	b.Helper()
+	server, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		buffer := make([]byte, 64*1024)
+		for {
+			n, address, err := server.ReadFromUDP(buffer)
+			if err != nil {
+				return
+			}
+
+			packet := respond(buffer[:n])
+			if len(packet) == 0 {
+				continue
+			}
+			if _, err := server.WriteToUDP(packet, address); err != nil {
+				return
 			}
 		}
 	}()
