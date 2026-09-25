@@ -43,7 +43,7 @@
             "FileDescription": "Command-line utility for querying Steam A2S game servers and running a cached A2S proxy",
             "FileVersion": "0.0.0.0",
             "InternalName": "a2s",
-            "LegalCopyright": "Copyright (c) 2021-2026 WoozyMasta",
+            "LegalCopyright": "Copyright (c) 2025-2026 WoozyMasta",
             "OriginalFilename": "a2s.exe",
             "ProductName": "A2S",
             "ProductVersion": "0.0.0.0"
