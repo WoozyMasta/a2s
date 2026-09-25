@@ -50,6 +50,33 @@ func TestStreamReturnsCompletionOrderAndClosesOutput(t *testing.T) {
 	}
 }
 
+func TestStreamDisablesClosedInputWhileWaitingForCompletion(t *testing.T) {
+	response := transport.AppendPacket(nil, transport.Packet{Type: transport.ResponseInfo})
+	responder := newDelayedResponder(t, response, 50*time.Millisecond)
+
+	p, err := New(WithWorkers(1), WithTimeout(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Close() }()
+
+	requests := make(chan Request, 1)
+	requests <- Request{Target: responder.target, Query: transport.InfoRequest}
+	close(requests)
+
+	results := p.Stream(context.Background(), requests)
+	result, ok := <-results
+	if !ok {
+		t.Fatal("stream closed before delayed result")
+	}
+	if result.Err != nil || result.Packet.Type != transport.ResponseInfo {
+		t.Fatalf("stream result = %+v", result)
+	}
+	if _, ok := <-results; ok {
+		t.Fatal("stream returned more than one result")
+	}
+}
+
 func TestStreamReportsInvalidRequestWithoutStopping(t *testing.T) {
 	response := transport.AppendPacket(nil, transport.Packet{Type: transport.ResponseInfo})
 	responder := newResponder(t, response, false)

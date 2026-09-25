@@ -87,6 +87,7 @@ func (p *Pool) runStream(
 	requests <-chan Request,
 	output chan<- Result,
 ) {
+	input := requests
 	var (
 		inputOpen   = true
 		outstanding int
@@ -120,8 +121,9 @@ func (p *Pool) runStream(
 				return
 			}
 
-		case request, ok := <-requests:
+		case request, ok := <-input:
 			if !ok {
+				input = nil
 				inputOpen = false
 				continue
 			}

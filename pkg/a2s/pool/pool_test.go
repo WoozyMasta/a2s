@@ -86,16 +86,30 @@ func TestPoolQueueTimeoutDoesNotSendExpiredJob(t *testing.T) {
 }
 
 type responder struct {
-	target    netip.AddrPort
-	conn      *net.UDPConn
-	noise     *net.UDPConn
-	response  []byte
-	ports     chan int
-	requests  chan struct{}
-	noiseHits chan struct{}
+	target        netip.AddrPort
+	conn          *net.UDPConn
+	noise         *net.UDPConn
+	response      []byte
+	responseDelay time.Duration
+	ports         chan int
+	requests      chan struct{}
+	noiseHits     chan struct{}
 }
 
 func newResponder(t *testing.T, response []byte, sendNoise bool) *responder {
+	return newResponderWithDelay(t, response, sendNoise, 0)
+}
+
+func newDelayedResponder(t *testing.T, response []byte, delay time.Duration) *responder {
+	return newResponderWithDelay(t, response, false, delay)
+}
+
+func newResponderWithDelay(
+	t *testing.T,
+	response []byte,
+	sendNoise bool,
+	responseDelay time.Duration,
+) *responder {
 	t.Helper()
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
 	if err != nil {
@@ -103,12 +117,13 @@ func newResponder(t *testing.T, response []byte, sendNoise bool) *responder {
 	}
 
 	r := &responder{
-		target:    netip.MustParseAddrPort(conn.LocalAddr().String()),
-		conn:      conn,
-		response:  response,
-		ports:     make(chan int, 4),
-		requests:  make(chan struct{}, 4),
-		noiseHits: make(chan struct{}, 4),
+		target:        netip.MustParseAddrPort(conn.LocalAddr().String()),
+		conn:          conn,
+		response:      response,
+		responseDelay: responseDelay,
+		ports:         make(chan int, 4),
+		requests:      make(chan struct{}, 4),
+		noiseHits:     make(chan struct{}, 4),
 	}
 	if sendNoise {
 		r.noise, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.ParseIP("127.0.0.1")})
@@ -163,7 +178,11 @@ func (r *responder) serve(sendNoise bool) {
 				}
 			}
 		}
+
 		if r.response != nil {
+			if r.responseDelay > 0 {
+				time.Sleep(r.responseDelay)
+			}
 			_, _ = r.conn.WriteToUDP(r.response, remote)
 		}
 	}
