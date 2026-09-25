@@ -19,7 +19,7 @@ func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	serverReady := make(chan struct{})
 	serverErr := make(chan error, 1)
@@ -52,7 +52,7 @@ func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -81,13 +81,13 @@ func TestGetContextDeadlineCoversQueryQueue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Second))
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	firstRequest := make(chan struct{})
 	releaseFirst := make(chan struct{})
@@ -151,13 +151,13 @@ func TestGetContextCancellationInterruptsRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(5*time.Second))
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	requestSeen := make(chan struct{})
 	go func() {

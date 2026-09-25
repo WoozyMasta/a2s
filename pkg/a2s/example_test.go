@@ -20,7 +20,7 @@ func ExampleNew() {
 	if err != nil {
 		panic(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	fmt.Println(client.Addr())
 	// Output: 127.0.0.1:27015

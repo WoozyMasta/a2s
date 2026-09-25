@@ -145,7 +145,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 	}
 
 	var group sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		group.Add(1)
 		go func(i int) {
 			defer group.Done()
@@ -154,7 +154,7 @@ func TestCacheConcurrentAccess(t *testing.T) {
 				Payload: []byte{byte(i)},
 			}
 
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				if err := cache.Store(transport.InfoRequest, packet); err != nil {
 					t.Errorf("Store() error = %v", err)
 					return

@@ -44,7 +44,7 @@ func TestProxyCachedRulesRoundTripAvoidsRelay(t *testing.T) {
 	relayClient := newE2EClient(t, upstream.addr)
 	relay := &countingUpstream{client: relayClient}
 	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
-	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
+	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClient(t, downstream.addr)
 
@@ -80,7 +80,7 @@ func TestProxyLiveRelayUsesIndependentChallengeFlows(t *testing.T) {
 	relay := &countingUpstream{client: relayClient}
 	cache := mustCache(t)
 	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
-	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
+	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClient(t, downstream.addr)
 
@@ -124,7 +124,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 	cache := mustCache(t, transport.InfoRequest)
 	relay := &countingUpstream{client: relayClient}
 	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
-	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
+	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClientWithTimeout(t, downstream.addr, 40*time.Millisecond)
 
@@ -235,7 +235,7 @@ func TestProxyPacketResponsePreservesSourceAndGoldSourceLogicalPackets(t *testin
 			}
 
 			provider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
-			handler := mustHandlerWithProvider(t, cache, &handlerUpstream{}, provider, false)
+			handler := mustHandlerWithProvider(t, cache, &handlerUpstream{}, provider)
 			downstream := startE2EServer(t, handler, provider, test.packetizer(t))
 			client := newE2EClient(t, downstream.addr)
 
@@ -321,11 +321,9 @@ func mustHandlerWithProvider(
 	cache *Cache,
 	relay Upstream,
 	provider server.ChallengeProvider,
-	localPing bool,
 ) *Handler {
 	t.Helper()
 	handler, err := NewHandler(cache, relay, HandlerConfig{
-		LocalPing:         localPing,
 		ChallengeProvider: provider,
 	})
 	if err != nil {

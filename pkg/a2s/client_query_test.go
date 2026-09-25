@@ -17,7 +17,7 @@ func TestQueryReturnsLogicalPacket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	packet, meta, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestQueryMetadataReportsChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	_, meta, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {

@@ -36,12 +36,12 @@ func ExampleNew_server() {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- serverInstance.Serve(conn) }()
 
-	defer serverInstance.Shutdown(context.Background())
+	defer func() { _ = serverInstance.Shutdown(context.Background()) }()
 	_ = serveErr
 }
 
@@ -129,7 +129,7 @@ func ExamplePacketResponse_proxy() {
 	if err != nil {
 		panic(err)
 	}
-	defer upstream.Close()
+	defer func() { _ = upstream.Close() }()
 
 	handler := server.HandlerFunc(func(ctx context.Context, request *server.Request) (server.Response, error) {
 		packet, _, err := upstream.Query(ctx, request.Query.Type)
@@ -152,7 +152,7 @@ func ExampleInfoResponse_proxy() {
 	if err != nil {
 		panic(err)
 	}
-	defer upstream.Close()
+	defer func() { _ = upstream.Close() }()
 
 	handler := server.HandlerFunc(func(ctx context.Context, request *server.Request) (server.Response, error) {
 		if request.Query.Type != transport.InfoRequest {

@@ -408,11 +408,11 @@ func TestPollerCancellationInterruptsUpstreamQuery(t *testing.T) {
 }
 
 func TestPollerJitterIsBounded(t *testing.T) {
-	const max = time.Second
-	for i := 0; i < 100; i++ {
-		got := randomJitter(max)
-		if got < 0 || got > max {
-			t.Fatalf("randomJitter() = %s, want [0, %s]", got, max)
+	const upperBound = time.Second
+	for range 100 {
+		got := randomJitter(upperBound)
+		if got < 0 || got > upperBound {
+			t.Fatalf("randomJitter() = %s, want [0, %s]", got, upperBound)
 		}
 	}
 	if randomJitter(0) != 0 {

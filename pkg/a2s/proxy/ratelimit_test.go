@@ -68,7 +68,7 @@ func TestRateLimiterGlobalAllowance(t *testing.T) {
 		Global: Rate{Requests: 3, Window: time.Second},
 	}, &now)
 
-	for index := 0; index < 3; index++ {
+	for index := range 3 {
 		if !limiter.allow(netip.MustParseAddr("192.0.2.1")) {
 			t.Fatalf("allow(%d) = false, want true", index)
 		}
@@ -162,7 +162,9 @@ func TestRateLimiterRefillsClientBucket(t *testing.T) {
 	}, &now)
 
 	address := netip.MustParseAddr("192.0.2.1")
-	if !limiter.allow(address) || !limiter.allow(address) {
+	first := limiter.allow(address)
+	second := limiter.allow(address)
+	if !first || !second {
 		t.Fatal("initial burst was not allowed")
 	}
 	if limiter.allow(address) {
@@ -295,11 +297,9 @@ func TestRateLimiterIsSafeForConcurrentAccess(t *testing.T) {
 
 	var wait sync.WaitGroup
 	for range 100 {
-		wait.Add(1)
-		go func() {
-			defer wait.Done()
+		wait.Go(func() {
 			limiter.allow(netip.MustParseAddr("192.0.2.1"))
-		}()
+		})
 	}
 	wait.Wait()
 }

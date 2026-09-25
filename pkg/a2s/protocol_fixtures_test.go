@@ -85,12 +85,9 @@ func sourceSplitPacketSequence(id uint32, payload []byte, chunkSize int) [][]byt
 
 	count := (len(payload) + chunkSize - 1) / chunkSize
 	packets := make([][]byte, 0, count)
-	for index := 0; index < count; index++ {
+	for index := range count {
 		start := index * chunkSize
-		end := start + chunkSize
-		if end > len(payload) {
-			end = len(payload)
-		}
+		end := min(start+chunkSize, len(payload))
 
 		packet := make([]byte, 12+end-start)
 		binary.LittleEndian.PutUint32(packet[:4], transport.SplitPacketMarker)
@@ -150,7 +147,7 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.InfoRequest)
 	if err != nil {
@@ -172,7 +169,7 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -196,7 +193,7 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -241,7 +238,7 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -268,7 +265,7 @@ func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacket) {
 		t.Fatalf("Get error = %v, want transport.ErrMultiPacket", err)
@@ -285,7 +282,7 @@ func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacketInconsistent) {
 		t.Fatalf("Get error = %v, want transport.ErrMultiPacketInconsistent", err)
@@ -306,7 +303,7 @@ func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacketConflict) {
 		t.Fatalf("Get error = %v, want transport.ErrMultiPacketConflict", err)
@@ -320,12 +317,9 @@ func compressedSourceSplitPacketSequence(id uint32, compressed []byte, unpackedS
 
 	count := (len(compressed) + chunkSize - 1) / chunkSize
 	packets := make([][]byte, 0, count)
-	for index := 0; index < count; index++ {
+	for index := range count {
 		start := index * chunkSize
-		end := start + chunkSize
-		if end > len(compressed) {
-			end = len(compressed)
-		}
+		end := min(start+chunkSize, len(compressed))
 
 		headerSize := 12
 		metadataSize := 0
@@ -368,7 +362,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 		if err != nil {
 			t.Fatalf("create client: %v", err)
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		rules, err := client.GetRules(context.Background())
 		if err != nil {
@@ -394,7 +388,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 		if err != nil {
 			t.Fatalf("create client: %v", err)
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		rules, err := client.GetParsedRules(context.Background())
 		if err != nil {
@@ -446,7 +440,7 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("create client: %v", err)
 			}
-			defer client.Close()
+			defer func() { _ = client.Close() }()
 
 			_, _, _, err = client.Get(context.Background(), transport.RulesRequest)
 			if err == nil {
@@ -471,7 +465,7 @@ func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -500,7 +494,7 @@ func TestGetPlayersParsesSignedScores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	players, err := client.GetPlayers(context.Background())
 	if err != nil {
@@ -533,7 +527,7 @@ func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	players, err := client.GetTheShipPlayers(context.Background())
 	if err != nil {

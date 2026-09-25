@@ -16,7 +16,7 @@ func ExampleClient() {
 	if err != nil {
 		panic(err)
 	}
-	defer baseClient.Close()
+	defer func() { _ = baseClient.Close() }()
 
 	client := &a3sb.Client{Client: baseClient}
 	fmt.Println(client.Addr())

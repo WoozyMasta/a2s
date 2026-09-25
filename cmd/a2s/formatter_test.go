@@ -65,7 +65,7 @@ func TestFormatterNewTableAppliesResponsiveWidths(t *testing.T) {
 		t.Fatalf("PrintTable() error = %v", err)
 	}
 
-	for _, line := range strings.Split(strings.TrimSuffix(output.String(), "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSuffix(output.String(), "\n"), "\n") {
 		if width := text.StringWidthWithoutEscSequences(line); width > 37 {
 			t.Fatalf("rendered line width = %d, want <= 37: %q", width, line)
 		}

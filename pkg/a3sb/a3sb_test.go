@@ -36,7 +36,7 @@ func readTestServersJSON() (*testServersConfig, error) {
 			return nil, err
 		}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var config testServersConfig
 	decoder := json.NewDecoder(file)
@@ -56,7 +56,7 @@ func readTestServers() ([]string, error) {
 	}
 
 	// Combine all servers
-	var servers []string
+	servers := make([]string, 0, len(config.Arma3)+len(config.DayZ))
 	servers = append(servers, config.Arma3...)
 	servers = append(servers, config.DayZ...)
 
@@ -119,7 +119,7 @@ func TestRulesSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// Try to get rules with Arma 3 AppID first, then DayZ
 	rules, err := client.GetRulesArma3(context.Background())
@@ -163,7 +163,7 @@ func TestRulesArma3Single(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rules, err := client.GetRulesArma3(context.Background())
 	if err != nil {
@@ -202,7 +202,7 @@ func TestRulesDayZSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rules, err := client.GetRulesDayZ(context.Background())
 	if err != nil {
@@ -265,13 +265,13 @@ func TestRulesMultiple(t *testing.T) {
 			arma3Count++
 			t.Logf("✓ %s (Arma 3): Version %d | Mods: %d | DLC: %d",
 				serverAddr, rules.Version, len(rules.Mods), len(rules.DLC))
-			client.Close()
+			_ = client.Close()
 			continue
 		}
 
 		// Try DayZ
 		rules, err = client.GetRulesDayZ(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err == nil && rules != nil {
 			successCount++
@@ -307,7 +307,7 @@ func TestRulesArma3Multiple(t *testing.T) {
 		}
 
 		rules, err := client.GetRulesArma3(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err != nil {
 			t.Logf("GetRulesArma3 failed for %s: %v", serverAddr, err)
@@ -344,7 +344,7 @@ func TestRulesDayZMultiple(t *testing.T) {
 		}
 
 		rules, err := client.GetRulesDayZ(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err != nil {
 			t.Logf("GetRulesDayZ failed for %s: %v", serverAddr, err)

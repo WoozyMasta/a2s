@@ -47,13 +47,13 @@ func TestGetPingAcceptsEmptyAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr))
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	serverErr := make(chan error, 1)
 	go func() {

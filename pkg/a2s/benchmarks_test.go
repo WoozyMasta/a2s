@@ -89,7 +89,7 @@ func BenchmarkGetSplitFixture(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	b.SetBytes(int64(len(assembled)))
 	b.ReportAllocs()
@@ -116,7 +116,7 @@ func BenchmarkGetChallengeFixture(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -133,7 +133,7 @@ func BenchmarkGetTimeoutFixture(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -220,7 +220,7 @@ func benchmarkGoldSourceInfo() []byte {
 
 func benchmarkPlayers() []byte {
 	data := []byte{16}
-	for index := byte(0); index < 16; index++ {
+	for index := range byte(16) {
 		data = append(data, index)
 		data = append(data, "player"...)
 		data = append(data, index, 0)
@@ -233,7 +233,7 @@ func benchmarkPlayers() []byte {
 func benchmarkRules() []byte {
 	data := make([]byte, 0, 2048)
 	data = binary.LittleEndian.AppendUint16(data, 64)
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		data = append(data, "rule"...)
 		data = append(data, byte('0'+index/10), byte('0'+index%10), 0)
 		data = append(data, "value"...)

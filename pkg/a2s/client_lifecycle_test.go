@@ -19,7 +19,7 @@ func TestClientLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP fixture: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	address := listener.LocalAddr().(*net.UDPAddr)
 	client, err := NewWithAddr(address, WithBufferSize(2048), WithTimeout(2*time.Second))
@@ -74,7 +74,7 @@ func TestClientRejectsInvalidAddressesAndOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP fixture: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	address := listener.LocalAddr().(*net.UDPAddr)
 	if _, err := NewWithAddr(address, WithTimeout(0)); !errors.Is(err, ErrInvalidTimeout) {
@@ -90,7 +90,7 @@ func TestNewResolvesIPAndHostname(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP fixture: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.LocalAddr().(*net.UDPAddr).Port
 	for _, host := range []string{"127.0.0.1", "localhost"} {
@@ -99,7 +99,7 @@ func TestNewResolvesIPAndHostname(t *testing.T) {
 			if err != nil {
 				t.Fatalf("New(%q, %d) returned error: %v", host, port, err)
 			}
-			defer client.Close()
+			defer func() { _ = client.Close() }()
 
 			if client.Addr() == nil {
 				t.Fatal("New returned a client without an address")

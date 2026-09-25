@@ -20,7 +20,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -44,7 +44,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	got, err := client.GetChallenge(context.Background())
 	if err != nil {
@@ -65,7 +65,7 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -109,7 +109,7 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -129,13 +129,13 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	serverErr := make(chan error, 1)
 	go func() {
 		buffer := make([]byte, 64*1024)
 		payload := []byte{1, 0, 0, 0}
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			n, address, err := server.ReadFromUDP(buffer)
 			if err != nil {
 				serverErr <- err
@@ -157,7 +157,7 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	_, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if !errors.Is(err, transport.ErrChallengeLoop) {

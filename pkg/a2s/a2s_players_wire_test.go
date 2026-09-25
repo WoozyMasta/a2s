@@ -55,7 +55,7 @@ func TestDurationFromSeconds32PreservesLegacyRounding(t *testing.T) {
 	}
 
 	state := uint32(0x12345678)
-	for i := 0; i < 100_000; i++ {
+	for range 100_000 {
 		state = state*1664525 + 1013904223
 		value := math.Float32frombits(state)
 		if math.IsNaN(float64(value)) ||
@@ -102,7 +102,7 @@ func TestParsePlayersTruncation(t *testing.T) {
 		})
 	}
 
-	for end := 0; end < len(data); end++ {
+	for end := range data {
 		t.Run("arbitrary truncation", func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
@@ -140,7 +140,7 @@ func TestParseTheShipPlayersTruncation(t *testing.T) {
 		})
 	}
 
-	for end := 0; end < len(data); end++ {
+	for end := range data {
 		t.Run("arbitrary truncation", func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {

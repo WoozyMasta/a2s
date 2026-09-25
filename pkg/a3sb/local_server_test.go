@@ -7,13 +7,13 @@ package a3sb_test
 import (
 	"context"
 	"errors"
-	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 )
 
@@ -61,7 +61,7 @@ func TestA3SBClientDecodesLocalEncodedServerResponse(t *testing.T) {
 		<-serveErr
 		t.Fatalf("NewWithAddr() error = %v", err)
 	}
-	defer baseClient.Close()
+	defer func() { _ = baseClient.Close() }()
 	client := &a3sb.Client{Client: baseClient}
 	decoded, err := client.GetRulesDayZ(context.Background())
 	if err != nil {

@@ -148,7 +148,7 @@ func TestStateConcurrentStoreAndHandle(t *testing.T) {
 	group.Add(3)
 	go func() {
 		defer group.Done()
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			if err := state.Store(snapshots[i%len(snapshots)]); err != nil {
 				t.Errorf("Store() error = %v", err)
 				return
@@ -159,7 +159,7 @@ func TestStateConcurrentStoreAndHandle(t *testing.T) {
 		go func() {
 			defer group.Done()
 			request := &Request{Query: transport.Request{Type: transport.RulesRequest}}
-			for i := 0; i < 100; i++ {
+			for range 100 {
 				response, err := state.Handle(context.Background(), request)
 				if err != nil {
 					t.Errorf("Handle() error = %v", err)

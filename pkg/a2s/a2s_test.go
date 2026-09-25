@@ -30,7 +30,7 @@ func readTestServers() ([]string, error) {
 			return nil, err
 		}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var servers []string
 	scanner := bufio.NewScanner(file)
@@ -78,7 +78,7 @@ func TestSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if _, err := client.GetInfo(context.Background()); err != nil {
 		t.Error(err)
@@ -105,7 +105,7 @@ func TestInfoSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	info, meta, err := client.GetInfoWithMeta(context.Background())
 	if err != nil {
@@ -139,7 +139,7 @@ func TestRulesSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rules, err := client.GetRules(context.Background())
 	if err != nil {
@@ -164,7 +164,7 @@ func TestRulesParsedSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rules, err := client.GetParsedRules(context.Background())
 	if err != nil {
@@ -186,7 +186,7 @@ func TestPlayersSingle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	players, err := client.GetPlayers(context.Background())
 	if err != nil {
@@ -220,7 +220,7 @@ func TestInfoMultiple(t *testing.T) {
 		}
 
 		info, meta, err := client.GetInfoWithMeta(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err != nil {
 			t.Logf("GetInfo failed for %s: %v", serverAddr, err)
@@ -257,7 +257,7 @@ func TestRulesMultiple(t *testing.T) {
 		}
 
 		rules, err := client.GetRules(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err != nil {
 			t.Logf("GetRules failed for %s: %v", serverAddr, err)
@@ -293,7 +293,7 @@ func TestPlayersMultiple(t *testing.T) {
 		}
 
 		players, err := client.GetPlayers(context.Background())
-		client.Close()
+		_ = client.Close()
 
 		if err != nil {
 			t.Logf("GetPlayers failed for %s: %v", serverAddr, err)

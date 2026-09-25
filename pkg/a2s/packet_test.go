@@ -97,7 +97,7 @@ func TestAppendPacketPreservesPrefix(t *testing.T) {
 	prefix := []byte{0xAA, 0xBB}
 	got := transport.AppendPacket(prefix, transport.Packet{Type: transport.ResponseInfo, Payload: []byte("info")})
 
-	want := append(prefix, singlePacketFixture(transport.ResponseInfo, []byte("info"))...)
+	want := append([]byte{0xAA, 0xBB}, singlePacketFixture(transport.ResponseInfo, []byte("info"))...)
 	if !bytes.Equal(got, want) {
 		t.Fatalf("encoded packet = %X, want %X", got, want)
 	}

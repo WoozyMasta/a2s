@@ -100,6 +100,7 @@ func TestStreamCancellationClosesOutputWithOpenInput(t *testing.T) {
 	case _, ok := <-results:
 		if ok {
 			for range results {
+				continue
 			}
 			t.Fatal("stream returned a result after cancellation")
 		}
@@ -115,6 +116,7 @@ func TestStreamNilContextReturnsClosedOutput(t *testing.T) {
 	}
 	defer func() { _ = p.Close() }()
 
+	//nolint:staticcheck // nil context is the behavior under test.
 	results := p.Stream(nil, nil)
 	if _, ok := <-results; ok {
 		t.Fatal("nil-context stream returned a result")
@@ -152,5 +154,6 @@ func TestStreamWindowIsBounded(t *testing.T) {
 
 	cancel()
 	for range results {
+		continue
 	}
 }

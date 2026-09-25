@@ -62,7 +62,7 @@ func TestServerServesTypedQueriesThroughA2SClient(t *testing.T) {
 		<-serveErr
 		t.Fatalf("NewWithAddr() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	info, err := client.GetInfo(context.Background())
 	if err != nil {
@@ -139,7 +139,7 @@ func TestServerServesQueriesWithLegacyChallengePolicy(t *testing.T) {
 		<-serveErr
 		t.Fatalf("NewWithAddr() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if info, err := client.GetInfo(context.Background()); err != nil {
 		t.Fatalf("GetInfo() error = %v", err)
 	} else if info.Name != "legacy server" {
@@ -169,7 +169,7 @@ func TestServerServesQueriesWithLegacyChallengePolicy(t *testing.T) {
 
 func TestServerServesLargeRulesThroughSourceSplit(t *testing.T) {
 	rules := make(a2s.Rules, 0, 64)
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		rules = append(rules, a2s.Rule{
 			Name:  fmt.Sprintf("rule_%02d", index),
 			Value: strings.Repeat("value", 32),
@@ -202,7 +202,7 @@ func TestServerServesLargeRulesThroughSourceSplit(t *testing.T) {
 		<-serveErr
 		t.Fatalf("NewWithAddr() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	got, err := client.GetRules(context.Background())
 	if err != nil {
 		t.Fatalf("GetRules() error = %v", err)
@@ -250,7 +250,7 @@ func TestServerDropsOversizedDatagrams(t *testing.T) {
 		<-serveErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	if _, err := client.Write(bytes.Repeat([]byte{0xFF}, 9)); err != nil {
 		t.Fatalf("Write(oversized) error = %v", err)
@@ -305,7 +305,7 @@ func TestServerIgnoresMalformedDatagrams(t *testing.T) {
 		<-serveErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	malformed := [][]byte{
 		{0x00},
@@ -389,7 +389,7 @@ func TestServerInvokesHandlerConcurrently(t *testing.T) {
 			<-serveErr
 			t.Fatalf("DialUDP() error = %v", err)
 		}
-		defer clients[index].Close()
+		defer func() { _ = clients[index].Close() }()
 		if _, err := clients[index].Write(request); err != nil {
 			t.Fatalf("Write() error = %v", err)
 		}
@@ -462,7 +462,7 @@ func TestServerShutdownCancelsHandlersAndKeepsConnectionOpen(t *testing.T) {
 		<-serveErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		t.Fatalf("transport.AppendRequest() error = %v", err)
@@ -545,7 +545,7 @@ func TestServerRejectsConcurrentServe(t *testing.T) {
 		<-firstErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		_ = first.Close()
@@ -571,7 +571,7 @@ func TestServerRejectsConcurrentServe(t *testing.T) {
 		<-firstErr
 		t.Fatalf("ListenPacket(second) error = %v", err)
 	}
-	defer second.Close()
+	defer func() { _ = second.Close() }()
 	if err := server.Serve(second); !errors.Is(err, ErrServerRunning) {
 		t.Fatalf("second Serve() error = %v, want ErrServerRunning", err)
 	}
@@ -620,7 +620,7 @@ func TestServerRecoversHandlerPanicAndContinues(t *testing.T) {
 		<-serveErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		t.Fatalf("transport.AppendRequest() error = %v", err)
@@ -688,7 +688,7 @@ func TestServerDefaultPanicReporterIsSafe(t *testing.T) {
 		<-serveErr
 		t.Fatalf("DialUDP() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		t.Fatalf("transport.AppendRequest() error = %v", err)

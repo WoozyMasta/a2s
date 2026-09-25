@@ -20,16 +20,16 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Second))
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
-	var active int32
-	var maxActive int32
+	var active atomic.Int32
+	var maxActive atomic.Int32
 	serverErr := make(chan error, 1)
 	serverDone := make(chan struct{})
 	var handlers sync.WaitGroup
@@ -38,7 +38,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 		defer close(serverDone)
 
 		buffer := make([]byte, 64*1024)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			n, address, err := server.ReadFromUDP(buffer)
 			if err != nil {
 				serverErr <- err
@@ -50,10 +50,10 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 				return
 			}
 
-			current := atomic.AddInt32(&active, 1)
+			current := active.Add(1)
 			for {
-				observed := atomic.LoadInt32(&maxActive)
-				if current <= observed || atomic.CompareAndSwapInt32(&maxActive, observed, current) {
+				observed := maxActive.Load()
+				if current <= observed || maxActive.CompareAndSwap(observed, current) {
 					break
 				}
 			}
@@ -61,7 +61,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 			handlers.Add(1)
 			go func(address *net.UDPAddr) {
 				defer handlers.Done()
-				defer atomic.AddInt32(&active, -1)
+				defer active.Add(-1)
 
 				time.Sleep(25 * time.Millisecond)
 				if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponsePing, nil), address); err != nil {
@@ -74,14 +74,12 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 
 	var queries sync.WaitGroup
 	queryErr := make(chan error, 2)
-	for i := 0; i < 2; i++ {
-		queries.Add(1)
-		go func() {
-			defer queries.Done()
+	for range 2 {
+		queries.Go(func() {
 			if _, _, _, err := client.Get(context.Background(), transport.PingRequest); err != nil {
 				queryErr <- err
 			}
-		}()
+		})
 	}
 	queries.Wait()
 
@@ -103,7 +101,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 	default:
 	}
 
-	if got, want := atomic.LoadInt32(&maxActive), int32(1); got != want {
+	if got, want := maxActive.Load(), int32(1); got != want {
 		t.Fatalf("maximum concurrent server handlers = %d, want %d", got, want)
 	}
 }

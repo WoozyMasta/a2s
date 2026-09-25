@@ -19,7 +19,7 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -61,7 +61,7 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	_, flag, duration, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -83,7 +83,7 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listen UDP server: %v", err)
 	}
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	assembled := singlePacketFixture(transport.ResponseRules, []byte("split timing"))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, len(assembled)-1)
@@ -113,7 +113,7 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	data, flag, duration, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {

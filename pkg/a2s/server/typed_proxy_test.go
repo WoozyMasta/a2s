@@ -55,8 +55,8 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 		upstreamProvider,
 		1248,
 	)
-	defer upstreamConn.Close()
-	defer upstream.Shutdown(context.Background())
+	defer func() { _ = upstreamConn.Close() }()
+	defer func() { _ = upstream.Shutdown(context.Background()) }()
 
 	upstreamClient, err := a2s.NewWithAddr(
 		upstreamConn.LocalAddr().(*net.UDPAddr),
@@ -65,7 +65,7 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWithAddr(upstream) error = %v", err)
 	}
-	defer upstreamClient.Close()
+	defer func() { _ = upstreamClient.Close() }()
 
 	upstreamInfo, err := upstreamClient.GetInfo(context.Background())
 	if err != nil {
@@ -90,8 +90,8 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 		downstreamProvider,
 		1248,
 	)
-	defer downstreamConn.Close()
-	defer downstream.Shutdown(context.Background())
+	defer func() { _ = downstreamConn.Close() }()
+	defer func() { _ = downstream.Shutdown(context.Background()) }()
 
 	downstreamClient, err := a2s.NewWithAddr(
 		downstreamConn.LocalAddr().(*net.UDPAddr),
@@ -100,7 +100,7 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWithAddr(downstream) error = %v", err)
 	}
-	defer downstreamClient.Close()
+	defer func() { _ = downstreamClient.Close() }()
 
 	got, err := downstreamClient.GetInfo(context.Background())
 	if err != nil {

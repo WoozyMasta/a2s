@@ -13,7 +13,7 @@ import (
 
 func FuzzParseKeywords(f *testing.F) {
 	f.Add([]byte("battleye,port2303,c-21--52"))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		values := strings.Split(string(data), ",")
 		_, _ = Parse(appid.Arma3, values)
 		_, _ = Parse(appid.DayZ, values)
@@ -22,7 +22,7 @@ func FuzzParseKeywords(f *testing.F) {
 
 func FuzzParseCoordinates(f *testing.F) {
 	f.Add([]byte("-21--52"))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		_, _ = parseCoordinates(string(data))
 	})
 }

@@ -111,7 +111,7 @@ func getRulesFromFixtureWithGame(t *testing.T, game uint64, entries ...rulesFixt
 	if err != nil {
 		t.Fatalf("create a2s client: %v", err)
 	}
-	defer baseClient.Close()
+	defer func() { _ = baseClient.Close() }()
 
 	client := &Client{Client: baseClient}
 	return client.GetRules(context.Background(), game)
@@ -125,7 +125,7 @@ func getAutomaticRulesFromFixture(t *testing.T, entries ...rulesFixtureEntry) (*
 	if err != nil {
 		t.Fatalf("create a2s client: %v", err)
 	}
-	defer baseClient.Close()
+	defer func() { _ = baseClient.Close() }()
 
 	client := &Client{Client: baseClient}
 	return client.GetRules(context.Background(), 0)
@@ -153,7 +153,7 @@ func TestGetRulesRejectsTruncatedCountFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("create a2s client: %v", err)
 			}
-			defer baseClient.Close()
+			defer func() { _ = baseClient.Close() }()
 
 			client := &Client{Client: baseClient}
 			_, err = client.GetRules(context.Background(), appid.DayZ)
@@ -183,7 +183,7 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create a2s client: %v", err)
 	}
-	defer baseClient.Close()
+	defer func() { _ = baseClient.Close() }()
 
 	client := &Client{Client: baseClient}
 	rules, err := client.GetRules(context.Background(), appid.DayZ)
@@ -220,7 +220,7 @@ func TestGetRulesDoesNotMutateBufferSize(t *testing.T) {
 			if err != nil {
 				t.Fatalf("create a2s client: %v", err)
 			}
-			defer baseClient.Close()
+			defer func() { _ = baseClient.Close() }()
 
 			client := &Client{Client: baseClient}
 			if _, err := client.GetRules(context.Background(), appid.DayZ); err != nil {
@@ -563,7 +563,7 @@ func TestReadDLCOrdersBitsAndHashesDeterministically(t *testing.T) {
 	binary.LittleEndian.PutUint32(hashData[4:8], 0x22222222)
 	binary.LittleEndian.PutUint32(hashData[8:12], 0x33333333)
 
-	for iteration := 0; iteration < 100; iteration++ {
+	for iteration := range 100 {
 		rules := &Rules{Layout: LayoutArma3, appID: appid.Arma3}
 		decoder := wire.NewDecoder(hashData)
 		if err := rules.readDLC(&decoder, mask); err != nil {
@@ -618,7 +618,7 @@ func TestGetRulesParsesDayZDedicatedRule(t *testing.T) {
 			if err != nil {
 				t.Fatalf("create a2s client: %v", err)
 			}
-			defer baseClient.Close()
+			defer func() { _ = baseClient.Close() }()
 
 			client := &Client{Client: baseClient}
 			rules, err := client.GetRules(context.Background(), appid.DayZ)

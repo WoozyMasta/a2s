@@ -57,7 +57,7 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 			if err != nil {
 				t.Fatalf("prepareProxyStartup() error = %v", err)
 			}
-			defer preparation.close()
+			defer func() { _ = preparation.close() }()
 
 			if preparation.infoMeta.UsedChallenge != tt.infoChallenge {
 				t.Fatalf(
@@ -118,7 +118,7 @@ func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepareProxyStartup() error = %v", err)
 	}
-	defer preparation.close()
+	defer func() { _ = preparation.close() }()
 
 	if !preparation.cache.Enabled(transport.InfoRequest) {
 		t.Fatal("auto cache did not enable INFO")
@@ -144,7 +144,7 @@ func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
 			if err != nil {
 				t.Fatalf("prepareProxyStartup() error = %v", err)
 			}
-			defer preparation.close()
+			defer func() { _ = preparation.close() }()
 
 			if !preparation.cache.Enabled(query) {
 				t.Fatalf("cache does not enable failed explicit %s query", proxyQueryName(query))
@@ -181,7 +181,7 @@ func TestPrepareProxyStartupDisablesCacheForNone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepareProxyStartup() error = %v", err)
 	}
-	defer preparation.close()
+	defer func() { _ = preparation.close() }()
 
 	for _, query := range []transport.QueryType{
 		transport.InfoRequest,
@@ -225,7 +225,7 @@ func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWithString() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	info, err := client.GetInfo(context.Background())
 	if err != nil {
@@ -307,7 +307,7 @@ func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T)
 	if err != nil {
 		t.Fatalf("NewWithString() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if _, err := client.GetInfo(context.Background()); err != nil {
 		t.Fatalf("initial GetInfo() error = %v", err)
 	}

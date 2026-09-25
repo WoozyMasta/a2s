@@ -38,7 +38,7 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	info, err := client.GetInfo(context.Background())
 	if err != nil {

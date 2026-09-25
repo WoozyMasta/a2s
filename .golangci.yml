@@ -1,6 +1,6 @@
 version: "2"
 run:
-  tests: false
+  tests: true
 
 linters:
   enable:
@@ -31,6 +31,10 @@ linters:
     presets:
       - common-false-positives
     rules:
+      - path: _test\.go$
+        text: '^G115:'
+        linters:
+          - gosec
       - linters:
           - revive
         path: 'pkg/keywords/types/(gametype|language|platform|serverstate)\.go'

@@ -129,7 +129,7 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 }
 
 func TestProtocolFixtureCorpusSourceSplitHeaders(t *testing.T) {
-	for index := 0; index < 5; index++ {
+	for index := range 5 {
 		packet := readProtocolFixture(t, "source_split_packet_"+strconv.Itoa(index)+".hex")
 		header, err := transport.ParseSplitHeader(packet)
 		if err != nil {

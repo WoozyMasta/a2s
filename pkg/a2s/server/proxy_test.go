@@ -23,7 +23,7 @@ import (
 
 func TestTransparentLogicalPacketProxy(t *testing.T) {
 	rules := make(a2s.Rules, 0, 32)
-	for index := 0; index < 32; index++ {
+	for index := range 32 {
 		rules = append(rules, a2s.Rule{
 			Name:  "rule_" + string(rune('a'+index)),
 			Value: strings.Repeat("value", 20),
@@ -43,8 +43,8 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 		upstreamProvider,
 		64,
 	)
-	defer upstreamConn.Close()
-	defer upstreamServer.Shutdown(context.Background())
+	defer func() { _ = upstreamConn.Close() }()
+	defer func() { _ = upstreamServer.Shutdown(context.Background()) }()
 
 	upstreamClient, err := a2s.NewWithAddr(
 		upstreamConn.LocalAddr().(*net.UDPAddr),
@@ -53,7 +53,7 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWithAddr(upstream) error = %v", err)
 	}
-	defer upstreamClient.Close()
+	defer func() { _ = upstreamClient.Close() }()
 
 	expected, _, err := upstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
@@ -79,8 +79,8 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 		downstreamProvider,
 		4096,
 	)
-	defer downstreamConn.Close()
-	defer downstreamServer.Shutdown(context.Background())
+	defer func() { _ = downstreamConn.Close() }()
+	defer func() { _ = downstreamServer.Shutdown(context.Background()) }()
 
 	downstreamClient, err := a2s.NewWithAddr(
 		downstreamConn.LocalAddr().(*net.UDPAddr),
@@ -89,7 +89,7 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWithAddr(downstream) error = %v", err)
 	}
-	defer downstreamClient.Close()
+	defer func() { _ = downstreamClient.Close() }()
 
 	got, _, err := downstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {

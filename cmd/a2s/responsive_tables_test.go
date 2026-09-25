@@ -7,13 +7,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 )
 
@@ -62,7 +62,7 @@ func TestResponsiveTablesFitSupportedTerminalWidths(t *testing.T) {
 							Island:      "deerisle",
 							Description: strings.Repeat("Long DayZ server description ", 20),
 						}
-						for index := 0; index < 20; index++ {
+						for index := range 20 {
 							rules.Mods = append(rules.Mods, a3sb.Mod{
 								Name: fmt.Sprintf("Mod %02d with a descriptive name", index+1),
 								ID:   uint64(1000000000 + index),
@@ -77,7 +77,7 @@ func TestResponsiveTablesFitSupportedTerminalWidths(t *testing.T) {
 					render: func(output *bytes.Buffer, formatter *Formatter) error {
 						app := NewApplication(output, output)
 						players := make([]a2s.Player, 0, 20)
-						for index := 0; index < 20; index++ {
+						for index := range 20 {
 							players = append(players, a2s.Player{
 								Name:     fmt.Sprintf("Player %02d with an unusually long name", index+1),
 								Score:    int32(index * 10),
@@ -112,7 +112,7 @@ func assertRenderedTableFits(t *testing.T, output string, terminalWidth int) {
 	t.Helper()
 
 	tableLines := 0
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if !strings.HasPrefix(line, "╭") &&
 			!strings.HasPrefix(line, "│") &&
 			!strings.HasPrefix(line, "├") &&

@@ -24,21 +24,21 @@ const (
 func FuzzDecodeRequest(f *testing.F) {
 	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.PingRequest)})
 	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.InfoRequest), 'S', 'o', 'u', 'r', 'c', 'e'})
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		_, _ = transport.DecodeRequest(limitFuzzBytes(data, fuzzInputMax))
 	})
 }
 
 func FuzzDecodePacket(f *testing.F) {
 	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.ResponseRules)})
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		_, _ = transport.DecodePacket(limitFuzzBytes(data, fuzzInputMax))
 	})
 }
 
 func FuzzEncodeInfo(f *testing.F) {
 	f.Add([]byte("server name"))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		value := fuzzString(data)
 		gameID := uint64(len(data))
 		_, _ = a2s.AppendInfo(nil, a2s.Info{
@@ -56,7 +56,7 @@ func FuzzEncodeInfo(f *testing.F) {
 
 func FuzzEncodePlayers(f *testing.F) {
 	f.Add([]byte("player"))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		value := fuzzString(data)
 		players := make([]a2s.Player, minInt(len(data), fuzzEntriesMax))
 		for index := range players {
@@ -74,7 +74,7 @@ func FuzzEncodePlayers(f *testing.F) {
 
 func FuzzEncodeRules(f *testing.F) {
 	f.Add([]byte("hostname"))
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		value := fuzzString(data)
 		rules := make(a2s.Rules, minInt(len(data), fuzzEntriesMax))
 		for index := range rules {
@@ -91,7 +91,7 @@ func FuzzEncodeRules(f *testing.F) {
 func FuzzPacketizers(f *testing.F) {
 	f.Add([]byte("packetizer payload"), uint8(32))
 	f.Add([]byte("this payload exercises split packetization"), uint8(8))
-	f.Fuzz(func(t *testing.T, data []byte, splitSize uint8) {
+	f.Fuzz(func(_ *testing.T, data []byte, splitSize uint8) {
 		payload := limitFuzzBytes(data, fuzzInputMax)
 		logical := make([]byte, 5+len(payload))
 		binary.LittleEndian.PutUint32(logical[:4], 0xFFFFFFFF)
@@ -132,7 +132,7 @@ func FuzzChallengeGate(f *testing.F) {
 	}
 
 	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
-	f.Fuzz(func(t *testing.T, data []byte) {
+	f.Fuzz(func(_ *testing.T, data []byte) {
 		var challenge transport.Challenge
 		copy(challenge[:], data)
 		remote := netip.AddrPortFrom(netip.AddrFrom4([4]byte{127, 0, 0, 1}), uint16(len(data)))
@@ -153,9 +153,9 @@ func fuzzString(data []byte) string {
 	return string(limitFuzzBytes(data, fuzzStringMax))
 }
 
-func limitFuzzBytes(data []byte, max int) []byte {
-	if len(data) > max {
-		return data[:max]
+func limitFuzzBytes(data []byte, limit int) []byte {
+	if len(data) > limit {
+		return data[:limit]
 	}
 
 	return data

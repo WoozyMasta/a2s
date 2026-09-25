@@ -19,7 +19,7 @@ import (
 
 func TestSourcePacketizerReturnsSinglePacket(t *testing.T) {
 	packetizer := testSourcePacketizer(func() uint32 { return 1 })
-	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("rule"), 4))
+	data := logicalPacket(bytes.Repeat([]byte("rule"), 4))
 
 	packets, err := packetizer.Packetize(data)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestSourcePacketizerReturnsSinglePacket(t *testing.T) {
 
 func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 	const splitSize = 18
-	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 25))
+	data := logicalPacket(bytes.Repeat([]byte("x"), 25))
 	packetizer := testSourcePacketizer(func() uint32 { return 0x81234567 })
 	packetizer.SplitSize = splitSize
 
@@ -77,7 +77,7 @@ func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 
 func TestGoldSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 	const splitSize = 18
-	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 25))
+	data := logicalPacket(bytes.Repeat([]byte("x"), 25))
 	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
 	packetizer.SplitSize = splitSize
 
@@ -129,7 +129,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.SplitSize = sourceSplitHeaderSize
 			},
-			data: logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 32)),
+			data: logicalPacket(bytes.Repeat([]byte("x"), 32)),
 			want: ErrPacketizerSplitSize,
 		},
 		{
@@ -137,7 +137,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.MaxResponseSize = 5
 			},
-			data: logicalPacket(transport.ResponseRules, []byte("too large")),
+			data: logicalPacket([]byte("too large")),
 			want: ErrPacketizerResponseSize,
 		},
 		{
@@ -145,7 +145,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.SplitSize = sourceSplitHeaderSize + 1
 			},
-			data: logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), sourceSplitCountMax)),
+			data: logicalPacket(bytes.Repeat([]byte("x"), sourceSplitCountMax)),
 			want: ErrPacketizerFragmentCount,
 		},
 	}
@@ -170,7 +170,7 @@ func TestGoldSourcePacketizerRejectsFragmentCountOverflow(t *testing.T) {
 	packetizer.SplitSize = goldSourceSplitHeaderSize + 1
 
 	_, err := packetizer.Packetize(
-		logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), goldSourceSplitCountMax)),
+		logicalPacket(bytes.Repeat([]byte("x"), goldSourceSplitCountMax)),
 	)
 	if !errors.Is(err, ErrPacketizerFragmentCount) {
 		t.Fatalf("Packetize() error = %v, want %v", err, ErrPacketizerFragmentCount)
@@ -205,7 +205,7 @@ func TestNewGoldSourcePacketizer(t *testing.T) {
 
 func TestSourcePacketizerZeroValue(t *testing.T) {
 	var packetizer SourcePacketizer
-	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), DefaultSourceSplitSize))
+	data := logicalPacket(bytes.Repeat([]byte("x"), DefaultSourceSplitSize))
 
 	packets, err := packetizer.Packetize(data)
 	if err != nil {
@@ -217,74 +217,32 @@ func TestSourcePacketizerZeroValue(t *testing.T) {
 }
 
 func TestSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
-	if err != nil {
-		t.Fatalf("ListenUDP() error = %v", err)
-	}
-	defer conn.Close()
-
-	client, err := a2s.NewWithAddr(conn.LocalAddr().(*net.UDPAddr), a2s.WithTimeout(time.Second))
-	if err != nil {
-		t.Fatalf("NewWithAddr() error = %v", err)
-	}
-	defer client.Close()
-
-	logical := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("payload"), 8))
 	packetizer := testSourcePacketizer(func() uint32 { return 0x12345678 })
 	packetizer.SplitSize = 18
-
-	serverErr := make(chan error, 1)
-	go func() {
-		buffer := make([]byte, 2048)
-		_, remote, readErr := conn.ReadFromUDP(buffer)
-		if readErr != nil {
-			serverErr <- readErr
-			return
-		}
-
-		packets, packetizeErr := packetizer.Packetize(logical)
-		if packetizeErr != nil {
-			serverErr <- packetizeErr
-			return
-		}
-		for _, packet := range packets {
-			if _, writeErr := conn.WriteToUDP(packet, remote); writeErr != nil {
-				serverErr <- writeErr
-				return
-			}
-		}
-		serverErr <- nil
-	}()
-
-	got, _, err := client.Query(context.Background(), transport.RulesRequest)
-	if err != nil {
-		t.Fatalf("Query() error = %v", err)
-	}
-	if got.Type != transport.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
-		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, transport.ResponseRules, logical[5:])
-	}
-	if err := <-serverErr; err != nil {
-		t.Fatalf("UDP server error = %v", err)
-	}
+	testPacketizerRoundTripsThroughA2SClient(t, packetizer)
 }
 
 func TestGoldSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
+	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
+	packetizer.SplitSize = 18
+	testPacketizerRoundTripsThroughA2SClient(t, packetizer)
+}
+
+func testPacketizerRoundTripsThroughA2SClient(t *testing.T, packetizer Packetizer) {
+	t.Helper()
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
 	if err != nil {
 		t.Fatalf("ListenUDP() error = %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client, err := a2s.NewWithAddr(conn.LocalAddr().(*net.UDPAddr), a2s.WithTimeout(time.Second))
 	if err != nil {
 		t.Fatalf("NewWithAddr() error = %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
-	logical := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("payload"), 8))
-	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
-	packetizer.SplitSize = 18
-
+	logical := logicalPacket(bytes.Repeat([]byte("payload"), 8))
 	serverErr := make(chan error, 1)
 	go func() {
 		buffer := make([]byte, 2048)
@@ -320,10 +278,10 @@ func TestGoldSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 	}
 }
 
-func logicalPacket(responseType transport.ResponseType, payload []byte) []byte {
+func logicalPacket(payload []byte) []byte {
 	packet := make([]byte, 5+len(payload))
 	binary.LittleEndian.PutUint32(packet[:4], ^uint32(0))
-	packet[4] = byte(responseType)
+	packet[4] = byte(transport.ResponseRules)
 	copy(packet[5:], payload)
 	return packet
 }

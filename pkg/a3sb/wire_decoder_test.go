@@ -77,7 +77,7 @@ func TestReadModsWithoutCreatorDLCKeepsNonNilSlice(t *testing.T) {
 func TestReadSignaturesTruncatedLengthPrefixedFields(t *testing.T) {
 	data := []byte{1, 3, 'a', 'b', 'c'}
 
-	for end := 0; end < len(data); end++ {
+	for end := range data {
 		t.Run("truncated", func(t *testing.T) {
 			decoder := wire.NewDecoder(data[:end])
 			rules := &Rules{}
@@ -91,7 +91,8 @@ func TestReadSignaturesTruncatedLengthPrefixedFields(t *testing.T) {
 func TestReadA3SBDayZDescriptionTruncation(t *testing.T) {
 	const description = "dayz"
 
-	data := []byte{2, 0, 0, 0, 0, 0, byte(len(description))}
+	data := make([]byte, 0, 7+len(description))
+	data = append(data, 2, 0, 0, 0, 0, 0, byte(len(description)))
 	data = append(data, description...)
 	baseLength := len(data) - len(description)
 
@@ -106,7 +107,7 @@ func TestReadA3SBDayZDescriptionTruncation(t *testing.T) {
 }
 
 func TestReadA3SBShortBuffersDoNotPanic(t *testing.T) {
-	for length := 0; length < 32; length++ {
+	for length := range 32 {
 		t.Run("short buffer", func(t *testing.T) {
 			defer func() {
 				if recovered := recover(); recovered != nil {
