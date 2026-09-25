@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -30,13 +31,13 @@ func AppendInfo(dst []byte, info Info) ([]byte, error) {
 		return dst, err
 	}
 
-	switch ResponseType(info.Format) {
-	case ResponseInfo:
-		dst = appendPacketHeader(dst, ResponseInfo)
+	switch transport.ResponseType(info.Format) {
+	case transport.ResponseInfo:
+		dst = transport.AppendPacketHeader(dst, transport.ResponseInfo)
 		return appendSourceInfo(dst, info, edf)
 
-	case ResponseInfoGoldSource:
-		dst = appendPacketHeader(dst, ResponseInfoGoldSource)
+	case transport.ResponseInfoGoldSource:
+		dst = transport.AppendPacketHeader(dst, transport.ResponseInfoGoldSource)
 		return appendGoldSourceInfo(dst, info)
 
 	default:
@@ -72,8 +73,8 @@ func infoEncodeEDF(info Info) (EDF, error) {
 
 // validateInfoForEncoding rejects fields that cannot be represented by the selected format.
 func validateInfoForEncoding(info Info) error {
-	switch ResponseType(info.Format) {
-	case ResponseInfo:
+	switch transport.ResponseType(info.Format) {
+	case transport.ResponseInfo:
 		if info.Address != "" || info.Mod != nil {
 			return fmt.Errorf("%w: GoldSource fields set for Source response", ErrInfoEncode)
 		}
@@ -99,7 +100,7 @@ func validateInfoForEncoding(info Info) error {
 
 		return validateInfoKeywords(info.Keywords)
 
-	case ResponseInfoGoldSource:
+	case transport.ResponseInfoGoldSource:
 		if info.AppID != 0 || info.GameID != nil || info.SteamID != 0 ||
 			info.Port != 0 || info.SourceTVName != "" || info.SourceTVPort != 0 ||
 			info.Keywords != nil || info.EDF != 0 || info.TheShip != nil {
@@ -156,7 +157,7 @@ func validateInfoKeywords(keywords []string) error {
 	return nil
 }
 
-// appendSourceInfo appends the Source A2S_INFO payload after the packet header.
+// appendSourceInfo appends the Source A2S_INFO payload.
 func appendSourceInfo(dst []byte, info Info, edf EDF) ([]byte, error) {
 	dst = append(dst, info.Protocol)
 
@@ -217,7 +218,7 @@ func appendSourceInfo(dst []byte, info Info, edf EDF) ([]byte, error) {
 	return dst, nil
 }
 
-// appendGoldSourceInfo appends the GoldSource A2S_INFO payload after the packet header.
+// appendGoldSourceInfo appends the GoldSource A2S_INFO payload.
 func appendGoldSourceInfo(dst []byte, info Info) ([]byte, error) {
 	var err error
 	for _, field := range []struct {

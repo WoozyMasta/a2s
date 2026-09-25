@@ -10,6 +10,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestDurationFromSeconds32(t *testing.T) {
@@ -56,7 +58,9 @@ func TestDurationFromSeconds32PreservesLegacyRounding(t *testing.T) {
 	for i := 0; i < 100_000; i++ {
 		state = state*1664525 + 1013904223
 		value := math.Float32frombits(state)
-		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) || math.Abs(float64(value)) > 1_000_000 {
+		if math.IsNaN(float64(value)) ||
+			math.IsInf(float64(value), 0) ||
+			math.Abs(float64(value)) > 1_000_000 {
 			continue
 		}
 
@@ -91,7 +95,7 @@ func TestParsePlayersTruncation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data[:test.end]})
+			_, err := DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data[:test.end]})
 			if !errors.Is(err, test.want) {
 				t.Fatalf("DecodePlayers() error = %v, want %v", err, test.want)
 			}
@@ -105,7 +109,7 @@ func TestParsePlayersTruncation(t *testing.T) {
 					t.Fatalf("DecodePlayers() panicked for length %d: %v", end, recovered)
 				}
 			}()
-			_, _ = DecodePlayers(Packet{Type: ResponsePlayers, Payload: data[:end]})
+			_, _ = DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data[:end]})
 		})
 	}
 }

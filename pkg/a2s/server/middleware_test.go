@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestMiddlewareModifiesTypedResponse(t *testing.T) {
@@ -104,10 +105,16 @@ func TestMiddlewareCanDropUnauthorizedRequest(t *testing.T) {
 		})
 	})
 
-	if _, err := acl(base).Handle(context.Background(), &Request{Remote: netip.MustParseAddrPort("127.0.0.1:1"), Query: a2s.Request{Type: a2s.InfoRequest}}); !errors.Is(err, ErrDrop) {
+	if _, err := acl(base).Handle(context.Background(), &Request{
+		Remote: netip.MustParseAddrPort("127.0.0.1:1"),
+		Query:  transport.Request{Type: transport.InfoRequest},
+	}); !errors.Is(err, ErrDrop) {
 		t.Fatalf("unauthorized error = %v, want ErrDrop", err)
 	}
-	response, err := acl(base).Handle(context.Background(), &Request{Remote: allowed, Query: a2s.Request{Type: a2s.InfoRequest}})
+	response, err := acl(base).Handle(context.Background(), &Request{
+		Remote: allowed,
+		Query:  transport.Request{Type: transport.InfoRequest},
+	})
 	if err != nil {
 		t.Fatalf("authorized error = %v", err)
 	}
@@ -149,5 +156,8 @@ func TestMiddlewarePreservesCompositionOrder(t *testing.T) {
 }
 
 func testMiddlewareRequest() *Request {
-	return &Request{Remote: netip.MustParseAddrPort("127.0.0.1:27016"), Query: a2s.Request{Type: a2s.InfoRequest}}
+	return &Request{
+		Remote: netip.MustParseAddrPort("127.0.0.1:27016"),
+		Query:  transport.Request{Type: transport.InfoRequest},
+	}
 }

@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // HandlerConfig configures downstream request handling.
@@ -69,20 +69,20 @@ func (h *Handler) Handle(ctx context.Context, request *server.Request) (server.R
 	}
 
 	switch request.Query.Type {
-	case a2s.InfoRequest, a2s.PlayerRequest, a2s.RulesRequest:
+	case transport.InfoRequest, transport.PlayerRequest, transport.RulesRequest:
 		if h.cache.Enabled(request.Query.Type) {
 			return h.cachedResponse(request.Query.Type)
 		}
 		return h.relayResponse(ctx, request.Query.Type)
 
-	case a2s.ChallengeRequest:
+	case transport.ChallengeRequest:
 		return challengeResponse(h.provider.Issue(request.Remote)), nil
 
-	case a2s.PingRequest:
+	case transport.PingRequest:
 		if h.localPing {
-			return server.PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return server.PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}
-		return h.relayResponse(ctx, a2s.PingRequest)
+		return h.relayResponse(ctx, transport.PingRequest)
 
 	default:
 		return nil, server.ErrDrop
@@ -90,7 +90,7 @@ func (h *Handler) Handle(ctx context.Context, request *server.Request) (server.R
 }
 
 // cachedResponse returns one cloned packet from the selected cache entry.
-func (h *Handler) cachedResponse(query a2s.QueryType) (server.Response, error) {
+func (h *Handler) cachedResponse(query transport.QueryType) (server.Response, error) {
 	packet, ok := h.cache.Load(query)
 	if !ok {
 		return nil, server.ErrDrop
@@ -100,7 +100,7 @@ func (h *Handler) cachedResponse(query a2s.QueryType) (server.Response, error) {
 }
 
 // relayResponse queries upstream and converts expected failures into drops.
-func (h *Handler) relayResponse(ctx context.Context, query a2s.QueryType) (server.Response, error) {
+func (h *Handler) relayResponse(ctx context.Context, query transport.QueryType) (server.Response, error) {
 	select {
 	case h.relaySem <- struct{}{}:
 		defer func() { <-h.relaySem }()
@@ -117,10 +117,10 @@ func (h *Handler) relayResponse(ctx context.Context, query a2s.QueryType) (serve
 }
 
 // challengeResponse creates a local logical GETCHALLENGE response.
-func challengeResponse(challenge a2s.Challenge) server.Response {
+func challengeResponse(challenge transport.Challenge) server.Response {
 	return server.PacketResponse{
-		Packet: a2s.Packet{
-			Type:    a2s.ResponseChallenge,
+		Packet: transport.Packet{
+			Type:    transport.ResponseChallenge,
 			Payload: append([]byte(nil), challenge[:]...),
 		},
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 const (
@@ -21,17 +22,17 @@ const (
 )
 
 func FuzzDecodeRequest(f *testing.F) {
-	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(a2s.PingRequest)})
-	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(a2s.InfoRequest), 'S', 'o', 'u', 'r', 'c', 'e'})
+	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.PingRequest)})
+	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.InfoRequest), 'S', 'o', 'u', 'r', 'c', 'e'})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = a2s.DecodeRequest(limitFuzzBytes(data, fuzzInputMax))
+		_, _ = transport.DecodeRequest(limitFuzzBytes(data, fuzzInputMax))
 	})
 }
 
 func FuzzDecodePacket(f *testing.F) {
-	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(a2s.ResponseRules)})
+	f.Add([]byte{0xFF, 0xFF, 0xFF, 0xFF, byte(transport.ResponseRules)})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = a2s.DecodePacket(limitFuzzBytes(data, fuzzInputMax))
+		_, _ = transport.DecodePacket(limitFuzzBytes(data, fuzzInputMax))
 	})
 }
 
@@ -94,7 +95,7 @@ func FuzzPacketizers(f *testing.F) {
 		payload := limitFuzzBytes(data, fuzzInputMax)
 		logical := make([]byte, 5+len(payload))
 		binary.LittleEndian.PutUint32(logical[:4], 0xFFFFFFFF)
-		logical[4] = byte(a2s.ResponseRules)
+		logical[4] = byte(transport.ResponseRules)
 		copy(logical[5:], payload)
 
 		source := &SourcePacketizer{
@@ -121,7 +122,7 @@ func FuzzChallengeGate(f *testing.F) {
 
 	gate, err := NewChallengeGate(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponseInfo}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponseInfo}}, nil
 		}),
 		SecureChallengePolicy(),
 		provider,
@@ -132,13 +133,13 @@ func FuzzChallengeGate(f *testing.F) {
 
 	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		var challenge a2s.Challenge
+		var challenge transport.Challenge
 		copy(challenge[:], data)
 		remote := netip.AddrPortFrom(netip.AddrFrom4([4]byte{127, 0, 0, 1}), uint16(len(data)))
 		request := &Request{
 			Remote: remote,
-			Query: a2s.Request{
-				Type:         a2s.QueryType(byteAt(data, 0)),
+			Query: transport.Request{
+				Type:         transport.QueryType(byteAt(data, 0)),
 				Challenge:    challenge,
 				HasChallenge: len(data)%2 == 0,
 			},

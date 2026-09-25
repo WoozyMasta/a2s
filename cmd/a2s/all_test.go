@@ -16,11 +16,12 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 )
 
 func TestExecuteAllJSONEmitsOneStructuredDocument(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, true)
 	output := &bytes.Buffer{}
 	command := &AllCommand{
 		Args: ServerArgs{
@@ -87,24 +88,26 @@ func TestExecuteAllJSONPreservesA3SBRulesShape(t *testing.T) {
 		t.Fatalf("EncodePages() error = %v", err)
 	}
 
-	serverInstance, err := server.New(server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
-		switch request.Query.Type {
-		case a2s.InfoRequest:
-			return server.InfoResponse{Info: a2s.Info{
-				Format: a2s.InfoFormat(a2s.ResponseInfo),
-				Name:   "A3SB test",
-			}}, nil
+	serverInstance, err := server.New(
+		server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
+			switch request.Query.Type {
+			case transport.InfoRequest:
+				return server.InfoResponse{Info: a2s.Info{
+					Format: a2s.InfoFormat(transport.ResponseInfo),
+					Name:   "A3SB test",
+				}}, nil
 
-		case a2s.RulesRequest:
-			return server.RulesResponse{Rules: rules}, nil
+			case transport.RulesRequest:
+				return server.RulesResponse{Rules: rules}, nil
 
-		case a2s.PlayerRequest:
-			return server.PlayersResponse{Players: []a2s.Player{}}, nil
+			case transport.PlayerRequest:
+				return server.PlayersResponse{Players: []a2s.Player{}}, nil
 
-		default:
-			return nil, server.ErrDrop
-		}
-	}))
+			default:
+				return nil, server.ErrDrop
+			}
+		}),
+	)
 	if err != nil {
 		t.Fatalf("server.New() error = %v", err)
 	}
@@ -139,7 +142,7 @@ func TestExecuteAllJSONPreservesA3SBRulesShape(t *testing.T) {
 	}
 	if err := executeAll(NewApplication(output, output), command, ClientOptions{
 		Timeout: Duration(time.Second),
-		Buffer:  a2s.DefaultBufferSize,
+		Buffer:  transport.DefaultBufferSize,
 	}); err != nil {
 		t.Fatalf("executeAll() error = %v", err)
 	}

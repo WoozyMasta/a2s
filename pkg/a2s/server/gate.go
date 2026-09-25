@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // ChallengeGate validates challenge-protected requests
@@ -66,10 +66,10 @@ func (g *ChallengeGate) Handle(ctx context.Context, req *Request) (Response, err
 }
 
 // challengeResponse creates the logical A2S challenge response packet.
-func challengeResponse(challenge a2s.Challenge) Response {
+func challengeResponse(challenge transport.Challenge) Response {
 	return PacketResponse{
-		Packet: a2s.Packet{
-			Type:    a2s.ResponseChallenge,
+		Packet: transport.Packet{
+			Type:    transport.ResponseChallenge,
 			Payload: append([]byte(nil), challenge[:]...),
 		},
 	}

@@ -10,6 +10,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
@@ -28,13 +30,13 @@ func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || QueryType(buffer[4]) != RulesRequest {
-			serverErr <- ErrWrongRequest
+		if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
+			serverErr <- transport.ErrWrongRequest
 			return
 		}
 
 		challenge := []byte{1, 2, 3, 4}
-		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, challenge), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponseChallenge, challenge), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -56,7 +58,7 @@ func TestGetContextDeadlineCoversChallengeExchange(t *testing.T) {
 	defer cancel()
 
 	started := time.Now()
-	_, _, _, err = client.Get(ctx, RulesRequest)
+	_, _, _, err = client.Get(ctx, transport.RulesRequest)
 	elapsed := time.Since(started)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("Get error = %v, want context deadline", err)
@@ -98,20 +100,20 @@ func TestGetContextDeadlineCoversQueryQueue(t *testing.T) {
 			return
 		}
 
-		if n < 5 || QueryType(buffer[4]) != PingRequest {
-			serverErr <- ErrWrongRequest
+		if n < 5 || transport.QueryType(buffer[4]) != transport.PingRequest {
+			serverErr <- transport.ErrWrongRequest
 			return
 		}
 
 		close(firstRequest)
 		<-releaseFirst
-		_, err = server.WriteToUDP(singlePacketFixture(ResponsePing, nil), address)
+		_, err = server.WriteToUDP(singlePacketFixture(transport.ResponsePing, nil), address)
 		serverErr <- err
 	}()
 
 	firstDone := make(chan error, 1)
 	go func() {
-		_, _, _, err := client.Get(context.Background(), PingRequest)
+		_, _, _, err := client.Get(context.Background(), transport.PingRequest)
 		firstDone <- err
 	}()
 
@@ -126,7 +128,7 @@ func TestGetContextDeadlineCoversQueryQueue(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	started := time.Now()
-	_, _, _, secondErr := client.Get(ctx, PingRequest)
+	_, _, _, secondErr := client.Get(ctx, transport.PingRequest)
 	elapsed := time.Since(started)
 	if !errors.Is(secondErr, context.DeadlineExceeded) {
 		t.Fatalf("queued Get error = %v, want context deadline", secondErr)
@@ -168,7 +170,7 @@ func TestGetContextCancellationInterruptsRead(t *testing.T) {
 	defer cancel()
 	errorDone := make(chan error, 1)
 	go func() {
-		_, _, _, queryErr := client.Get(ctx, InfoRequest)
+		_, _, _, queryErr := client.Get(ctx, transport.InfoRequest)
 		errorDone <- queryErr
 	}()
 

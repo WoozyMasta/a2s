@@ -11,17 +11,18 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 )
 
 func ExampleNew_server() {
 	handler := server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
-		if request.Query.Type != a2s.InfoRequest {
+		if request.Query.Type != transport.InfoRequest {
 			return nil, server.ErrDrop
 		}
 
 		return server.InfoResponse{Info: a2s.Info{
-			Format: a2s.InfoFormat(a2s.ResponseInfo),
+			Format: a2s.InfoFormat(transport.ResponseInfo),
 			Name:   "Example A2S server",
 		}}, nil
 	})
@@ -48,7 +49,7 @@ func ExampleState() {
 	state := server.NewState()
 	if err := state.Store(server.Snapshot{
 		Info: &a2s.Info{
-			Format: a2s.InfoFormat(a2s.ResponseInfo),
+			Format: a2s.InfoFormat(transport.ResponseInfo),
 			Name:   "Initial name",
 		},
 	}); err != nil {
@@ -58,7 +59,7 @@ func ExampleState() {
 	// Store publishes a complete replacement atomically.
 	if err := state.Store(server.Snapshot{
 		Info: &a2s.Info{
-			Format: a2s.InfoFormat(a2s.ResponseInfo),
+			Format: a2s.InfoFormat(transport.ResponseInfo),
 			Name:   "Updated name",
 		},
 	}); err != nil {
@@ -75,13 +76,13 @@ func ExampleState() {
 func ExampleHandlerFunc_custom() {
 	handler := server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
 		switch request.Query.Type {
-		case a2s.InfoRequest:
+		case transport.InfoRequest:
 			return server.InfoResponse{Info: a2s.Info{
-				Format: a2s.InfoFormat(a2s.ResponseInfo),
+				Format: a2s.InfoFormat(transport.ResponseInfo),
 				Name:   "Custom handler",
 			}}, nil
 
-		case a2s.RulesRequest:
+		case transport.RulesRequest:
 			return server.RulesResponse{Rules: a2s.Rules{
 				{Name: "motd", Value: "Welcome"},
 			}}, nil
@@ -110,7 +111,7 @@ func ExampleRulesResponse_a3sb() {
 	}
 
 	handler := server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
-		if request.Query.Type != a2s.RulesRequest {
+		if request.Query.Type != transport.RulesRequest {
 			return nil, server.ErrDrop
 		}
 		return server.RulesResponse{Rules: rules}, nil
@@ -154,7 +155,7 @@ func ExampleInfoResponse_proxy() {
 	defer upstream.Close()
 
 	handler := server.HandlerFunc(func(ctx context.Context, request *server.Request) (server.Response, error) {
-		if request.Query.Type != a2s.InfoRequest {
+		if request.Query.Type != transport.InfoRequest {
 			return nil, server.ErrDrop
 		}
 

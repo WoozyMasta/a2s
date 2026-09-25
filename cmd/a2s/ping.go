@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/internal/ping"
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // executePing runs the configured ping loop for one server.
@@ -43,15 +43,15 @@ func executePing(app *Application, cmd *PingCommand, clientOptions ClientOptions
 }
 
 // pingQueryType converts the CLI query selector to an A2S request type.
-func pingQueryType(query string) a2s.QueryType {
+func pingQueryType(query string) transport.QueryType {
 	switch query {
 	case "players":
-		return a2s.PlayerRequest
+		return transport.PlayerRequest
 
 	case "rules":
-		return a2s.RulesRequest
+		return transport.RulesRequest
 
 	default:
-		return a2s.InfoRequest
+		return transport.InfoRequest
 	}
 }

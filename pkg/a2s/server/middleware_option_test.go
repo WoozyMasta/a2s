@@ -10,7 +10,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestWithMiddlewareRunsBeforeChallengeGate(t *testing.T) {
@@ -104,7 +104,7 @@ func TestWithMiddlewarePreservesDeclarationOrder(t *testing.T) {
 	configured, err := New(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
 			trace = append(trace, "handler")
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithMiddleware(wrap("first")),
@@ -116,7 +116,7 @@ func TestWithMiddlewarePreservesDeclarationOrder(t *testing.T) {
 
 	if _, err := configured.Handler.Handle(context.Background(), &Request{
 		Remote: netip.MustParseAddrPort("127.0.0.1:27015"),
-		Query:  a2s.Request{Type: a2s.PingRequest},
+		Query:  transport.Request{Type: transport.PingRequest},
 	}); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
@@ -152,15 +152,15 @@ type middlewareTestProvider struct {
 	issued int
 }
 
-func (p *middlewareTestProvider) Issue(netip.AddrPort) a2s.Challenge {
+func (p *middlewareTestProvider) Issue(netip.AddrPort) transport.Challenge {
 	p.issued++
 	if p.trace != nil {
 		*p.trace = append(*p.trace, "challenge")
 	}
 
-	return a2s.Challenge{1, 2, 3, 4}
+	return transport.Challenge{1, 2, 3, 4}
 }
 
-func (*middlewareTestProvider) Validate(netip.AddrPort, a2s.Challenge) bool {
+func (*middlewareTestProvider) Validate(netip.AddrPort, transport.Challenge) bool {
 	return false
 }

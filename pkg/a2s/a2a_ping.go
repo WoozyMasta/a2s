@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // GetPing queries server ping (A2A_PING) and returns complete query latency.
@@ -18,7 +19,7 @@ import (
 // when a regular query can provide the required response time,
 // but this method remains supported for servers that implement it.
 func (c *Client) GetPing(ctx context.Context) (time.Duration, error) {
-	packet, meta, err := c.Query(ctx, PingRequest)
+	packet, meta, err := c.Query(ctx, transport.PingRequest)
 	if err != nil {
 		return 0, err
 	}

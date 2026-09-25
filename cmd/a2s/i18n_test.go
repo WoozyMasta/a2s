@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/a3sb"
 	"github.com/woozymasta/flags"
 )
@@ -160,7 +161,7 @@ func TestInfoTableLocalizesLabelsWithoutChangingValues(t *testing.T) {
 			var output bytes.Buffer
 			app := localizedTestApplication(t, locale, &output, &output)
 			info := &a2s.Info{
-				Format:     a2s.InfoFormat(a2s.ResponseInfo),
+				Format:     a2s.InfoFormat(transport.ResponseInfo),
 				Name:       "Server value Ω",
 				Players:    3,
 				MaxPlayers: 10,
@@ -169,7 +170,7 @@ func TestInfoTableLocalizesLabelsWithoutChangingValues(t *testing.T) {
 			if err := renderInfoTable(
 				app,
 				info,
-				a2s.QueryMeta{Duration: 25 * time.Millisecond},
+				transport.QueryMeta{Duration: 25 * time.Millisecond},
 				"127.0.0.1:27015",
 				"table",
 				NewFormatter("table", &output, app.Localizer),
@@ -192,7 +193,7 @@ func TestInfoTableLocalizesBooleanValuesAndDayZLabels(t *testing.T) {
 	app := localizedTestApplication(t, "ru", &output, &output)
 	gameID := uint64(221100)
 	info := &a2s.Info{
-		Format:   a2s.InfoFormat(a2s.ResponseInfo),
+		Format:   a2s.InfoFormat(transport.ResponseInfo),
 		GameID:   &gameID,
 		EDF:      a2s.EDF(0x20),
 		Keywords: []string{"privHive"},
@@ -201,7 +202,7 @@ func TestInfoTableLocalizesBooleanValuesAndDayZLabels(t *testing.T) {
 	if err := renderInfoTable(
 		app,
 		info,
-		a2s.QueryMeta{},
+		transport.QueryMeta{},
 		"127.0.0.1:27015",
 		"table",
 		NewFormatter("table", &output, app.Localizer),

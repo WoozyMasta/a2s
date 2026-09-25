@@ -10,6 +10,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestGetDurationIncludesChallengeExchange(t *testing.T) {
@@ -27,15 +29,15 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || QueryType(buffer[4]) != RulesRequest {
-			serverErr <- ErrWrongRequest
+		if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
+			serverErr <- transport.ErrWrongRequest
 			return
 		}
 
 		time.Sleep(30 * time.Millisecond)
 		challenge := make([]byte, 4)
 		binary.LittleEndian.PutUint32(challenge, 0x12345678)
-		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, challenge), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponseChallenge, challenge), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -45,13 +47,13 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || QueryType(buffer[4]) != RulesRequest {
-			serverErr <- ErrWrongRequest
+		if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
+			serverErr <- transport.ErrWrongRequest
 			return
 		}
 
 		time.Sleep(30 * time.Millisecond)
-		_, err = server.WriteToUDP(singlePacketFixture(ResponseRules, []byte("rules")), address)
+		_, err = server.WriteToUDP(singlePacketFixture(transport.ResponseRules, []byte("rules")), address)
 		serverErr <- err
 	}()
 
@@ -61,12 +63,12 @@ func TestGetDurationIncludesChallengeExchange(t *testing.T) {
 	}
 	defer client.Close()
 
-	_, flag, duration, err := client.Get(context.Background(), RulesRequest)
+	_, flag, duration, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
+	if flag != transport.ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseRules)
 	}
 	if duration < 50*time.Millisecond {
 		t.Fatalf("query duration = %s, want challenge exchange included", duration)
@@ -83,7 +85,7 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	}
 	defer server.Close()
 
-	assembled := singlePacketFixture(ResponseRules, []byte("split timing"))
+	assembled := singlePacketFixture(transport.ResponseRules, []byte("split timing"))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, len(assembled)-1)
 	if len(packets) != 2 {
 		t.Fatalf("split fixture packet count = %d, want 2", len(packets))
@@ -113,12 +115,12 @@ func TestGetDurationIncludesSplitAssembly(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, duration, err := client.Get(context.Background(), RulesRequest)
+	data, flag, duration, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules || string(data) != "split timing" {
-		t.Fatalf("response = (%q, 0x%X), want (split timing, 0x%X)", data, flag, ResponseRules)
+	if flag != transport.ResponseRules || string(data) != "split timing" {
+		t.Fatalf("response = (%q, 0x%X), want (split timing, 0x%X)", data, flag, transport.ResponseRules)
 	}
 	if duration < 25*time.Millisecond {
 		t.Fatalf("query duration = %s, want split assembly included", duration)

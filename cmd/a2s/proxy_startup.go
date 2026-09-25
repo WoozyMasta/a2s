@@ -12,8 +12,9 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
-	proxycache "github.com/woozymasta/a2s/pkg/a2s/proxy"
+	"github.com/woozymasta/a2s/pkg/a2s/proxy"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // proxyStartupRetryDelay is the base delay between startup probe attempts.
@@ -24,11 +25,11 @@ type proxyPreparation struct {
 	upstream    string                 // Normalized upstream endpoint for diagnostics.
 	pollClient  *a2s.Client            // Client dedicated to cache refreshes.
 	relayClient *a2s.Client            // Client dedicated to live passthrough.
-	cache       *proxycache.Cache      // Cache seeded by successful startup probes.
+	cache       *proxy.Cache           // Cache seeded by successful startup probes.
 	packetizer  server.Packetizer      // Downstream framing selected from INFO.
 	policy      server.ChallengePolicy // Downstream challenge policy selected from INFO.
-	info        a2s.Packet             // Successful startup INFO packet.
-	infoMeta    a2s.QueryMeta          // Metadata from the startup INFO exchange.
+	info        transport.Packet       // Successful startup INFO packet.
+	infoMeta    transport.QueryMeta    // Metadata from the startup INFO exchange.
 }
 
 // close releases clients owned by a startup preparation.
@@ -90,7 +91,7 @@ func prepareProxyStartup(
 	info, infoMeta, err := proxyStartupQuery(
 		ctx,
 		preparation.pollClient,
-		a2s.InfoRequest,
+		transport.InfoRequest,
 		command.CacheOptions.Retries,
 		time.Duration(command.CacheOptions.Jitter),
 	)
@@ -119,19 +120,19 @@ func prepareProxyStartup(
 		return cleanup(err)
 	}
 
-	packets := map[a2s.QueryType]a2s.Packet{a2s.InfoRequest: info}
-	enabledQueries := make([]a2s.QueryType, 0, len(selectors))
+	packets := map[transport.QueryType]transport.Packet{transport.InfoRequest: info}
+	enabledQueries := make([]transport.QueryType, 0, len(selectors))
 	autoCache := len(command.CacheOptions.Cache) == 1 &&
 		command.CacheOptions.Cache[0] == proxyCacheAuto
 	for _, query := range selectors {
-		if query == a2s.InfoRequest {
+		if query == transport.InfoRequest {
 			enabledQueries = append(enabledQueries, query)
 			break
 		}
 	}
 
 	for _, query := range selectors {
-		if query == a2s.InfoRequest {
+		if query == transport.InfoRequest {
 			continue
 		}
 		if !autoCache {
@@ -149,7 +150,7 @@ func prepareProxyStartup(
 		}
 	}
 
-	cache, err := proxycache.NewCache(enabledQueries)
+	cache, err := proxy.NewCache(enabledQueries)
 	if err != nil {
 		return cleanup(fmt.Errorf("create proxy cache: %w", err))
 	}
@@ -181,10 +182,10 @@ func newProxyUpstreamClient(address string, clientOptions ClientOptions) (*a2s.C
 func proxyStartupQuery(
 	ctx context.Context,
 	client *a2s.Client,
-	query a2s.QueryType,
+	query transport.QueryType,
 	retries int,
 	jitter time.Duration,
-) (a2s.Packet, a2s.QueryMeta, error) {
+) (transport.Packet, transport.QueryMeta, error) {
 	var lastErr error
 	for attempt := 0; attempt <= retries; attempt++ {
 		packet, meta, err := client.Query(ctx, query)
@@ -198,11 +199,11 @@ func proxyStartupQuery(
 		}
 
 		if err := waitProxyStartupRetry(ctx, jitter); err != nil {
-			return a2s.Packet{}, a2s.QueryMeta{}, err
+			return transport.Packet{}, transport.QueryMeta{}, err
 		}
 	}
 
-	return a2s.Packet{}, a2s.QueryMeta{}, lastErr
+	return transport.Packet{}, transport.QueryMeta{}, lastErr
 }
 
 // waitProxyStartupRetry waits for the retry base plus bounded jitter.
@@ -234,16 +235,16 @@ func proxyStartupJitter(upperBound time.Duration) time.Duration {
 }
 
 // newProxyPacketizer creates framing compatible with the upstream INFO format.
-func newProxyPacketizer(response a2s.ResponseType) (server.Packetizer, error) {
+func newProxyPacketizer(response transport.ResponseType) (server.Packetizer, error) {
 	switch response {
-	case a2s.ResponseInfo:
+	case transport.ResponseInfo:
 		packetizer, err := server.NewSourcePacketizer()
 		if err != nil {
 			return nil, fmt.Errorf("create Source packetizer: %w", err)
 		}
 		return packetizer, nil
 
-	case a2s.ResponseInfoGoldSource:
+	case transport.ResponseInfoGoldSource:
 		packetizer, err := server.NewGoldSourcePacketizer()
 		if err != nil {
 			return nil, fmt.Errorf("create GoldSource packetizer: %w", err)
@@ -257,32 +258,32 @@ func newProxyPacketizer(response a2s.ResponseType) (server.Packetizer, error) {
 
 // proxyCacheQueries expands normalized CLI cache selectors into query types.
 // The none selector intentionally expands to an empty cache.
-func proxyCacheQueries(selectors []string) ([]a2s.QueryType, error) {
+func proxyCacheQueries(selectors []string) ([]transport.QueryType, error) {
 	if len(selectors) == 0 {
 		selectors = []string{proxyCacheAuto}
 	}
 
-	queries := make([]a2s.QueryType, 0, 3)
+	queries := make([]transport.QueryType, 0, 3)
 	for _, selector := range selectors {
 		switch selector {
 		case proxyCacheAuto:
-			return []a2s.QueryType{
-				a2s.InfoRequest,
-				a2s.PlayerRequest,
-				a2s.RulesRequest,
+			return []transport.QueryType{
+				transport.InfoRequest,
+				transport.PlayerRequest,
+				transport.RulesRequest,
 			}, nil
 
 		case proxyCacheNone:
 			return nil, nil
 
 		case "info":
-			queries = append(queries, a2s.InfoRequest)
+			queries = append(queries, transport.InfoRequest)
 
 		case "players":
-			queries = append(queries, a2s.PlayerRequest)
+			queries = append(queries, transport.PlayerRequest)
 
 		case "rules":
-			queries = append(queries, a2s.RulesRequest)
+			queries = append(queries, transport.RulesRequest)
 
 		default:
 			return nil, fmt.Errorf("unsupported cache selector %q", selector)
@@ -293,9 +294,9 @@ func proxyCacheQueries(selectors []string) ([]a2s.QueryType, error) {
 }
 
 // uniqueProxyQueries preserves selector order while removing duplicates.
-func uniqueProxyQueries(queries []a2s.QueryType) []a2s.QueryType {
-	seen := make(map[a2s.QueryType]struct{}, len(queries))
-	unique := make([]a2s.QueryType, 0, len(queries))
+func uniqueProxyQueries(queries []transport.QueryType) []transport.QueryType {
+	seen := make(map[transport.QueryType]struct{}, len(queries))
+	unique := make([]transport.QueryType, 0, len(queries))
 	for _, query := range queries {
 		if _, ok := seen[query]; ok {
 			continue
@@ -308,15 +309,15 @@ func uniqueProxyQueries(queries []a2s.QueryType) []a2s.QueryType {
 }
 
 // proxyQueryName returns the concise name used in startup diagnostics.
-func proxyQueryName(query a2s.QueryType) string {
+func proxyQueryName(query transport.QueryType) string {
 	switch query {
-	case a2s.InfoRequest:
+	case transport.InfoRequest:
 		return "INFO"
 
-	case a2s.PlayerRequest:
+	case transport.PlayerRequest:
 		return "PLAYERS"
 
-	case a2s.RulesRequest:
+	case transport.RulesRequest:
 		return "RULES"
 
 	default:

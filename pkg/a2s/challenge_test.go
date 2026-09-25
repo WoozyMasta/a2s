@@ -11,6 +11,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
@@ -28,13 +30,13 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 5 || QueryType(buffer[4]) != ChallengeRequest {
+		if n != 5 || transport.QueryType(buffer[4]) != transport.ChallengeRequest {
 			serverErr <- errors.New("unexpected challenge request")
 			return
 		}
 
 		payload := []byte{0x78, 0x56, 0x34, 0x12}
-		_, err = server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address)
+		_, err = server.WriteToUDP(singlePacketFixture(transport.ResponseChallenge, payload), address)
 		serverErr <- err
 	}()
 
@@ -48,7 +50,7 @@ func TestGetChallengeReturnsChallengeResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetChallenge returned error: %v", err)
 	}
-	want := Challenge{0x78, 0x56, 0x34, 0x12}
+	want := transport.Challenge{0x78, 0x56, 0x34, 0x12}
 	if got != want {
 		t.Fatalf("challenge = %X, want %X", got, want)
 	}
@@ -73,14 +75,14 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || QueryType(buffer[4]) != RulesRequest {
+		if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
 			serverErr <- errors.New("unexpected initial rules request")
 			return
 		}
 
-		challenge := Challenge{0x78, 0x56, 0x34, 0x12}
+		challenge := transport.Challenge{0x78, 0x56, 0x34, 0x12}
 		payload := append([]byte(nil), challenge[:]...)
-		if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address); err != nil {
+		if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponseChallenge, payload), address); err != nil {
 			serverErr <- err
 			return
 		}
@@ -90,7 +92,7 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n != 9 || QueryType(buffer[4]) != RulesRequest {
+		if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
 			serverErr <- errors.New("unexpected challenged rules request")
 			return
 		}
@@ -99,7 +101,7 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 			return
 		}
 
-		_, err = server.WriteToUDP(singlePacketFixture(ResponseRules, []byte("rules")), address)
+		_, err = server.WriteToUDP(singlePacketFixture(transport.ResponseRules, []byte("rules")), address)
 		serverErr <- err
 	}()
 
@@ -109,12 +111,12 @@ func TestGetPreservesChallengeBytes(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules || string(data) != "rules" {
-		t.Fatalf("response = (%q, 0x%X), want (rules, 0x%X)", data, flag, ResponseRules)
+	if flag != transport.ResponseRules || string(data) != "rules" {
+		t.Fatalf("response = (%q, 0x%X), want (rules, 0x%X)", data, flag, transport.ResponseRules)
 	}
 
 	if err := <-serverErr; err != nil {
@@ -133,17 +135,17 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	go func() {
 		buffer := make([]byte, 64*1024)
 		payload := []byte{1, 0, 0, 0}
-		for i := 0; i < maxChallengeResponses; i++ {
+		for i := 0; i < 4; i++ {
 			n, address, err := server.ReadFromUDP(buffer)
 			if err != nil {
 				serverErr <- err
 				return
 			}
-			if n != 9 || QueryType(buffer[4]) != RulesRequest {
+			if n != 9 || transport.QueryType(buffer[4]) != transport.RulesRequest {
 				serverErr <- errors.New("unexpected rules request")
 				return
 			}
-			if _, err := server.WriteToUDP(singlePacketFixture(ResponseChallenge, payload), address); err != nil {
+			if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponseChallenge, payload), address); err != nil {
 				serverErr <- err
 				return
 			}
@@ -157,12 +159,12 @@ func TestGetStopsAfterBoundedChallengeResponses(t *testing.T) {
 	}
 	defer client.Close()
 
-	_, flag, _, err := client.Get(context.Background(), RulesRequest)
-	if !errors.Is(err, ErrChallengeLoop) {
-		t.Fatalf("Get error = %v, want ErrChallengeLoop", err)
+	_, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
+	if !errors.Is(err, transport.ErrChallengeLoop) {
+		t.Fatalf("Get error = %v, want transport.ErrChallengeLoop", err)
 	}
-	if flag != ResponseChallenge {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseChallenge)
+	if flag != transport.ResponseChallenge {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseChallenge)
 	}
 
 	if err := <-serverErr; err != nil {

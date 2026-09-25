@@ -10,6 +10,7 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func ExampleHandlerFunc() {
@@ -21,13 +22,13 @@ func ExampleHandlerFunc() {
 	})
 
 	_, _ = handler.Handle(context.Background(), &server.Request{
-		Query: a2s.Request{Type: a2s.InfoRequest},
+		Query: transport.Request{Type: transport.InfoRequest},
 	})
 }
 
 func ExamplePacketResponse() {
 	var response server.Response = server.PacketResponse{
-		Packet: a2s.Packet{Type: a2s.ResponseInfo},
+		Packet: transport.Packet{Type: transport.ResponseInfo},
 	}
 
 	_, _ = response.(server.PacketResponse)

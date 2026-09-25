@@ -2,41 +2,47 @@
 // SPDX-FileCopyrightText: Copyright 2025-2026 WoozyMasta
 // Source: https://github.com/WoozyMasta/a2s
 
-package a2s
+package transport
 
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 )
 
-const requestHeaderSize = 5
+// Request represents one complete A2S request datagram.
+//
+// INFO may omit its challenge on the initial request.
+// PLAYER and RULES always require a challenge.
+// HasChallenge preserves that wire-level distinction.
+type Request struct {
+	// Type is the request type byte.
+	Type QueryType
+	// Challenge is the opaque four-byte challenge token.
+	Challenge Challenge
+	// HasChallenge reports whether Challenge is present on the wire.
+	HasChallenge bool
+}
 
 // DecodeRequest parses one complete A2S request datagram.
-//
-// The decoder accepts only the documented exact wire forms.
-// It does not accept trailing bytes because they could change the meaning of a request
-// when the datagram is forwarded or re-encoded.
 func DecodeRequest(data []byte) (Request, error) {
-	if len(data) < requestHeaderSize {
-		return Request{}, errors.Join(ErrRequestHeader, ErrInsufficientData)
+	if len(data) < PacketHeaderSize {
+		return Request{}, fmt.Errorf("%w: %w", ErrRequestHeader, ErrInsufficientData)
 	}
-
-	if binary.BigEndian.Uint32(data[:4]) != singlePacket {
+	if binary.BigEndian.Uint32(data[:4]) != SinglePacketMarker {
 		return Request{}, ErrRequestHeader
 	}
 
 	request := Request{Type: QueryType(data[4])}
-	payload := data[requestHeaderSize:]
+	payload := data[PacketHeaderSize:]
 
 	switch request.Type {
 	case InfoRequest:
 		return decodeInfoRequest(payload, request)
 
 	case PlayerRequest, RulesRequest:
-		if len(payload) != len(InitialChallenge) {
-			return Request{}, invalidRequestPayload(len(payload), len(InitialChallenge))
+		if len(payload) != len(initialChallenge) {
+			return Request{}, invalidRequestPayload(len(payload), len(initialChallenge))
 		}
 
 		copy(request.Challenge[:], payload)
@@ -47,7 +53,6 @@ func DecodeRequest(data []byte) (Request, error) {
 		if len(payload) != 0 {
 			return Request{}, invalidRequestPayload(len(payload), 0)
 		}
-
 		return request, nil
 
 	default:
@@ -55,6 +60,7 @@ func DecodeRequest(data []byte) (Request, error) {
 	}
 }
 
+// decodeInfoRequest validates the fixed INFO payload and optional challenge.
 func decodeInfoRequest(payload []byte, request Request) (Request, error) {
 	base := append([]byte(infoPayload), 0)
 
@@ -63,7 +69,6 @@ func decodeInfoRequest(payload []byte, request Request) (Request, error) {
 		if !bytes.Equal(payload, base) {
 			return Request{}, invalidRequestPayload(len(payload), len(base))
 		}
-
 		return request, nil
 
 	case len(base) + len(request.Challenge):
@@ -105,7 +110,6 @@ func AppendRequest(dst []byte, request Request) ([]byte, error) {
 		if request.HasChallenge {
 			return dst, fmt.Errorf("%w: challenge is not allowed", ErrRequestPayload)
 		}
-
 		return appendRequestHeader(dst, request.Type), nil
 
 	default:
@@ -113,11 +117,13 @@ func AppendRequest(dst []byte, request Request) ([]byte, error) {
 	}
 }
 
+// appendRequestHeader appends the common A2S request framing.
 func appendRequestHeader(dst []byte, requestType QueryType) []byte {
-	dst = binary.BigEndian.AppendUint32(dst, singlePacket)
+	dst = binary.BigEndian.AppendUint32(dst, SinglePacketMarker)
 	return append(dst, byte(requestType))
 }
 
+// invalidRequestPayload describes an exact wire-length mismatch.
 func invalidRequestPayload(got, want int) error {
 	return fmt.Errorf("%w: got %d bytes, want %d", ErrRequestPayload, got, want)
 }

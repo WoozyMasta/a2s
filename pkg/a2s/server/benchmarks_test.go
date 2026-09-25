@@ -13,18 +13,19 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func BenchmarkDecodeRequest(b *testing.B) {
-	data, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	data, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if _, err := a2s.DecodeRequest(data); err != nil {
+	for b.Loop() {
+		if _, err := transport.DecodeRequest(data); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -40,7 +41,7 @@ func BenchmarkChallengeValidate(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if !provider.Validate(remote, challenge) {
 			b.Fatal("challenge validation failed")
 		}
@@ -52,7 +53,7 @@ func BenchmarkEncodeInfo(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := a2s.AppendInfo(nil, info); err != nil {
 			b.Fatal(err)
 		}
@@ -64,7 +65,7 @@ func BenchmarkEncodeRules(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := a2s.AppendRules(nil, rules); err != nil {
 			b.Fatal(err)
 		}
@@ -82,7 +83,7 @@ func BenchmarkSourcePacketization(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := packetizer.Packetize(logical); err != nil {
 			b.Fatal(err)
 		}
@@ -98,11 +99,11 @@ func BenchmarkStateHandle(b *testing.B) {
 	}); err != nil {
 		b.Fatal(err)
 	}
-	request := &Request{Query: a2s.Request{Type: a2s.RulesRequest}}
+	request := &Request{Query: transport.Request{Type: transport.RulesRequest}}
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := state.Handle(context.Background(), request); err != nil {
 			b.Fatal(err)
 		}
@@ -112,7 +113,7 @@ func BenchmarkStateHandle(b *testing.B) {
 func BenchmarkLocalUDPInfo(b *testing.B) {
 	info := benchmarkInfo()
 	client := newBenchmarkClient(b, HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
-		if request.Query.Type != a2s.InfoRequest {
+		if request.Query.Type != transport.InfoRequest {
 			return nil, ErrDrop
 		}
 
@@ -121,7 +122,7 @@ func BenchmarkLocalUDPInfo(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := client.GetInfo(context.Background()); err != nil {
 			b.Fatal(err)
 		}
@@ -131,7 +132,7 @@ func BenchmarkLocalUDPInfo(b *testing.B) {
 func BenchmarkLocalUDPLargeRules(b *testing.B) {
 	rules := benchmarkRules(256)
 	client := newBenchmarkClient(b, HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
-		if request.Query.Type != a2s.RulesRequest {
+		if request.Query.Type != transport.RulesRequest {
 			return nil, ErrDrop
 		}
 
@@ -140,7 +141,7 @@ func BenchmarkLocalUDPLargeRules(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := client.GetRules(context.Background()); err != nil {
 			b.Fatal(err)
 		}
@@ -149,7 +150,7 @@ func BenchmarkLocalUDPLargeRules(b *testing.B) {
 
 func benchmarkInfo() a2s.Info {
 	return a2s.Info{
-		Format:      a2s.InfoFormat(a2s.ResponseInfo),
+		Format:      a2s.InfoFormat(transport.ResponseInfo),
 		Name:        "benchmark server",
 		Map:         "benchmark_map",
 		Folder:      "benchmark",
@@ -200,7 +201,7 @@ func benchmarkLogicalRules(count int) []byte {
 
 	logical := make([]byte, 5+len(payload))
 	binary.LittleEndian.PutUint32(logical[:4], 0xFFFFFFFF)
-	logical[4] = byte(a2s.ResponseRules)
+	logical[4] = byte(transport.ResponseRules)
 	copy(logical[5:], payload)
 	return logical
 }

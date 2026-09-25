@@ -17,37 +17,38 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestProxyCachedRulesRoundTripAvoidsRelay(t *testing.T) {
-	provider := &e2eChallengeProvider{token: a2s.Challenge{1, 2, 3, 4}}
-	upstreamHandler := &e2eResponseHandler{packets: map[a2s.QueryType]a2s.Packet{
-		a2s.RulesRequest: {
-			Type:    a2s.ResponseRules,
+	provider := &e2eChallengeProvider{token: transport.Challenge{1, 2, 3, 4}}
+	upstreamHandler := &e2eResponseHandler{packets: map[transport.QueryType]transport.Packet{
+		transport.RulesRequest: {
+			Type:    transport.ResponseRules,
 			Payload: []byte("opaque A3SB rules payload"),
 		},
 	}}
 	upstream := startE2EServer(t, upstreamHandler, provider, nil)
 	upstreamClient := newE2EClient(t, upstream.addr)
 
-	cached, _, err := upstreamClient.Query(context.Background(), a2s.RulesRequest)
+	cached, _, err := upstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("upstream Query() error = %v", err)
 	}
 
-	cache := mustCache(t, a2s.RulesRequest)
-	if err := cache.Store(a2s.RulesRequest, cached); err != nil {
+	cache := mustCache(t, transport.RulesRequest)
+	if err := cache.Store(transport.RulesRequest, cached); err != nil {
 		t.Fatalf("cache.Store() error = %v", err)
 	}
 
 	relayClient := newE2EClient(t, upstream.addr)
 	relay := &countingUpstream{client: relayClient}
-	downstreamProvider := &e2eChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClient(t, downstream.addr)
 
-	got, _, err := downstreamClient.Query(context.Background(), a2s.RulesRequest)
+	got, _, err := downstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("downstream Query() error = %v", err)
 	}
@@ -57,7 +58,7 @@ func TestProxyCachedRulesRoundTripAvoidsRelay(t *testing.T) {
 	if got := relay.calls.Load(); got != 0 {
 		t.Fatalf("relay calls = %d, want 0", got)
 	}
-	if got := upstreamHandler.Count(a2s.RulesRequest); got != 1 {
+	if got := upstreamHandler.Count(transport.RulesRequest); got != 1 {
 		t.Fatalf("upstream rules calls = %d, want 1", got)
 	}
 	if downstreamProvider.issued.Load() == 0 {
@@ -66,10 +67,10 @@ func TestProxyCachedRulesRoundTripAvoidsRelay(t *testing.T) {
 }
 
 func TestProxyLiveRelayUsesIndependentChallengeFlows(t *testing.T) {
-	upstreamProvider := &e2eChallengeProvider{token: a2s.Challenge{1, 2, 3, 4}}
-	upstreamHandler := &e2eResponseHandler{packets: map[a2s.QueryType]a2s.Packet{
-		a2s.RulesRequest: {
-			Type:    a2s.ResponseRules,
+	upstreamProvider := &e2eChallengeProvider{token: transport.Challenge{1, 2, 3, 4}}
+	upstreamHandler := &e2eResponseHandler{packets: map[transport.QueryType]transport.Packet{
+		transport.RulesRequest: {
+			Type:    transport.ResponseRules,
 			Payload: []byte("live rules"),
 		},
 	}}
@@ -78,12 +79,12 @@ func TestProxyLiveRelayUsesIndependentChallengeFlows(t *testing.T) {
 	relayClient := newE2EClient(t, upstream.addr)
 	relay := &countingUpstream{client: relayClient}
 	cache := mustCache(t)
-	downstreamProvider := &e2eChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClient(t, downstream.addr)
 
-	got, _, err := downstreamClient.Query(context.Background(), a2s.RulesRequest)
+	got, _, err := downstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("downstream Query() error = %v", err)
 	}
@@ -93,7 +94,7 @@ func TestProxyLiveRelayUsesIndependentChallengeFlows(t *testing.T) {
 	if got := relay.calls.Load(); got != 1 {
 		t.Fatalf("relay calls = %d, want 1", got)
 	}
-	if got := upstreamHandler.Count(a2s.RulesRequest); got != 1 {
+	if got := upstreamHandler.Count(transport.RulesRequest); got != 1 {
 		t.Fatalf("upstream rules calls = %d, want 1", got)
 	}
 	if upstreamProvider.issued.Load() == 0 || downstreamProvider.issued.Load() == 0 {
@@ -109,10 +110,10 @@ func TestProxyLiveRelayUsesIndependentChallengeFlows(t *testing.T) {
 }
 
 func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
-	provider := &e2eChallengeProvider{token: a2s.Challenge{1, 2, 3, 4}}
-	upstreamHandler := &e2eResponseHandler{packets: map[a2s.QueryType]a2s.Packet{
-		a2s.InfoRequest: {
-			Type:    a2s.ResponseInfo,
+	provider := &e2eChallengeProvider{token: transport.Challenge{1, 2, 3, 4}}
+	upstreamHandler := &e2eResponseHandler{packets: map[transport.QueryType]transport.Packet{
+		transport.InfoRequest: {
+			Type:    transport.ResponseInfo,
 			Payload: []byte("online info"),
 		},
 	}}
@@ -120,9 +121,9 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 	pollClient := newE2EClientWithTimeout(t, upstream.addr, 25*time.Millisecond)
 	relayClient := newE2EClientWithTimeout(t, upstream.addr, 25*time.Millisecond)
 
-	cache := mustCache(t, a2s.InfoRequest)
+	cache := mustCache(t, transport.InfoRequest)
 	relay := &countingUpstream{client: relayClient}
-	downstreamProvider := &e2eChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+	downstreamProvider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 	handler := mustHandlerWithProvider(t, cache, relay, downstreamProvider, false)
 	downstream := startE2EServer(t, handler, downstreamProvider, nil)
 	downstreamClient := newE2EClientWithTimeout(t, downstream.addr, 40*time.Millisecond)
@@ -144,7 +145,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 	}()
 
 	waitForE2E(t, func() bool {
-		_, ok := cache.Load(a2s.InfoRequest)
+		_, ok := cache.Load(transport.InfoRequest)
 		return ok
 	})
 
@@ -153,7 +154,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 		for {
 			select {
 			case change := <-changes:
-				if change.Query == a2s.InfoRequest && !change.Active {
+				if change.Query == transport.InfoRequest && !change.Active {
 					return true
 				}
 			default:
@@ -161,7 +162,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 			}
 		}
 	})
-	if _, _, err := downstreamClient.Query(context.Background(), a2s.InfoRequest); err == nil {
+	if _, _, err := downstreamClient.Query(context.Background(), transport.InfoRequest); err == nil {
 		t.Fatal("cached INFO query succeeded while cache was inactive")
 	}
 	if got := relay.calls.Load(); got != 0 {
@@ -173,7 +174,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 		for {
 			select {
 			case change := <-changes:
-				if change.Query == a2s.InfoRequest && change.Active {
+				if change.Query == transport.InfoRequest && change.Active {
 					return true
 				}
 			default:
@@ -181,7 +182,7 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 			}
 		}
 	})
-	got, _, err := downstreamClient.Query(context.Background(), a2s.InfoRequest)
+	got, _, err := downstreamClient.Query(context.Background(), transport.InfoRequest)
 	if err != nil {
 		t.Fatalf("recovered downstream Query() error = %v", err)
 	}
@@ -193,12 +194,12 @@ func TestProxyInvalidatesAndRecoversCachedQuery(t *testing.T) {
 func TestProxyPacketResponsePreservesSourceAndGoldSourceLogicalPackets(t *testing.T) {
 	tests := []struct {
 		name       string
-		response   a2s.ResponseType
+		response   transport.ResponseType
 		packetizer func(*testing.T) server.Option
 	}{
 		{
 			name:     "source",
-			response: a2s.ResponseInfo,
+			response: transport.ResponseInfo,
 			packetizer: func(t *testing.T) server.Option {
 				packetizer, err := server.NewSourcePacketizer()
 				if err != nil {
@@ -210,7 +211,7 @@ func TestProxyPacketResponsePreservesSourceAndGoldSourceLogicalPackets(t *testin
 		},
 		{
 			name:     "goldsource",
-			response: a2s.ResponseInfoGoldSource,
+			response: transport.ResponseInfoGoldSource,
 			packetizer: func(t *testing.T) server.Option {
 				packetizer, err := server.NewGoldSourcePacketizer()
 				if err != nil {
@@ -225,20 +226,20 @@ func TestProxyPacketResponsePreservesSourceAndGoldSourceLogicalPackets(t *testin
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			payload := bytes.Repeat([]byte("logical packet "), 64)
-			cache := mustCache(t, a2s.InfoRequest)
-			if err := cache.Store(a2s.InfoRequest, a2s.Packet{
+			cache := mustCache(t, transport.InfoRequest)
+			if err := cache.Store(transport.InfoRequest, transport.Packet{
 				Type:    test.response,
 				Payload: payload,
 			}); err != nil {
 				t.Fatalf("cache.Store() error = %v", err)
 			}
 
-			provider := &e2eChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+			provider := &e2eChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 			handler := mustHandlerWithProvider(t, cache, &handlerUpstream{}, provider, false)
 			downstream := startE2EServer(t, handler, provider, test.packetizer(t))
 			client := newE2EClient(t, downstream.addr)
 
-			got, _, err := client.Query(context.Background(), a2s.InfoRequest)
+			got, _, err := client.Query(context.Background(), transport.InfoRequest)
 			if err != nil {
 				t.Fatalf("Query() error = %v", err)
 			}
@@ -357,22 +358,22 @@ type countingUpstream struct {
 	calls  atomic.Int32
 }
 
-func (u *countingUpstream) Query(ctx context.Context, query a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
+func (u *countingUpstream) Query(ctx context.Context, query transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
 	u.calls.Add(1)
 	return u.client.Query(ctx, query)
 }
 
 type e2eResponseHandler struct {
 	mu      sync.Mutex
-	calls   map[a2s.QueryType]int
-	packets map[a2s.QueryType]a2s.Packet
+	calls   map[transport.QueryType]int
+	packets map[transport.QueryType]transport.Packet
 	offline atomic.Bool
 }
 
 func (h *e2eResponseHandler) Handle(_ context.Context, request *server.Request) (server.Response, error) {
 	h.mu.Lock()
 	if h.calls == nil {
-		h.calls = make(map[a2s.QueryType]int)
+		h.calls = make(map[transport.QueryType]int)
 	}
 	h.calls[request.Query.Type]++
 	packet, ok := h.packets[request.Query.Type]
@@ -385,7 +386,7 @@ func (h *e2eResponseHandler) Handle(_ context.Context, request *server.Request) 
 	return server.PacketResponse{Packet: packet}, nil
 }
 
-func (h *e2eResponseHandler) Count(query a2s.QueryType) int {
+func (h *e2eResponseHandler) Count(query transport.QueryType) int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -397,15 +398,15 @@ func (h *e2eResponseHandler) SetOffline(offline bool) {
 }
 
 type e2eChallengeProvider struct {
-	token  a2s.Challenge
+	token  transport.Challenge
 	issued atomic.Int32
 }
 
-func (p *e2eChallengeProvider) Issue(netip.AddrPort) a2s.Challenge {
+func (p *e2eChallengeProvider) Issue(netip.AddrPort) transport.Challenge {
 	p.issued.Add(1)
 	return p.token
 }
 
-func (p *e2eChallengeProvider) Validate(_ netip.AddrPort, challenge a2s.Challenge) bool {
+func (p *e2eChallengeProvider) Validate(_ netip.AddrPort, challenge transport.Challenge) bool {
 	return challenge == p.token
 }

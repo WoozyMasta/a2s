@@ -17,6 +17,7 @@ import (
 
 	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/appid"
 )
 
@@ -205,7 +206,7 @@ func TestGetRulesPreservesNonPageRuleKeys(t *testing.T) {
 
 func TestGetRulesDoesNotMutateBufferSize(t *testing.T) {
 	page := []byte{2, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02, 0x01, 0x02}
-	for _, bufferSize := range []uint16{a2s.DefaultBufferSize, 2048} {
+	for _, bufferSize := range []uint16{transport.DefaultBufferSize, 2048} {
 		t.Run(strconv.Itoa(int(bufferSize)), func(t *testing.T) {
 			fixtureData := rulesResponsePayload(
 				rulesFixtureEntry{key: []byte{1, 1}, value: page},

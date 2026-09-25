@@ -14,6 +14,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func BenchmarkParseInfoSourceFixture(b *testing.B) {
@@ -22,7 +24,7 @@ func BenchmarkParseInfoSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: data}); err != nil {
+		if _, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfo, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -34,7 +36,7 @@ func BenchmarkParseInfoGoldSourceFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: data}); err != nil {
+		if _, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfoGoldSource, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -46,7 +48,7 @@ func BenchmarkParsePlayersFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data}); err != nil {
+		if _, err := DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -58,21 +60,21 @@ func BenchmarkParseRulesFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := DecodeRules(Packet{Type: ResponseRules, Payload: data}); err != nil {
+		if _, err := DecodeRules(transport.Packet{Type: transport.ResponseRules, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkParseSplitHeadersFixture(b *testing.B) {
-	assembled := singlePacketFixture(ResponseRules, bytes.Repeat([]byte("rules"), 256))
+	assembled := singlePacketFixture(transport.ResponseRules, bytes.Repeat([]byte("rules"), 256))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 128)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for b.Loop() {
 		for _, packet := range packets {
-			if _, err := parseSplitHeader(packet); err != nil {
+			if _, err := transport.ParseSplitHeader(packet); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -80,7 +82,7 @@ func BenchmarkParseSplitHeadersFixture(b *testing.B) {
 }
 
 func BenchmarkGetSplitFixture(b *testing.B) {
-	assembled := singlePacketFixture(ResponseRules, bytes.Repeat([]byte("rules"), 256))
+	assembled := singlePacketFixture(transport.ResponseRules, bytes.Repeat([]byte("rules"), 256))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 128)
 	server := newBenchmarkUDPServer(b, packets)
 	client, err := NewWithAddr(server.LocalAddr().(*net.UDPAddr), WithTimeout(time.Second))
@@ -93,17 +95,18 @@ func BenchmarkGetSplitFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, _, _, err := client.Get(context.Background(), RulesRequest); err != nil {
+		if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkGetChallengeFixture(b *testing.B) {
-	challenge := singlePacketFixture(ResponseChallenge, []byte{1, 2, 3, 4})
-	response := singlePacketFixture(ResponseRules, []byte("rules"))
+	challenge := singlePacketFixture(transport.ResponseChallenge, []byte{1, 2, 3, 4})
+	response := singlePacketFixture(transport.ResponseRules, []byte("rules"))
+	initialChallenge := transport.InitialChallenge()
 	server := newBenchmarkUDPResponder(b, func(request []byte) []byte {
-		if len(request) >= 9 && bytes.Equal(request[5:9], InitialChallenge[:]) {
+		if len(request) >= 9 && bytes.Equal(request[5:9], initialChallenge[:]) {
 			return challenge
 		}
 
@@ -118,7 +121,7 @@ func BenchmarkGetChallengeFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, _, _, err := client.Get(context.Background(), RulesRequest); err != nil {
+		if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -135,7 +138,7 @@ func BenchmarkGetTimeoutFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, _, _, err := client.Get(context.Background(), InfoRequest); !errors.Is(err, context.DeadlineExceeded) {
+		if _, _, _, err := client.Get(context.Background(), transport.InfoRequest); !errors.Is(err, context.DeadlineExceeded) {
 			b.Fatalf("Get() error = %v, want context deadline", err)
 		}
 	}
@@ -144,7 +147,7 @@ func BenchmarkGetTimeoutFixture(b *testing.B) {
 func BenchmarkManyTargetsCurrent(b *testing.B) {
 	const targetCount = 16
 
-	response := singlePacketFixture(ResponseInfo, benchmarkSourceInfo())
+	response := singlePacketFixture(transport.ResponseInfo, benchmarkSourceInfo())
 	targets := make([]*net.UDPConn, targetCount)
 	for index := range targets {
 		targets[index] = newBenchmarkUDPResponder(b, func([]byte) []byte {
@@ -161,7 +164,7 @@ func BenchmarkManyTargetsCurrent(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			if _, _, _, err := client.Get(context.Background(), InfoRequest); err != nil {
+			if _, _, _, err := client.Get(context.Background(), transport.InfoRequest); err != nil {
 				_ = client.Close()
 				b.Fatal(err)
 			}
@@ -176,7 +179,7 @@ func BenchmarkManyTargetsCurrent(b *testing.B) {
 
 func BenchmarkDecompressSplitFixture(b *testing.B) {
 	assembled := append(
-		singlePacketFixture(ResponseRules, []byte("compressed split fixture:")),
+		singlePacketFixture(transport.ResponseRules, []byte("compressed split fixture:")),
 		bytes.Repeat([]byte("0123456789abcdef"), 20)...,
 	)
 	compressed := benchmarkCompressedPayload()
@@ -186,7 +189,7 @@ func BenchmarkDecompressSplitFixture(b *testing.B) {
 	b.ResetTimer()
 
 	for b.Loop() {
-		if _, err := decompressBzip2(compressed, uint32(len(assembled)), checksum); err != nil {
+		if _, err := transport.DecompressBzip2(compressed, uint32(len(assembled)), checksum); err != nil {
 			b.Fatal(err)
 		}
 	}

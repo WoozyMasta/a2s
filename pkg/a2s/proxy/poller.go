@@ -12,22 +12,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // pollerRetryDelay is the fixed base delay between refresh retries.
 const pollerRetryDelay = time.Second
 
 // cacheableQueries lists every query type supported by Cache and Poller.
-var cacheableQueries = [...]a2s.QueryType{
-	a2s.InfoRequest,
-	a2s.PlayerRequest,
-	a2s.RulesRequest,
+var cacheableQueries = [...]transport.QueryType{
+	transport.InfoRequest,
+	transport.PlayerRequest,
+	transport.RulesRequest,
 }
 
 // Upstream is the minimal client contract required by Poller and Handler.
 type Upstream interface {
-	Query(context.Context, a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error)
+	Query(context.Context, transport.QueryType) (transport.Packet, transport.QueryMeta, error)
 }
 
 // PollerConfig configures refresh timing and state notifications.
@@ -51,7 +51,7 @@ type StateChange struct {
 	// Err is the failure that caused an inactive transition, or nil on recovery.
 	Err error
 	// Query identifies the cache entry whose state changed.
-	Query a2s.QueryType
+	Query transport.QueryType
 	// Active reports whether the query is currently available.
 	Active bool
 }
@@ -157,7 +157,7 @@ func (p *Poller) Run(ctx context.Context) error {
 }
 
 // runQuery owns the independent lifecycle of one cacheable query.
-func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) error {
+func (p *Poller) runQuery(ctx context.Context, query transport.QueryType) error {
 	active := false
 	if _, ok := p.cache.Load(query); ok {
 		active = true
@@ -228,7 +228,7 @@ func (p *Poller) runQuery(ctx context.Context, query a2s.QueryType) error {
 }
 
 // refresh performs an initial query and the configured number of retries.
-func (p *Poller) refresh(ctx context.Context, query a2s.QueryType) (a2s.Packet, error) {
+func (p *Poller) refresh(ctx context.Context, query transport.QueryType) (transport.Packet, error) {
 	var lastErr error
 	for attempt := 0; attempt <= p.config.Retries; attempt++ {
 		packet, _, err := p.upstream.Query(ctx, query)
@@ -242,15 +242,15 @@ func (p *Poller) refresh(ctx context.Context, query a2s.QueryType) (a2s.Packet, 
 		}
 
 		if !p.wait(ctx, p.delay(pollerRetryDelay)) {
-			return a2s.Packet{}, ctx.Err()
+			return transport.Packet{}, ctx.Err()
 		}
 	}
 
-	return a2s.Packet{}, lastErr
+	return transport.Packet{}, lastErr
 }
 
 // markInactive invalidates one cache entry and reports its failure transition.
-func (p *Poller) markInactive(query a2s.QueryType, err error) error {
+func (p *Poller) markInactive(query transport.QueryType, err error) error {
 	if invalidateErr := p.cache.Invalidate(query); invalidateErr != nil {
 		return invalidateErr
 	}

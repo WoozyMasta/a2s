@@ -10,11 +10,13 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestAppendPlayersMatchesFixture(t *testing.T) {
 	payload := readProtocolFixture(t, "players_payload.hex")
-	players, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: payload})
+	players, err := DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: payload})
 	if err != nil {
 		t.Fatalf("DecodePlayers() error = %v", err)
 	}
@@ -24,7 +26,7 @@ func TestAppendPlayersMatchesFixture(t *testing.T) {
 		t.Fatalf("AppendPlayers() error = %v", err)
 	}
 
-	want := singlePacketFixture(ResponsePlayers, payload)
+	want := singlePacketFixture(transport.ResponsePlayers, payload)
 	if !bytes.Equal(encoded, want) {
 		t.Fatalf("encoded players response = %X, want %X", encoded, want)
 	}
@@ -40,9 +42,9 @@ func TestAppendPlayersRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AppendPlayers() error = %v", err)
 	}
-	packet, err := DecodePacket(encoded)
+	packet, err := transport.DecodePacket(encoded)
 	if err != nil {
-		t.Fatalf("DecodePacket() error = %v", err)
+		t.Fatalf("transport.DecodePacket() error = %v", err)
 	}
 	got, err := DecodePlayers(packet)
 	if err != nil {
@@ -73,7 +75,7 @@ func TestAppendPlayersRejectsInvalidModels(t *testing.T) {
 }
 
 func TestDecodePlayersRejectsWrongResponseType(t *testing.T) {
-	_, err := DecodePlayers(Packet{Type: ResponseRules})
+	_, err := DecodePlayers(transport.Packet{Type: transport.ResponseRules})
 	if !errors.Is(err, ErrPlayerRead) {
 		t.Fatalf("DecodePlayers() error = %v, want ErrPlayerRead", err)
 	}

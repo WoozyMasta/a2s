@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestClientSerializesConcurrentQueries(t *testing.T) {
@@ -43,8 +45,8 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 				return
 			}
 
-			if n < 5 || QueryType(buffer[4]) != PingRequest {
-				serverErr <- ErrWrongRequest
+			if n < 5 || transport.QueryType(buffer[4]) != transport.PingRequest {
+				serverErr <- transport.ErrWrongRequest
 				return
 			}
 
@@ -62,7 +64,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 				defer atomic.AddInt32(&active, -1)
 
 				time.Sleep(25 * time.Millisecond)
-				if _, err := server.WriteToUDP(singlePacketFixture(ResponsePing, nil), address); err != nil {
+				if _, err := server.WriteToUDP(singlePacketFixture(transport.ResponsePing, nil), address); err != nil {
 					serverErr <- err
 				}
 			}(address)
@@ -76,7 +78,7 @@ func TestClientSerializesConcurrentQueries(t *testing.T) {
 		queries.Add(1)
 		go func() {
 			defer queries.Done()
-			if _, _, _, err := client.Get(context.Background(), PingRequest); err != nil {
+			if _, _, _, err := client.Get(context.Background(), transport.PingRequest); err != nil {
 				queryErr <- err
 			}
 		}()

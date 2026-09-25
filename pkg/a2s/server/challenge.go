@@ -15,7 +15,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 const challengeBucketDuration = time.Minute
@@ -24,8 +24,8 @@ const challengeSecretSize = 32
 
 // ChallengeProvider issues and validates challenge tokens for one remote endpoint.
 type ChallengeProvider interface {
-	Issue(netip.AddrPort) a2s.Challenge
-	Validate(netip.AddrPort, a2s.Challenge) bool
+	Issue(netip.AddrPort) transport.Challenge
+	Validate(netip.AddrPort, transport.Challenge) bool
 }
 
 // statelessChallengeProvider creates challenge tokens from a secret,
@@ -42,7 +42,7 @@ func NewStatelessChallengeProvider() (ChallengeProvider, error) {
 }
 
 // Issue creates a challenge bound to remote and the current time bucket.
-func (p *statelessChallengeProvider) Issue(remote netip.AddrPort) a2s.Challenge {
+func (p *statelessChallengeProvider) Issue(remote netip.AddrPort) transport.Challenge {
 	bucket := challengeBucket(p.now())
 	return p.challenge(remote, bucket)
 }
@@ -51,7 +51,7 @@ func (p *statelessChallengeProvider) Issue(remote netip.AddrPort) a2s.Challenge 
 // and the current or immediately preceding time bucket.
 func (p *statelessChallengeProvider) Validate(
 	remote netip.AddrPort,
-	challenge a2s.Challenge,
+	challenge transport.Challenge,
 ) bool {
 	bucket := challengeBucket(p.now())
 	for _, candidateBucket := range [2]int64{bucket, bucket - 1} {
@@ -85,21 +85,22 @@ func newStatelessChallengeProvider(
 func (p *statelessChallengeProvider) challenge(
 	remote netip.AddrPort,
 	bucket int64,
-) a2s.Challenge {
+) transport.Challenge {
 	for counter := range uint32(256) {
 		mac := hmac.New(sha256.New, p.secret[:])
 		mac.Write(challengeMessage(remote, bucket, counter))
 
-		var challenge a2s.Challenge
+		var challenge transport.Challenge
 		copy(challenge[:], mac.Sum(nil)[:len(challenge)])
-		if subtle.ConstantTimeCompare(challenge[:], a2s.InitialChallenge[:]) != 1 {
+		initial := transport.InitialChallenge()
+		if subtle.ConstantTimeCompare(challenge[:], initial[:]) != 1 {
 			return challenge
 		}
 	}
 
 	// Reaching this branch would require all 256 truncated MACs to equal the reserved token.
 	// Keep the invariant explicit even in that impossible case.
-	return a2s.Challenge{0, 0, 0, 0}
+	return transport.Challenge{0, 0, 0, 0}
 }
 
 // challengeBucket maps time to the fixed-width validity window.

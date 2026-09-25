@@ -7,47 +7,47 @@ package server_test
 import (
 	"testing"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestChallengePolicyPresets(t *testing.T) {
 	tests := []struct {
 		name     string
 		policy   server.ChallengePolicy
-		required map[a2s.QueryType]bool
+		required map[transport.QueryType]bool
 	}{
 		{
 			name:   "secure",
 			policy: server.SecureChallengePolicy(),
-			required: map[a2s.QueryType]bool{
-				a2s.InfoRequest:      true,
-				a2s.PlayerRequest:    true,
-				a2s.RulesRequest:     true,
-				a2s.PingRequest:      false,
-				a2s.ChallengeRequest: false,
+			required: map[transport.QueryType]bool{
+				transport.InfoRequest:      true,
+				transport.PlayerRequest:    true,
+				transport.RulesRequest:     true,
+				transport.PingRequest:      false,
+				transport.ChallengeRequest: false,
 			},
 		},
 		{
 			name:   "legacy",
 			policy: server.LegacyChallengePolicy(),
-			required: map[a2s.QueryType]bool{
-				a2s.InfoRequest:      false,
-				a2s.PlayerRequest:    true,
-				a2s.RulesRequest:     true,
-				a2s.PingRequest:      false,
-				a2s.ChallengeRequest: false,
+			required: map[transport.QueryType]bool{
+				transport.InfoRequest:      false,
+				transport.PlayerRequest:    true,
+				transport.RulesRequest:     true,
+				transport.PingRequest:      false,
+				transport.ChallengeRequest: false,
 			},
 		},
 		{
 			name:   "none",
 			policy: server.NoChallengePolicy(),
-			required: map[a2s.QueryType]bool{
-				a2s.InfoRequest:      false,
-				a2s.PlayerRequest:    false,
-				a2s.RulesRequest:     false,
-				a2s.PingRequest:      false,
-				a2s.ChallengeRequest: false,
+			required: map[transport.QueryType]bool{
+				transport.InfoRequest:      false,
+				transport.PlayerRequest:    false,
+				transport.RulesRequest:     false,
+				transport.PingRequest:      false,
+				transport.ChallengeRequest: false,
 			},
 		},
 	}
@@ -64,14 +64,14 @@ func TestChallengePolicyPresets(t *testing.T) {
 }
 
 func TestChallengePolicyFunc(t *testing.T) {
-	policy := server.ChallengePolicyFunc(func(query a2s.QueryType) bool {
-		return query == a2s.InfoRequest
+	policy := server.ChallengePolicyFunc(func(query transport.QueryType) bool {
+		return query == transport.InfoRequest
 	})
 
-	if !policy.Required(a2s.InfoRequest) {
+	if !policy.Required(transport.InfoRequest) {
 		t.Error("ChallengePolicyFunc did not require INFO challenge")
 	}
-	if policy.Required(a2s.RulesRequest) {
+	if policy.Required(transport.RulesRequest) {
 		t.Error("ChallengePolicyFunc unexpectedly required RULES challenge")
 	}
 }

@@ -7,22 +7,24 @@ package a2s
 import (
 	"context"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestQueryReturnsLogicalPacket(t *testing.T) {
-	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, []byte("rules")))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponseRules, []byte("rules")))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)
 	}
 	defer client.Close()
 
-	packet, meta, err := client.Query(context.Background(), RulesRequest)
+	packet, meta, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Query returned error: %v", err)
 	}
-	if packet.Type != ResponseRules {
-		t.Fatalf("packet type = 0x%X, want 0x%X", packet.Type, ResponseRules)
+	if packet.Type != transport.ResponseRules {
+		t.Fatalf("packet type = 0x%X, want 0x%X", packet.Type, transport.ResponseRules)
 	}
 	if string(packet.Payload) != "rules" {
 		t.Fatalf("packet payload = %q, want %q", packet.Payload, "rules")
@@ -38,8 +40,8 @@ func TestQueryReturnsLogicalPacket(t *testing.T) {
 func TestQueryMetadataReportsChallengeExchange(t *testing.T) {
 	fixture := newUDPPacketFixture(
 		t,
-		singlePacketFixture(ResponseChallenge, []byte{1, 2, 3, 4}),
-		singlePacketFixture(ResponseRules, []byte("rules")),
+		singlePacketFixture(transport.ResponseChallenge, []byte{1, 2, 3, 4}),
+		singlePacketFixture(transport.ResponseRules, []byte("rules")),
 	)
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
@@ -47,7 +49,7 @@ func TestQueryMetadataReportsChallengeExchange(t *testing.T) {
 	}
 	defer client.Close()
 
-	_, meta, err := client.Query(context.Background(), RulesRequest)
+	_, meta, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Query returned error: %v", err)
 	}

@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
+## Unreleased
+
+### Added
+
+* `a2s/transport`: public low-level A2S wire types, codecs,
+  transaction engine, and sentinel errors
+
+### Changed
+
+* `a2s`, `a2s/server`, and `a2s/proxy`
+  now use the shared transport contract directly;
+  low-level types and errors moved out of `a2s`
+
 ## [0.4.0][] - 2026-09-25
 
 ### Added

@@ -9,38 +9,39 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestNormalizeResponseTyped(t *testing.T) {
 	tests := []struct {
 		name     string
-		query    a2s.QueryType
+		query    transport.QueryType
 		response Response
-		wantType a2s.ResponseType
+		wantType transport.ResponseType
 	}{
 		{
 			name:     "info",
-			query:    a2s.InfoRequest,
-			response: InfoResponse{Info: a2s.Info{Format: a2s.InfoFormat(a2s.ResponseInfo)}},
-			wantType: a2s.ResponseInfo,
+			query:    transport.InfoRequest,
+			response: InfoResponse{Info: a2s.Info{Format: a2s.InfoFormat(transport.ResponseInfo)}},
+			wantType: transport.ResponseInfo,
 		},
 		{
 			name:     "players",
-			query:    a2s.PlayerRequest,
+			query:    transport.PlayerRequest,
 			response: PlayersResponse{Players: []a2s.Player{{Name: "player"}}},
-			wantType: a2s.ResponsePlayers,
+			wantType: transport.ResponsePlayers,
 		},
 		{
 			name:     "rules",
-			query:    a2s.RulesRequest,
+			query:    transport.RulesRequest,
 			response: RulesResponse{Rules: a2s.Rules{{Name: "hostname", Value: "server"}}},
-			wantType: a2s.ResponseRules,
+			wantType: transport.ResponseRules,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			packet, err := NormalizeResponse(&Request{Query: a2s.Request{Type: test.query}}, test.response)
+			packet, err := NormalizeResponse(&Request{Query: transport.Request{Type: test.query}}, test.response)
 			if err != nil {
 				t.Fatalf("normalizeResponse() error = %v", err)
 			}
@@ -53,10 +54,10 @@ func TestNormalizeResponseTyped(t *testing.T) {
 
 func TestNormalizeResponsePacketIsLossless(t *testing.T) {
 	payload := []byte("opaque response payload")
-	want := a2s.Packet{Type: a2s.ResponseRules, Payload: payload}
+	want := transport.Packet{Type: transport.ResponseRules, Payload: payload}
 
 	got, err := NormalizeResponse(
-		&Request{Query: a2s.Request{Type: a2s.RulesRequest}},
+		&Request{Query: transport.Request{Type: transport.RulesRequest}},
 		PacketResponse{Packet: want},
 	)
 	if err != nil {
@@ -69,7 +70,7 @@ func TestNormalizeResponsePacketIsLossless(t *testing.T) {
 
 func TestNormalizeResponseRejectsIncompatibleResponse(t *testing.T) {
 	_, err := NormalizeResponse(
-		&Request{Query: a2s.Request{Type: a2s.InfoRequest}},
+		&Request{Query: transport.Request{Type: transport.InfoRequest}},
 		PlayersResponse{},
 	)
 	if !errors.Is(err, ErrResponseQuery) {
@@ -79,7 +80,7 @@ func TestNormalizeResponseRejectsIncompatibleResponse(t *testing.T) {
 
 func TestNormalizeResponseWrapsEncoderError(t *testing.T) {
 	_, err := NormalizeResponse(
-		&Request{Query: a2s.Request{Type: a2s.RulesRequest}},
+		&Request{Query: transport.Request{Type: transport.RulesRequest}},
 		RulesResponse{Rules: a2s.Rules{{Name: "invalid\x00name"}}},
 	)
 	if !errors.Is(err, ErrResponse) {
@@ -92,20 +93,20 @@ func TestNormalizeResponseWrapsEncoderError(t *testing.T) {
 
 func TestNormalizeResponseAllowsProtocolPackets(t *testing.T) {
 	tests := []struct {
-		query        a2s.QueryType
-		responseType a2s.ResponseType
+		query        transport.QueryType
+		responseType transport.ResponseType
 	}{
-		{query: a2s.InfoRequest, responseType: a2s.ResponseChallenge},
-		{query: a2s.PlayerRequest, responseType: a2s.ResponseChallenge},
-		{query: a2s.RulesRequest, responseType: a2s.ResponseChallenge},
-		{query: a2s.ChallengeRequest, responseType: a2s.ResponseChallenge},
-		{query: a2s.PingRequest, responseType: a2s.ResponsePing},
+		{query: transport.InfoRequest, responseType: transport.ResponseChallenge},
+		{query: transport.PlayerRequest, responseType: transport.ResponseChallenge},
+		{query: transport.RulesRequest, responseType: transport.ResponseChallenge},
+		{query: transport.ChallengeRequest, responseType: transport.ResponseChallenge},
+		{query: transport.PingRequest, responseType: transport.ResponsePing},
 	}
 
 	for _, test := range tests {
 		_, err := NormalizeResponse(
-			&Request{Query: a2s.Request{Type: test.query}},
-			PacketResponse{Packet: a2s.Packet{Type: test.responseType}},
+			&Request{Query: transport.Request{Type: test.query}},
+			PacketResponse{Packet: transport.Packet{Type: test.responseType}},
 		)
 		if err != nil {
 			t.Errorf("normalizeResponse(%#v) error = %v", test, err)

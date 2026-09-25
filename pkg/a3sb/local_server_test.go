@@ -7,6 +7,7 @@ package a3sb_test
 import (
 	"context"
 	"errors"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"net"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func TestA3SBClientDecodesLocalEncodedServerResponse(t *testing.T) {
 
 	serverInstance, err := server.New(
 		server.HandlerFunc(func(_ context.Context, request *server.Request) (server.Response, error) {
-			if request.Query.Type != a2s.RulesRequest {
+			if request.Query.Type != transport.RulesRequest {
 				return nil, server.ErrDrop
 			}
 			return server.RulesResponse{Rules: rules}, nil

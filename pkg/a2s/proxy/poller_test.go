@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestNewPollerValidatesConfiguration(t *testing.T) {
-	cache, err := NewCache([]a2s.QueryType{a2s.InfoRequest})
+	cache, err := NewCache([]transport.QueryType{transport.InfoRequest})
 	if err != nil {
 		t.Fatalf("NewCache() error = %v", err)
 	}
@@ -85,7 +85,7 @@ func TestNewPollerValidatesConfiguration(t *testing.T) {
 }
 
 func TestNewPollerInheritsInactiveTTL(t *testing.T) {
-	cache, err := NewCache([]a2s.QueryType{a2s.InfoRequest})
+	cache, err := NewCache([]transport.QueryType{transport.InfoRequest})
 	if err != nil {
 		t.Fatalf("NewCache() error = %v", err)
 	}
@@ -100,8 +100,8 @@ func TestNewPollerInheritsInactiveTTL(t *testing.T) {
 }
 
 func TestPollerRefreshesColdCacheImmediately(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	upstream := &pollerUpstream{fn: func(a2s.QueryType, int) (a2s.Packet, error) {
+	cache := mustCache(t, transport.InfoRequest)
+	upstream := &pollerUpstream{fn: func(transport.QueryType, int) (transport.Packet, error) {
 		return infoPacket(), nil
 	}}
 	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: time.Minute})
@@ -117,10 +117,10 @@ func TestPollerRefreshesColdCacheImmediately(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 1 {
+	if got := upstream.Count(transport.InfoRequest); got != 1 {
 		t.Fatalf("upstream calls = %d, want 1", got)
 	}
-	if _, ok := cache.Load(a2s.InfoRequest); !ok {
+	if _, ok := cache.Load(transport.InfoRequest); !ok {
 		t.Fatal("cold cache was not populated")
 	}
 	if len(waits) != 1 || waits[0] != time.Minute {
@@ -129,13 +129,13 @@ func TestPollerRefreshesColdCacheImmediately(t *testing.T) {
 }
 
 func TestPollerRefreshesActiveCacheAfterTTL(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
+	cache := mustCache(t, transport.InfoRequest)
+	if err := cache.Store(transport.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
-	upstream := &pollerUpstream{fn: func(a2s.QueryType, int) (a2s.Packet, error) {
-		return a2s.Packet{Type: a2s.ResponseInfo, Payload: []byte("new")}, nil
+	upstream := &pollerUpstream{fn: func(transport.QueryType, int) (transport.Packet, error) {
+		return transport.Packet{Type: transport.ResponseInfo, Payload: []byte("new")}, nil
 	}}
 	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: 15 * time.Second})
 
@@ -153,10 +153,10 @@ func TestPollerRefreshesActiveCacheAfterTTL(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 1 {
+	if got := upstream.Count(transport.InfoRequest); got != 1 {
 		t.Fatalf("upstream calls = %d, want 1", got)
 	}
-	packet, ok := cache.Load(a2s.InfoRequest)
+	packet, ok := cache.Load(transport.InfoRequest)
 	if !ok || string(packet.Payload) != "new" {
 		t.Fatalf("cached packet = %#v, %v; want new packet", packet, ok)
 	}
@@ -166,17 +166,17 @@ func TestPollerRefreshesActiveCacheAfterTTL(t *testing.T) {
 }
 
 func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
+	cache := mustCache(t, transport.InfoRequest)
 	old := infoPacket()
-	if err := cache.Store(a2s.InfoRequest, old); err != nil {
+	if err := cache.Store(transport.InfoRequest, old); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
-	upstream := &pollerUpstream{fn: func(_ a2s.QueryType, call int) (a2s.Packet, error) {
+	upstream := &pollerUpstream{fn: func(_ transport.QueryType, call int) (transport.Packet, error) {
 		if call == 1 {
-			return a2s.Packet{}, errors.New("temporary failure")
+			return transport.Packet{}, errors.New("temporary failure")
 		}
-		return a2s.Packet{Type: a2s.ResponseInfo, Payload: []byte("new")}, nil
+		return transport.Packet{Type: transport.ResponseInfo, Payload: []byte("new")}, nil
 	}}
 	poller := mustPoller(t, cache, upstream, PollerConfig{
 		TTL:     time.Minute,
@@ -189,7 +189,7 @@ func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
 	poller.wait = func(_ context.Context, delay time.Duration) bool {
 		waits = append(waits, delay)
 		if len(waits) == 1 {
-			packet, ok := cache.Load(a2s.InfoRequest)
+			packet, ok := cache.Load(transport.InfoRequest)
 			if !ok || string(packet.Payload) != "info" {
 				t.Errorf("previous cache entry = %#v, %v during retry", packet, ok)
 			}
@@ -205,7 +205,7 @@ func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 2 {
+	if got := upstream.Count(transport.InfoRequest); got != 2 {
 		t.Fatalf("upstream calls = %d, want 2", got)
 	}
 	if len(waits) != 3 || waits[1] < pollerRetryDelay || waits[1] > pollerRetryDelay+time.Nanosecond {
@@ -214,13 +214,13 @@ func TestPollerRetryKeepsPreviousEntryUntilSuccess(t *testing.T) {
 }
 
 func TestPollerExhaustedRetriesInvalidateEntry(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	if err := cache.Store(a2s.InfoRequest, infoPacket()); err != nil {
+	cache := mustCache(t, transport.InfoRequest)
+	if err := cache.Store(transport.InfoRequest, infoPacket()); err != nil {
 		t.Fatalf("Store() error = %v", err)
 	}
 
-	upstream := &pollerUpstream{fn: func(a2s.QueryType, int) (a2s.Packet, error) {
-		return a2s.Packet{}, errors.New("offline")
+	upstream := &pollerUpstream{fn: func(transport.QueryType, int) (transport.Packet, error) {
+		return transport.Packet{}, errors.New("offline")
 	}}
 	changes := make(chan StateChange, 1)
 	poller := mustPoller(t, cache, upstream, PollerConfig{
@@ -244,15 +244,15 @@ func TestPollerExhaustedRetriesInvalidateEntry(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 3 {
+	if got := upstream.Count(transport.InfoRequest); got != 3 {
 		t.Fatalf("upstream calls = %d, want initial plus 2 retries", got)
 	}
-	if _, ok := cache.Load(a2s.InfoRequest); ok {
+	if _, ok := cache.Load(transport.InfoRequest); ok {
 		t.Fatal("exhausted query remained available")
 	}
 	select {
 	case change := <-changes:
-		if change.Query != a2s.InfoRequest || change.Active || change.Err == nil {
+		if change.Query != transport.InfoRequest || change.Active || change.Err == nil {
 			t.Fatalf("state change = %#v, want inactive with error", change)
 		}
 	default:
@@ -261,10 +261,10 @@ func TestPollerExhaustedRetriesInvalidateEntry(t *testing.T) {
 }
 
 func TestPollerInactiveProbeDoesNotRetryAndRecovers(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	upstream := &pollerUpstream{fn: func(_ a2s.QueryType, call int) (a2s.Packet, error) {
+	cache := mustCache(t, transport.InfoRequest)
+	upstream := &pollerUpstream{fn: func(_ transport.QueryType, call int) (transport.Packet, error) {
 		if call == 1 {
-			return a2s.Packet{}, errors.New("offline")
+			return transport.Packet{}, errors.New("offline")
 		}
 		return infoPacket(), nil
 	}}
@@ -294,10 +294,10 @@ func TestPollerInactiveProbeDoesNotRetryAndRecovers(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 2 {
+	if got := upstream.Count(transport.InfoRequest); got != 2 {
 		t.Fatalf("upstream calls = %d, want initial failure plus one probe", got)
 	}
-	if _, ok := cache.Load(a2s.InfoRequest); !ok {
+	if _, ok := cache.Load(transport.InfoRequest); !ok {
 		t.Fatal("recovered query was not cached")
 	}
 	changeMu.Lock()
@@ -308,10 +308,10 @@ func TestPollerInactiveProbeDoesNotRetryAndRecovers(t *testing.T) {
 }
 
 func TestPollerTreatsDeadlineAsRuntimeState(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	upstream := &pollerUpstream{fn: func(_ a2s.QueryType, call int) (a2s.Packet, error) {
+	cache := mustCache(t, transport.InfoRequest)
+	upstream := &pollerUpstream{fn: func(_ transport.QueryType, call int) (transport.Packet, error) {
 		if call == 1 {
-			return a2s.Packet{}, context.DeadlineExceeded
+			return transport.Packet{}, context.DeadlineExceeded
 		}
 		return infoPacket(), nil
 	}}
@@ -331,15 +331,15 @@ func TestPollerTreatsDeadlineAsRuntimeState(t *testing.T) {
 	if err := poller.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
-	if got := upstream.Count(a2s.InfoRequest); got != 2 {
+	if got := upstream.Count(transport.InfoRequest); got != 2 {
 		t.Fatalf("upstream calls = %d, want 2", got)
 	}
 }
 
 func TestPollerReportsStoreInvariantError(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
-	upstream := &pollerUpstream{fn: func(a2s.QueryType, int) (a2s.Packet, error) {
-		return a2s.Packet{Type: a2s.ResponseRules}, nil
+	cache := mustCache(t, transport.InfoRequest)
+	upstream := &pollerUpstream{fn: func(transport.QueryType, int) (transport.Packet, error) {
+		return transport.Packet{Type: transport.ResponseRules}, nil
 	}}
 	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: time.Minute})
 
@@ -350,7 +350,7 @@ func TestPollerReportsStoreInvariantError(t *testing.T) {
 }
 
 func TestPollerFatalErrorCancelsSiblingQueries(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest, a2s.PlayerRequest)
+	cache := mustCache(t, transport.InfoRequest, transport.PlayerRequest)
 	upstream := &fatalPollerUpstream{
 		playerStarted: make(chan struct{}),
 		playerStopped: make(chan struct{}),
@@ -369,18 +369,18 @@ func TestPollerFatalErrorCancelsSiblingQueries(t *testing.T) {
 }
 
 func TestPollerMarkInactiveReportsCacheError(t *testing.T) {
-	poller := mustPoller(t, mustCache(t, a2s.InfoRequest), &pollerUpstream{}, PollerConfig{
+	poller := mustPoller(t, mustCache(t, transport.InfoRequest), &pollerUpstream{}, PollerConfig{
 		TTL: time.Minute,
 	})
 
-	err := poller.markInactive(a2s.PingRequest, errors.New("offline"))
+	err := poller.markInactive(transport.PingRequest, errors.New("offline"))
 	if !errors.Is(err, ErrCacheQuery) {
 		t.Fatalf("markInactive() error = %v, want ErrCacheQuery", err)
 	}
 }
 
 func TestPollerCancellationInterruptsUpstreamQuery(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
+	cache := mustCache(t, transport.InfoRequest)
 	upstream := &blockingPollerUpstream{started: make(chan struct{})}
 	poller := mustPoller(t, cache, upstream, PollerConfig{TTL: time.Minute})
 
@@ -420,7 +420,7 @@ func TestPollerJitterIsBounded(t *testing.T) {
 	}
 }
 
-func mustCache(t *testing.T, queries ...a2s.QueryType) *Cache {
+func mustCache(t *testing.T, queries ...transport.QueryType) *Cache {
 	t.Helper()
 	cache, err := NewCache(queries)
 	if err != nil {
@@ -440,27 +440,27 @@ func mustPoller(t *testing.T, cache *Cache, upstream Upstream, config PollerConf
 
 type pollerUpstream struct {
 	mu    sync.Mutex
-	calls map[a2s.QueryType]int
-	fn    func(a2s.QueryType, int) (a2s.Packet, error)
+	calls map[transport.QueryType]int
+	fn    func(transport.QueryType, int) (transport.Packet, error)
 }
 
-func (u *pollerUpstream) Query(_ context.Context, query a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
+func (u *pollerUpstream) Query(_ context.Context, query transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
 	u.mu.Lock()
 	if u.calls == nil {
-		u.calls = make(map[a2s.QueryType]int)
+		u.calls = make(map[transport.QueryType]int)
 	}
 	u.calls[query]++
 	call := u.calls[query]
 	u.mu.Unlock()
 
 	if u.fn == nil {
-		return infoPacket(), a2s.QueryMeta{}, nil
+		return infoPacket(), transport.QueryMeta{}, nil
 	}
 	packet, err := u.fn(query, call)
-	return packet, a2s.QueryMeta{}, err
+	return packet, transport.QueryMeta{}, err
 }
 
-func (u *pollerUpstream) Count(query a2s.QueryType) int {
+func (u *pollerUpstream) Count(query transport.QueryType) int {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
@@ -472,10 +472,10 @@ type blockingPollerUpstream struct {
 	once    sync.Once
 }
 
-func (u *blockingPollerUpstream) Query(ctx context.Context, _ a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
+func (u *blockingPollerUpstream) Query(ctx context.Context, _ transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
 	u.once.Do(func() { close(u.started) })
 	<-ctx.Done()
-	return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+	return transport.Packet{}, transport.QueryMeta{}, ctx.Err()
 }
 
 type fatalPollerUpstream struct {
@@ -485,18 +485,18 @@ type fatalPollerUpstream struct {
 	stopOnce      sync.Once
 }
 
-func (u *fatalPollerUpstream) Query(ctx context.Context, query a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
-	if query == a2s.PlayerRequest {
+func (u *fatalPollerUpstream) Query(ctx context.Context, query transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
+	if query == transport.PlayerRequest {
 		u.playerOnce.Do(func() { close(u.playerStarted) })
 		<-ctx.Done()
 		u.stopOnce.Do(func() { close(u.playerStopped) })
-		return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+		return transport.Packet{}, transport.QueryMeta{}, ctx.Err()
 	}
 
 	select {
 	case <-u.playerStarted:
-		return a2s.Packet{Type: a2s.ResponseRules}, a2s.QueryMeta{}, nil
+		return transport.Packet{Type: transport.ResponseRules}, transport.QueryMeta{}, nil
 	case <-ctx.Done():
-		return a2s.Packet{}, a2s.QueryMeta{}, ctx.Err()
+		return transport.Packet{}, transport.QueryMeta{}, ctx.Err()
 	}
 }

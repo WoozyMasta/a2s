@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +31,11 @@ func TestResponsiveTablesFitSupportedTerminalWidths(t *testing.T) {
 						return renderInfoTable(
 							app,
 							&a2s.Info{
-								Format: a2s.InfoFormat(a2s.ResponseInfo),
+								Format: a2s.InfoFormat(transport.ResponseInfo),
 								Name:   strings.Repeat("Long server name ", 12),
 								Map:    strings.Repeat("custom_map_", 8),
 							},
-							a2s.QueryMeta{Duration: 57 * time.Millisecond},
+							transport.QueryMeta{Duration: 57 * time.Millisecond},
 							"127.0.0.1:27015",
 							"table",
 							formatter,

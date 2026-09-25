@@ -10,6 +10,8 @@ import (
 	"io"
 	"net"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestParsePing(t *testing.T) {
@@ -61,12 +63,12 @@ func TestGetPingAcceptsEmptyAcknowledgement(t *testing.T) {
 			serverErr <- err
 			return
 		}
-		if n < requestHeaderSize || QueryType(buffer[4]) != PingRequest {
-			serverErr <- ErrWrongRequest
+		if n < transport.PacketHeaderSize || transport.QueryType(buffer[4]) != transport.PingRequest {
+			serverErr <- transport.ErrWrongRequest
 			return
 		}
 
-		_, err = server.WriteToUDP(singlePacketFixture(ResponsePing, nil), address)
+		_, err = server.WriteToUDP(singlePacketFixture(transport.ResponsePing, nil), address)
 		serverErr <- err
 	}()
 

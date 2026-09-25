@@ -13,20 +13,21 @@ import (
 
 	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 var (
-	benchmarkPacketSink   a2s.Packet
+	benchmarkPacketSink   transport.Packet
 	benchmarkResponseSink server.Response
 )
 
 func BenchmarkCacheLoadInfo(b *testing.B) {
-	cache := benchmarkCache(b, a2s.InfoRequest, []byte("benchmark info"))
+	cache := benchmarkCache(b, transport.InfoRequest, []byte("benchmark info"))
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		packet, ok := cache.Load(a2s.InfoRequest)
+		packet, ok := cache.Load(transport.InfoRequest)
 		if !ok {
 			b.Fatal("Load() returned no INFO packet")
 		}
@@ -35,12 +36,12 @@ func BenchmarkCacheLoadInfo(b *testing.B) {
 }
 
 func BenchmarkCacheLoadRulesLarge(b *testing.B) {
-	cache := benchmarkCache(b, a2s.RulesRequest, bytes.Repeat([]byte("rule=value\x00"), 512))
+	cache := benchmarkCache(b, transport.RulesRequest, bytes.Repeat([]byte("rule=value\x00"), 512))
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		packet, ok := cache.Load(a2s.RulesRequest)
+		packet, ok := cache.Load(transport.RulesRequest)
 		if !ok {
 			b.Fatal("Load() returned no RULES packet")
 		}
@@ -51,13 +52,13 @@ func BenchmarkCacheLoadRulesLarge(b *testing.B) {
 func BenchmarkHandlerCachedHit(b *testing.B) {
 	for _, test := range []struct {
 		name    string
-		query   a2s.QueryType
+		query   transport.QueryType
 		payload []byte
 	}{
-		{name: "info", query: a2s.InfoRequest, payload: []byte("benchmark info")},
+		{name: "info", query: transport.InfoRequest, payload: []byte("benchmark info")},
 		{
 			name:    "rules-large",
-			query:   a2s.RulesRequest,
+			query:   transport.RulesRequest,
 			payload: bytes.Repeat([]byte("rule=value\x00"), 512),
 		},
 	} {
@@ -85,10 +86,10 @@ func BenchmarkHandlerCachedHit(b *testing.B) {
 }
 
 func BenchmarkCachePublication(b *testing.B) {
-	packet := a2s.Packet{Type: a2s.ResponseInfo, Payload: []byte("benchmark info")}
+	packet := transport.Packet{Type: transport.ResponseInfo, Payload: []byte("benchmark info")}
 
 	b.Run("store", func(b *testing.B) {
-		cache, err := NewCache([]a2s.QueryType{a2s.InfoRequest})
+		cache, err := NewCache([]transport.QueryType{transport.InfoRequest})
 		if err != nil {
 			b.Fatalf("NewCache() error = %v", err)
 		}
@@ -96,19 +97,19 @@ func BenchmarkCachePublication(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for b.Loop() {
-			if err := cache.Store(a2s.InfoRequest, packet); err != nil {
+			if err := cache.Store(transport.InfoRequest, packet); err != nil {
 				b.Fatal(err)
 			}
 		}
 	})
 
 	b.Run("invalidate", func(b *testing.B) {
-		cache := benchmarkCache(b, a2s.InfoRequest, packet.Payload)
+		cache := benchmarkCache(b, transport.InfoRequest, packet.Payload)
 
 		b.ReportAllocs()
 		b.ResetTimer()
 		for b.Loop() {
-			if err := cache.Invalidate(a2s.InfoRequest); err != nil {
+			if err := cache.Invalidate(transport.InfoRequest); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -116,7 +117,7 @@ func BenchmarkCachePublication(b *testing.B) {
 }
 
 func BenchmarkCachedLocalRoundTrip(b *testing.B) {
-	cache := benchmarkCache(b, a2s.InfoRequest, []byte("benchmark info"))
+	cache := benchmarkCache(b, transport.InfoRequest, []byte("benchmark info"))
 	handler, err := NewHandler(cache, &handlerUpstream{}, HandlerConfig{
 		ChallengeProvider: &handlerChallengeProvider{},
 	})
@@ -132,10 +133,12 @@ func BenchmarkCachedLocalRoundTrip(b *testing.B) {
 	if err != nil {
 		b.Fatalf("server.New() error = %v", err)
 	}
+
 	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
 	if err != nil {
 		b.Fatalf("ListenPacket() error = %v", err)
 	}
+
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- instance.Serve(conn) }()
 
@@ -156,7 +159,7 @@ func BenchmarkCachedLocalRoundTrip(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		packet, _, err := client.Query(context.Background(), a2s.InfoRequest)
+		packet, _, err := client.Query(context.Background(), transport.InfoRequest)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -164,22 +167,22 @@ func BenchmarkCachedLocalRoundTrip(b *testing.B) {
 	}
 }
 
-func benchmarkCache(b *testing.B, query a2s.QueryType, payload []byte) *Cache {
+func benchmarkCache(b *testing.B, query transport.QueryType, payload []byte) *Cache {
 	b.Helper()
 
-	cache, err := NewCache([]a2s.QueryType{query})
+	cache, err := NewCache([]transport.QueryType{query})
 	if err != nil {
 		b.Fatalf("NewCache() error = %v", err)
 	}
 
-	response := a2s.ResponseInfo
-	if query == a2s.RulesRequest {
-		response = a2s.ResponseRules
+	response := transport.ResponseInfo
+	if query == transport.RulesRequest {
+		response = transport.ResponseRules
 	}
-	if query == a2s.PlayerRequest {
-		response = a2s.ResponsePlayers
+	if query == transport.PlayerRequest {
+		response = transport.ResponsePlayers
 	}
-	if err := cache.Store(query, a2s.Packet{Type: response, Payload: payload}); err != nil {
+	if err := cache.Store(query, transport.Packet{Type: response, Payload: payload}); err != nil {
 		b.Fatalf("Store() error = %v", err)
 	}
 

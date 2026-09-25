@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestNewRateLimiterValidatesEnabledWindows(t *testing.T) {
@@ -266,11 +266,11 @@ func TestRateLimiterMiddlewareDropsExcessRequests(t *testing.T) {
 	calls := 0
 	handler := limiter.Middleware()(server.HandlerFunc(func(context.Context, *server.Request) (server.Response, error) {
 		calls++
-		return server.PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+		return server.PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 	}))
 	request := &server.Request{
 		Remote: netip.MustParseAddrPort("192.0.2.1:27015"),
-		Query:  a2s.Request{Type: a2s.PingRequest},
+		Query:  transport.Request{Type: transport.PingRequest},
 	}
 
 	if _, err := handler.Handle(context.Background(), request); err != nil {

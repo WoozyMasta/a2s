@@ -16,27 +16,28 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
-	proxycache "github.com/woozymasta/a2s/pkg/a2s/proxy"
+	"github.com/woozymasta/a2s/pkg/a2s/proxy"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T) {
 	tests := []struct {
 		name             string
-		infoType         a2s.ResponseType
+		infoType         transport.ResponseType
 		infoChallenge    bool
 		wantSecurePolicy bool
 		wantPacketizer   any
 	}{
 		{
 			name:             "source without info challenge",
-			infoType:         a2s.ResponseInfo,
+			infoType:         transport.ResponseInfo,
 			wantPacketizer:   &server.SourcePacketizer{},
 			wantSecurePolicy: false,
 		},
 		{
 			name:             "goldsource with info challenge",
-			infoType:         a2s.ResponseInfoGoldSource,
+			infoType:         transport.ResponseInfoGoldSource,
 			infoChallenge:    true,
 			wantPacketizer:   &server.GoldSourcePacketizer{},
 			wantSecurePolicy: true,
@@ -65,10 +66,13 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 					tt.infoChallenge,
 				)
 			}
-			if preparation.policy.Required(a2s.InfoRequest) != tt.wantSecurePolicy {
-				t.Fatalf("INFO policy = %v, want %v", preparation.policy.Required(a2s.InfoRequest), tt.wantSecurePolicy)
+			if preparation.policy.Required(transport.InfoRequest) != tt.wantSecurePolicy {
+				t.Fatalf(
+					"INFO policy = %v, want %v",
+					preparation.policy.Required(transport.InfoRequest), tt.wantSecurePolicy)
 			}
-			if !preparation.policy.Required(a2s.PlayerRequest) || !preparation.policy.Required(a2s.RulesRequest) {
+			if !preparation.policy.Required(transport.PlayerRequest) ||
+				!preparation.policy.Required(transport.RulesRequest) {
 				t.Fatal("legacy and secure policies must require PLAYER/RULES challenges")
 			}
 			if _, ok := preparation.packetizer.(interface {
@@ -76,6 +80,7 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 			}); !ok {
 				t.Fatalf("packetizer does not implement Packetize: %T", preparation.packetizer)
 			}
+
 			switch tt.wantPacketizer.(type) {
 			case *server.SourcePacketizer:
 				if _, ok := preparation.packetizer.(*server.SourcePacketizer); !ok {
@@ -87,7 +92,11 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 				}
 			}
 
-			for _, query := range []a2s.QueryType{a2s.InfoRequest, a2s.PlayerRequest, a2s.RulesRequest} {
+			for _, query := range []transport.QueryType{
+				transport.InfoRequest,
+				transport.PlayerRequest,
+				transport.RulesRequest,
+			} {
 				if !preparation.cache.Enabled(query) {
 					t.Fatalf("cache does not enable %s", proxyQueryName(query))
 				}
@@ -100,7 +109,7 @@ func TestPrepareProxyStartupSelectsPolicyPacketizerAndCapabilities(t *testing.T)
 }
 
 func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	clientOptions := proxyStartupClientOptions()
 	clientOptions.Timeout = Duration(10 * time.Millisecond)
@@ -111,21 +120,21 @@ func TestPrepareProxyStartupSkipsUnsupportedAutoQueries(t *testing.T) {
 	}
 	defer preparation.close()
 
-	if !preparation.cache.Enabled(a2s.InfoRequest) {
+	if !preparation.cache.Enabled(transport.InfoRequest) {
 		t.Fatal("auto cache did not enable INFO")
 	}
-	if preparation.cache.Enabled(a2s.PlayerRequest) {
+	if preparation.cache.Enabled(transport.PlayerRequest) {
 		t.Fatal("auto cache enabled unsupported PLAYER query")
 	}
-	if preparation.cache.Enabled(a2s.RulesRequest) {
+	if preparation.cache.Enabled(transport.RulesRequest) {
 		t.Fatal("auto cache enabled unsupported RULES query")
 	}
 }
 
 func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
-	for _, query := range []a2s.QueryType{a2s.PlayerRequest, a2s.RulesRequest} {
+	for _, query := range []transport.QueryType{transport.PlayerRequest, transport.RulesRequest} {
 		t.Run(proxyQueryName(query), func(t *testing.T) {
-			fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+			fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, false)
 			selector := strings.ToLower(proxyQueryName(query))
 			command := proxyStartupCommand(fixture, []string{selector})
 			clientOptions := proxyStartupClientOptions()
@@ -145,7 +154,7 @@ func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
 			}
 
 			fixture.setExtraResponse(true)
-			poller, err := proxycache.NewPoller(preparation.cache, preparation.pollClient, proxycache.PollerConfig{
+			poller, err := proxy.NewPoller(preparation.cache, preparation.pollClient, proxy.PollerConfig{
 				TTL: time.Hour,
 			})
 			if err != nil {
@@ -165,7 +174,7 @@ func TestPrepareProxyStartupKeepsExplicitFailedQueriesCached(t *testing.T) {
 }
 
 func TestPrepareProxyStartupDisablesCacheForNone(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, true)
 	command := proxyStartupCommand(fixture, []string{proxyCacheNone})
 
 	preparation, err := prepareProxyStartup(context.Background(), command, proxyStartupClientOptions())
@@ -174,10 +183,10 @@ func TestPrepareProxyStartupDisablesCacheForNone(t *testing.T) {
 	}
 	defer preparation.close()
 
-	for _, query := range []a2s.QueryType{
-		a2s.InfoRequest,
-		a2s.PlayerRequest,
-		a2s.RulesRequest,
+	for _, query := range []transport.QueryType{
+		transport.InfoRequest,
+		transport.PlayerRequest,
+		transport.RulesRequest,
 	} {
 		if preparation.cache.Enabled(query) {
 			t.Fatalf("none cache enabled %s", proxyQueryName(query))
@@ -186,7 +195,7 @@ func TestPrepareProxyStartupDisablesCacheForNone(t *testing.T) {
 }
 
 func TestPrepareProxyStartupFailsBeforeServingOnInfoError(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, false, false)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, false, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	clientOptions := proxyStartupClientOptions()
 	clientOptions.Timeout = Duration(10 * time.Millisecond)
@@ -197,7 +206,7 @@ func TestPrepareProxyStartupFailsBeforeServingOnInfoError(t *testing.T) {
 }
 
 func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, true)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, true)
 	command := proxyStartupCommand(fixture, []string{"auto"})
 	command.Listen = freeProxyListenAddress(t)
 	command.CacheOptions.TTL = Duration(time.Hour)
@@ -241,7 +250,7 @@ func TestExecuteProxyContextServesCachedInfoAndStops(t *testing.T) {
 }
 
 func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"players"})
 	command.Listen = freeProxyListenAddress(t)
 	command.CacheOptions.TTL = Duration(time.Hour)
@@ -275,7 +284,7 @@ func TestExecuteProxyContextStaysLiveWithoutCacheEntries(t *testing.T) {
 }
 
 func TestExecuteProxyContextRecoversCachedQueryAfterUpstreamOutage(t *testing.T) {
-	fixture := newProxyStartupFixture(t, a2s.ResponseInfo, false, true, false)
+	fixture := newProxyStartupFixture(t, transport.ResponseInfo, false, true, false)
 	command := proxyStartupCommand(fixture, []string{"info"})
 	command.Listen = freeProxyListenAddress(t)
 	command.CacheOptions.TTL = Duration(20 * time.Millisecond)
@@ -405,7 +414,7 @@ type proxyStartupFixture struct {
 
 func newProxyStartupFixture(
 	t *testing.T,
-	infoType a2s.ResponseType,
+	infoType transport.ResponseType,
 	infoChallenge bool,
 	respondInfo bool,
 	respondExtra bool,
@@ -456,8 +465,8 @@ func (f *proxyStartupFixture) serve() {
 			continue
 		}
 
-		query := a2s.QueryType(buffer[4])
-		if query == a2s.InfoRequest && f.infoChallenge && !infoChallenged {
+		query := transport.QueryType(buffer[4])
+		if query == transport.InfoRequest && f.infoChallenge && !infoChallenged {
 			infoChallenged = true
 			_, _ = f.conn.WriteToUDP(proxyStartupChallengePacket(), remote)
 			continue
@@ -465,17 +474,17 @@ func (f *proxyStartupFixture) serve() {
 
 		var response []byte
 		switch query {
-		case a2s.InfoRequest:
+		case transport.InfoRequest:
 			if f.respondInfo.Load() {
 				response = f.info
 			}
 
-		case a2s.PlayerRequest:
+		case transport.PlayerRequest:
 			if f.respondExtra.Load() {
 				response, _ = a2s.AppendPlayers(nil, nil)
 			}
 
-		case a2s.RulesRequest:
+		case transport.RulesRequest:
 			if f.respondExtra.Load() {
 				response, _ = a2s.AppendRules(nil, a2s.Rules{{
 					Name:  "hostname",
@@ -498,7 +507,7 @@ func (f *proxyStartupFixture) setExtraResponse(enabled bool) {
 	f.respondExtra.Store(enabled)
 }
 
-func proxyStartupInfoPacket(responseType a2s.ResponseType) ([]byte, error) {
+func proxyStartupInfoPacket(responseType transport.ResponseType) ([]byte, error) {
 	info := a2s.Info{
 		Format:      a2s.InfoFormat(responseType),
 		Name:        "proxy test",
@@ -509,7 +518,7 @@ func proxyStartupInfoPacket(responseType a2s.ResponseType) ([]byte, error) {
 		ServerType:  a2s.ServerType('d'),
 		Environment: a2s.Environment('l'),
 	}
-	if responseType == a2s.ResponseInfoGoldSource {
+	if responseType == transport.ResponseInfoGoldSource {
 		info.Address = "127.0.0.1:27015"
 	}
 
@@ -519,7 +528,7 @@ func proxyStartupInfoPacket(responseType a2s.ResponseType) ([]byte, error) {
 func proxyStartupChallengePacket() []byte {
 	packet := make([]byte, 0, 9)
 	packet = binary.LittleEndian.AppendUint32(packet, ^uint32(0))
-	packet = append(packet, byte(a2s.ResponseChallenge))
+	packet = append(packet, byte(transport.ResponseChallenge))
 	packet = append(packet, 1, 2, 3, 4)
 
 	return packet

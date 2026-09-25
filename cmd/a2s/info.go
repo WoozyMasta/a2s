@@ -12,6 +12,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/keywords"
 )
@@ -47,7 +48,7 @@ func executeInfo(app *Application, cmd *InfoCommand, clientOptions ClientOptions
 func renderInfoTable(
 	app *Application,
 	info *a2s.Info,
-	meta a2s.QueryMeta,
+	meta transport.QueryMeta,
 	address, format string,
 	formatter *Formatter,
 ) error {

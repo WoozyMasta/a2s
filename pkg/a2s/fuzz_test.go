@@ -8,33 +8,35 @@ import (
 	"bytes"
 	"hash/crc32"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func FuzzParseChallenge(f *testing.F) {
 	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseChallenge(data)
+		_, _ = transport.ParseChallengePayload(data)
 	})
 }
 
 func FuzzParseChallengeResponse(f *testing.F) {
-	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(ResponseChallenge), 0x78, 0x56, 0x34, 0x12})
+	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(transport.ResponseChallenge), 0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = parseChallengeResponse(data)
+		_, _ = transport.ParseChallengeResponse(data)
 	})
 }
 
 func FuzzDecodeInfoSource(f *testing.F) {
 	f.Add([]byte{17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = DecodeInfo(Packet{Type: ResponseInfo, Payload: data})
+		_, _ = DecodeInfo(transport.Packet{Type: transport.ResponseInfo, Payload: data})
 	})
 }
 
 func FuzzDecodeInfoGoldSource(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: data})
+		_, _ = DecodeInfo(transport.Packet{Type: transport.ResponseInfoGoldSource, Payload: data})
 	})
 }
 
@@ -42,7 +44,7 @@ func FuzzParsePlayers(f *testing.F) {
 	f.Add([]byte{0})
 	f.Add([]byte{1, 0, 'p', 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
+		_, _ = DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data})
 	})
 }
 
@@ -58,16 +60,16 @@ func FuzzParseRules(f *testing.F) {
 	f.Add([]byte{0, 0})
 	f.Add([]byte{1, 0, 'm', 'o', 'd', 'e', 0, 'c', 'o', 'o', 'p', 0})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = DecodeRules(Packet{Type: ResponseRules, Payload: data})
+		_, _ = DecodeRules(transport.Packet{Type: transport.ResponseRules, Payload: data})
 	})
 }
 
 func FuzzParsePacketHeaders(f *testing.F) {
-	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(ResponsePlayers)})
+	f.Add([]byte{0xff, 0xff, 0xff, 0xff, byte(transport.ResponsePlayers)})
 	f.Add([]byte{0xfe, 0xff, 0xff, 0xff, 1, 0, 0, 0, 1})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		_, _ = isMultiPacket(data)
-		_, _ = parseSplitHeader(data)
+		_, _ = transport.IsMultiPacket(data)
+		_, _ = transport.ParseSplitHeader(data)
 	})
 }
 
@@ -79,32 +81,32 @@ func FuzzDecompressBzip2(f *testing.F) {
 			size = uint32(len(data) % 1024)
 		}
 
-		_, _ = decompressBzip2(data, size, crc32.ChecksumIEEE(data))
+		_, _ = transport.DecompressBzip2(data, size, crc32.ChecksumIEEE(data))
 	})
 }
 
 func FuzzCreateHeader(f *testing.F) {
-	f.Add(byte(InfoRequest), []byte{0xff, 0xff, 0xff, 0xff})
-	f.Add(byte(RulesRequest), []byte{0x78, 0x56, 0x34, 0x12})
+	f.Add(byte(transport.InfoRequest), []byte{0xff, 0xff, 0xff, 0xff})
+	f.Add(byte(transport.RulesRequest), []byte{0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, request byte, challengeData []byte) {
-		var challenge Challenge
+		var challenge transport.Challenge
 		copy(challenge[:], challengeData)
-		_, _ = createHeader(QueryType(request), challenge)
+		_, _ = transport.CreateHeader(transport.QueryType(request), challenge)
 	})
 }
 
 func FuzzBinaryChallengeRoundTrip(f *testing.F) {
 	f.Add([]byte{0x78, 0x56, 0x34, 0x12})
 	f.Fuzz(func(t *testing.T, data []byte) {
-		got, err := parseChallenge(data)
-		if len(data) < len(Challenge{}) {
+		got, err := transport.ParseChallengePayload(data)
+		if len(data) < len(transport.Challenge{}) {
 			if err == nil {
-				t.Fatalf("parseChallenge(%X) returned nil error", data)
+				t.Fatalf("ParseChallengePayload(%X) returned nil error", data)
 			}
 			return
 		}
-		if err != nil || !bytes.Equal(got[:], data[:len(Challenge{})]) {
-			t.Fatalf("challenge parse = (%X, %v), want %X", got, err, data[:len(Challenge{})])
+		if err != nil || !bytes.Equal(got[:], data[:len(transport.Challenge{})]) {
+			t.Fatalf("challenge parse = (%X, %v), want %X", got, err, data[:len(transport.Challenge{})])
 		}
 	})
 }

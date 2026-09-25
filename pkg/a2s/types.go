@@ -6,62 +6,9 @@ package a2s
 
 import (
 	"encoding/json"
-	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
-
-// QueryType identifies an A2S request type byte.
-type QueryType byte
-
-// ResponseType identifies an A2S response type byte.
-type ResponseType byte
-
-// Packet is one logical A2S response using single-packet framing.
-//
-// Payload excludes the four-byte packet marker and response type byte.
-// Decoders own the returned payload bytes,
-// so the packet is independent from the input buffer used to decode it.
-type Packet struct {
-	// Payload is the response body without the packet marker and response type.
-	Payload []byte
-
-	// Type is the raw response type byte.
-	Type ResponseType
-}
-
-// Request represents one complete A2S request datagram.
-//
-// INFO may omit its challenge on the initial request.
-// PLAYER and RULES always require a challenge.
-// HasChallenge preserves that wire-level distinction;
-// Challenge is kept opaque and is not interpreted as an integer.
-type Request struct {
-	// Type is the request type byte.
-	Type QueryType
-
-	// Challenge is the opaque four-byte challenge token.
-	Challenge Challenge
-
-	// HasChallenge reports whether Challenge is present on the wire.
-	HasChallenge bool
-}
-
-// Challenge is the opaque four-byte token used by A2S challenge exchanges.
-// Its byte order is preserved exactly as received from or sent to the server.
-type Challenge [4]byte
-
-// InitialChallenge is the reserved token used to start a challenge-aware query.
-var InitialChallenge = Challenge{0xFF, 0xFF, 0xFF, 0xFF}
-
-// QueryMeta contains transport metadata for one completed client query.
-// It is separate from protocol response models.
-type QueryMeta struct {
-	// Duration is the complete logical query latency.
-	Duration time.Duration
-
-	// UsedChallenge reports whether the server required a challenge exchange
-	// before returning the final response.
-	UsedChallenge bool
-}
 
 // EDF represents Extra Data Flag bits in A2S_INFO response.
 type EDF byte
@@ -71,11 +18,11 @@ type InfoFormat byte
 
 // String returns the human-readable engine name.
 func (i InfoFormat) String() string {
-	switch ResponseType(i) {
-	case ResponseInfo:
+	switch transport.ResponseType(i) {
+	case transport.ResponseInfo:
 		return "Source"
 
-	case ResponseInfoGoldSource:
+	case transport.ResponseInfoGoldSource:
 		return "GoldSource"
 	}
 

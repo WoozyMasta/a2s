@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // NormalizeResponse converts a handler response into one logical A2S packet.
@@ -15,12 +16,12 @@ import (
 // Typed responses go through the shared package encoders.
 // PacketResponse is already a logical packet
 // and is returned without decoding or re-encoding its payload.
-func NormalizeResponse(req *Request, response Response) (a2s.Packet, error) {
+func NormalizeResponse(req *Request, response Response) (transport.Packet, error) {
 	if req == nil {
-		return a2s.Packet{}, fmt.Errorf("%w: nil request", ErrResponse)
+		return transport.Packet{}, fmt.Errorf("%w: nil request", ErrResponse)
 	}
 	if response == nil {
-		return a2s.Packet{}, fmt.Errorf("%w: nil response", ErrResponse)
+		return transport.Packet{}, fmt.Errorf("%w: nil response", ErrResponse)
 	}
 
 	switch response := response.(type) {
@@ -29,7 +30,7 @@ func NormalizeResponse(req *Request, response Response) (a2s.Packet, error) {
 
 	case *InfoResponse:
 		if response == nil {
-			return a2s.Packet{}, fmt.Errorf("%w: nil InfoResponse", ErrResponse)
+			return transport.Packet{}, fmt.Errorf("%w: nil InfoResponse", ErrResponse)
 		}
 		return normalizeInfoResponse(req.Query.Type, response.Info)
 
@@ -38,7 +39,7 @@ func NormalizeResponse(req *Request, response Response) (a2s.Packet, error) {
 
 	case *PlayersResponse:
 		if response == nil {
-			return a2s.Packet{}, fmt.Errorf("%w: nil PlayersResponse", ErrResponse)
+			return transport.Packet{}, fmt.Errorf("%w: nil PlayersResponse", ErrResponse)
 		}
 		return normalizePlayersResponse(req.Query.Type, response.Players)
 
@@ -47,7 +48,7 @@ func NormalizeResponse(req *Request, response Response) (a2s.Packet, error) {
 
 	case *RulesResponse:
 		if response == nil {
-			return a2s.Packet{}, fmt.Errorf("%w: nil RulesResponse", ErrResponse)
+			return transport.Packet{}, fmt.Errorf("%w: nil RulesResponse", ErrResponse)
 		}
 		return normalizeRulesResponse(req.Query.Type, response.Rules)
 
@@ -56,61 +57,61 @@ func NormalizeResponse(req *Request, response Response) (a2s.Packet, error) {
 
 	case *PacketResponse:
 		if response == nil {
-			return a2s.Packet{}, fmt.Errorf("%w: nil PacketResponse", ErrResponse)
+			return transport.Packet{}, fmt.Errorf("%w: nil PacketResponse", ErrResponse)
 		}
 		return normalizePacketResponse(req.Query.Type, response.Packet)
 
 	default:
-		return a2s.Packet{}, fmt.Errorf("%w: unsupported response %T", ErrResponse, response)
+		return transport.Packet{}, fmt.Errorf("%w: unsupported response %T", ErrResponse, response)
 	}
 }
 
 // normalizeInfoResponse encodes an InfoResponse after checking its query kind.
-func normalizeInfoResponse(query a2s.QueryType, info a2s.Info) (a2s.Packet, error) {
-	if err := validateResponseQuery(query, a2s.ResponseInfo); err != nil {
-		return a2s.Packet{}, err
+func normalizeInfoResponse(query transport.QueryType, info a2s.Info) (transport.Packet, error) {
+	if err := validateResponseQuery(query, transport.ResponseInfo); err != nil {
+		return transport.Packet{}, err
 	}
 
 	data, err := a2s.AppendInfo(nil, info)
 	if err != nil {
-		return a2s.Packet{}, fmt.Errorf("%w: encode InfoResponse: %w", ErrResponse, err)
+		return transport.Packet{}, fmt.Errorf("%w: encode InfoResponse: %w", ErrResponse, err)
 	}
 
 	return decodeEncodedResponse(data)
 }
 
 // normalizePlayersResponse encodes a PlayersResponse after checking its query kind.
-func normalizePlayersResponse(query a2s.QueryType, players []a2s.Player) (a2s.Packet, error) {
-	if err := validateResponseQuery(query, a2s.ResponsePlayers); err != nil {
-		return a2s.Packet{}, err
+func normalizePlayersResponse(query transport.QueryType, players []a2s.Player) (transport.Packet, error) {
+	if err := validateResponseQuery(query, transport.ResponsePlayers); err != nil {
+		return transport.Packet{}, err
 	}
 
 	data, err := a2s.AppendPlayers(nil, players)
 	if err != nil {
-		return a2s.Packet{}, fmt.Errorf("%w: encode PlayersResponse: %w", ErrResponse, err)
+		return transport.Packet{}, fmt.Errorf("%w: encode PlayersResponse: %w", ErrResponse, err)
 	}
 
 	return decodeEncodedResponse(data)
 }
 
 // normalizeRulesResponse encodes a RulesResponse after checking its query kind.
-func normalizeRulesResponse(query a2s.QueryType, rules a2s.Rules) (a2s.Packet, error) {
-	if err := validateResponseQuery(query, a2s.ResponseRules); err != nil {
-		return a2s.Packet{}, err
+func normalizeRulesResponse(query transport.QueryType, rules a2s.Rules) (transport.Packet, error) {
+	if err := validateResponseQuery(query, transport.ResponseRules); err != nil {
+		return transport.Packet{}, err
 	}
 
 	data, err := a2s.AppendRules(nil, rules)
 	if err != nil {
-		return a2s.Packet{}, fmt.Errorf("%w: encode RulesResponse: %w", ErrResponse, err)
+		return transport.Packet{}, fmt.Errorf("%w: encode RulesResponse: %w", ErrResponse, err)
 	}
 
 	return decodeEncodedResponse(data)
 }
 
 // normalizePacketResponse validates a logical packet without changing it.
-func normalizePacketResponse(query a2s.QueryType, packet a2s.Packet) (a2s.Packet, error) {
+func normalizePacketResponse(query transport.QueryType, packet transport.Packet) (transport.Packet, error) {
 	if err := validateResponseQuery(query, packet.Type); err != nil {
-		return a2s.Packet{}, err
+		return transport.Packet{}, err
 	}
 
 	return packet, nil
@@ -118,35 +119,35 @@ func normalizePacketResponse(query a2s.QueryType, packet a2s.Packet) (a2s.Packet
 
 // decodeEncodedResponse converts the complete bytes produced by a shared encoder
 // into the server package's logical packet contract.
-func decodeEncodedResponse(data []byte) (a2s.Packet, error) {
-	packet, err := a2s.DecodePacket(data)
+func decodeEncodedResponse(data []byte) (transport.Packet, error) {
+	packet, err := transport.DecodePacket(data)
 	if err != nil {
-		return a2s.Packet{}, fmt.Errorf("%w: decode encoded response: %w", ErrResponse, err)
+		return transport.Packet{}, fmt.Errorf("%w: decode encoded response: %w", ErrResponse, err)
 	}
 
 	return packet, nil
 }
 
 // validateResponseQuery rejects response types that cannot answer query.
-func validateResponseQuery(query a2s.QueryType, response a2s.ResponseType) error {
+func validateResponseQuery(query transport.QueryType, response transport.ResponseType) error {
 	valid := false
 	switch query {
-	case a2s.InfoRequest:
-		valid = response == a2s.ResponseInfo ||
-			response == a2s.ResponseInfoGoldSource ||
-			response == a2s.ResponseChallenge
+	case transport.InfoRequest:
+		valid = response == transport.ResponseInfo ||
+			response == transport.ResponseInfoGoldSource ||
+			response == transport.ResponseChallenge
 
-	case a2s.PlayerRequest:
-		valid = response == a2s.ResponsePlayers || response == a2s.ResponseChallenge
+	case transport.PlayerRequest:
+		valid = response == transport.ResponsePlayers || response == transport.ResponseChallenge
 
-	case a2s.RulesRequest:
-		valid = response == a2s.ResponseRules || response == a2s.ResponseChallenge
+	case transport.RulesRequest:
+		valid = response == transport.ResponseRules || response == transport.ResponseChallenge
 
-	case a2s.ChallengeRequest:
-		valid = response == a2s.ResponseChallenge
+	case transport.ChallengeRequest:
+		valid = response == transport.ResponseChallenge
 
-	case a2s.PingRequest:
-		valid = response == a2s.ResponsePing
+	case transport.PingRequest:
+		valid = response == transport.ResponsePing
 
 	default:
 		return fmt.Errorf("%w: unsupported query 0x%X", ErrResponseQuery, query)

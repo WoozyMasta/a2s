@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // AppendRules appends one complete logical A2S_RULES response to dst.
@@ -23,7 +25,7 @@ func AppendRules(dst []byte, rules Rules) ([]byte, error) {
 	}
 
 	dst = slices.Grow(dst, rulesEncodedSize(rules))
-	dst = appendPacketHeader(dst, ResponseRules)
+	dst = transport.AppendPacketHeader(dst, transport.ResponseRules)
 	// #nosec G115 -- count is validated to fit uint16.
 	dst = binary.LittleEndian.AppendUint16(dst, uint16(len(rules)))
 	for _, rule := range rules {
@@ -38,7 +40,7 @@ func AppendRules(dst []byte, rules Rules) ([]byte, error) {
 
 // rulesEncodedSize returns the number of bytes appended by AppendRules.
 func rulesEncodedSize(rules Rules) int {
-	size := packetHeaderSize + 2
+	size := transport.PacketHeaderSize + 2
 	for _, rule := range rules {
 		size += len(rule.Name) + len(rule.Value) + 2
 	}

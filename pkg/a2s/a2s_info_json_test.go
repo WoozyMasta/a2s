@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestSourceInfoJSONContract(t *testing.T) {
@@ -31,7 +33,7 @@ func TestSourceInfoJSONContract(t *testing.T) {
 	body = append(body, 0)
 	body = binary.LittleEndian.AppendUint64(body, 107410)
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseInfo, body))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponseInfo, body))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)

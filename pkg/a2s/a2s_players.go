@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // Player contains player information from A2S_PLAYER query.
@@ -27,7 +28,7 @@ type Player struct {
 // GetPlayers queries the player list (A2S_PLAYER).
 // It returns a non-nil empty slice when the server reports no players.
 func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
-	packet, _, err := c.Query(ctx, PlayerRequest)
+	packet, _, err := c.Query(ctx, transport.PlayerRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +40,8 @@ func (c *Client) GetPlayers(ctx context.Context) ([]Player, error) {
 //
 // The response type must be ResponsePlayers.
 // The Ship's extended player payload remains available through GetTheShipPlayers.
-func DecodePlayers(packet Packet) ([]Player, error) {
-	if packet.Type != ResponsePlayers {
+func DecodePlayers(packet transport.Packet) ([]Player, error) {
+	if packet.Type != transport.ResponsePlayers {
 		return nil, errors.Join(ErrPlayerRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
 	}
 

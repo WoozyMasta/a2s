@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // cacheableQueryCount is the number of query types supported by Cache.
@@ -34,14 +34,14 @@ type cacheSnapshot struct {
 
 // cacheEntry contains one response and its validity state.
 type cacheEntry struct {
-	packet a2s.Packet // Cached logical response packet.
-	valid  bool       // Whether packet may be served.
+	packet transport.Packet // Cached logical response packet.
+	valid  bool             // Whether packet may be served.
 }
 
 // NewCache creates a cache with the supplied INFO, PLAYER, and RULES entries enabled.
 // Duplicate query types are harmless.
 // An empty list creates a cache with no enabled entries.
-func NewCache(queries []a2s.QueryType) (*Cache, error) {
+func NewCache(queries []transport.QueryType) (*Cache, error) {
 	cache := &Cache{}
 	for _, query := range queries {
 		index, ok := cacheIndex(query)
@@ -56,7 +56,7 @@ func NewCache(queries []a2s.QueryType) (*Cache, error) {
 }
 
 // Enabled reports whether query is configured for caching.
-func (c *Cache) Enabled(query a2s.QueryType) bool {
+func (c *Cache) Enabled(query transport.QueryType) bool {
 	if c == nil {
 		return false
 	}
@@ -70,7 +70,7 @@ func (c *Cache) Enabled(query a2s.QueryType) bool {
 // The packet payload is cloned before publication.
 // The response type must match the query type
 // so a cache entry cannot be served for the wrong query.
-func (c *Cache) Store(query a2s.QueryType, packet a2s.Packet) error {
+func (c *Cache) Store(query transport.QueryType, packet transport.Packet) error {
 	index, err := c.enabledIndex(query)
 	if err != nil {
 		return err
@@ -96,15 +96,15 @@ func (c *Cache) Store(query a2s.QueryType, packet a2s.Packet) error {
 //
 // The returned packet owns its payload
 // and can be modified by the caller without changing the cache.
-func (c *Cache) Load(query a2s.QueryType) (a2s.Packet, bool) {
+func (c *Cache) Load(query transport.QueryType) (transport.Packet, bool) {
 	if c == nil || !c.Enabled(query) {
-		return a2s.Packet{}, false
+		return transport.Packet{}, false
 	}
 
 	index, _ := cacheIndex(query)
 	snapshot := c.state.Load()
 	if snapshot == nil || !snapshot.entries[index].valid {
-		return a2s.Packet{}, false
+		return transport.Packet{}, false
 	}
 
 	return clonePacket(snapshot.entries[index].packet), true
@@ -112,7 +112,7 @@ func (c *Cache) Load(query a2s.QueryType) (a2s.Packet, bool) {
 
 // Invalidate marks an enabled query unavailable without affecting other entries.
 // The previous packet may remain in an internal snapshot but is never returned.
-func (c *Cache) Invalidate(query a2s.QueryType) error {
+func (c *Cache) Invalidate(query transport.QueryType) error {
 	index, err := c.enabledIndex(query)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (c *Cache) Invalidate(query a2s.QueryType) error {
 }
 
 // enabledIndex validates query support and returns its snapshot index.
-func (c *Cache) enabledIndex(query a2s.QueryType) (int, error) {
+func (c *Cache) enabledIndex(query transport.QueryType) (int, error) {
 	if c == nil {
 		return 0, fmt.Errorf("%w: cache is nil", ErrCache)
 	}
@@ -146,15 +146,15 @@ func (c *Cache) enabledIndex(query a2s.QueryType) (int, error) {
 }
 
 // cacheIndex maps a supported query type to its snapshot index.
-func cacheIndex(query a2s.QueryType) (int, bool) {
+func cacheIndex(query transport.QueryType) (int, bool) {
 	switch query {
-	case a2s.InfoRequest:
+	case transport.InfoRequest:
 		return 0, true
 
-	case a2s.PlayerRequest:
+	case transport.PlayerRequest:
 		return 1, true
 
-	case a2s.RulesRequest:
+	case transport.RulesRequest:
 		return 2, true
 
 	default:
@@ -163,16 +163,16 @@ func cacheIndex(query a2s.QueryType) (int, bool) {
 }
 
 // matchesQuery reports whether response can answer query.
-func matchesQuery(query a2s.QueryType, response a2s.ResponseType) bool {
+func matchesQuery(query transport.QueryType, response transport.ResponseType) bool {
 	switch query {
-	case a2s.InfoRequest:
-		return response == a2s.ResponseInfo || response == a2s.ResponseInfoGoldSource
+	case transport.InfoRequest:
+		return response == transport.ResponseInfo || response == transport.ResponseInfoGoldSource
 
-	case a2s.PlayerRequest:
-		return response == a2s.ResponsePlayers
+	case transport.PlayerRequest:
+		return response == transport.ResponsePlayers
 
-	case a2s.RulesRequest:
-		return response == a2s.ResponseRules
+	case transport.RulesRequest:
+		return response == transport.ResponseRules
 
 	default:
 		return false
@@ -190,7 +190,7 @@ func cloneSnapshot(snapshot *cacheSnapshot) *cacheSnapshot {
 }
 
 // clonePacket returns a packet with independently owned payload bytes.
-func clonePacket(packet a2s.Packet) a2s.Packet {
+func clonePacket(packet transport.Packet) transport.Packet {
 	packet.Payload = bytes.Clone(packet.Payload)
 	return packet
 }

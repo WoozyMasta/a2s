@@ -30,6 +30,8 @@ and handle Arma 3 and DayZ Server Browser Protocol responses.
   CLI for queries, diagnostics and cached proxy operation;
 * [`pkg/a2s`][Go a2s]:
   context-aware A2S client and transport-independent codecs;
+* [`pkg/a2s/transport`][Go transport]:
+  public low-level wire types, framing codecs, errors, and transaction engine;
 * [`pkg/a2s/server`][Go server]:
   UDP A2S server runtime with challenges and packetization;
 * [`pkg/a2s/proxy`][Go proxy]:
@@ -185,11 +187,11 @@ handler := server.HandlerFunc(func(
   _ context.Context,
   request *server.Request,
 ) (server.Response, error) {
-  if request.Query.Type != a2s.InfoRequest {
+  if request.Query.Type != transport.InfoRequest {
     return nil, server.ErrDrop
   }
   return server.InfoResponse{Info: a2s.Info{
-    Format: a2s.InfoFormat(a2s.ResponseInfo),
+    Format: a2s.InfoFormat(transport.ResponseInfo),
     Name:   "Example A2S server",
   }}, nil
 })
@@ -214,8 +216,8 @@ to serve cached responses and relay uncached queries.
 Use a `Poller` to refresh selected cache entries from the upstream client.
 
 ```go
-cache, _ := proxy.NewCache([]a2s.QueryType{
-  a2s.InfoRequest, a2s.RulesRequest,
+cache, _ := proxy.NewCache([]transport.QueryType{
+  transport.InfoRequest, transport.RulesRequest,
 })
 handler, _ := proxy.NewHandler(cache, upstream, proxy.HandlerConfig{
   ChallengeProvider: provider,
@@ -271,6 +273,7 @@ Your support is greatly appreciated!
 
 [Go module]: https://pkg.go.dev/github.com/woozymasta/a2s/
 [Go a2s]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s
+[Go transport]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/transport
 [Go a3sb]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a3sb
 [Go server]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/server
 [Go proxy]: https://pkg.go.dev/github.com/woozymasta/a2s/pkg/a2s/proxy

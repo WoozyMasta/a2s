@@ -6,9 +6,8 @@ package a2s
 
 import (
 	"context"
-	"errors"
 
-	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // GetChallenge queries an opaque challenge token
@@ -17,27 +16,11 @@ import (
 // The A2S_SERVERQUERY_GETCHALLENGE wire request is obsolete for ordinary queries
 // because Query handles challenge exchanges automatically,
 // but this method remains supported for explicit protocol access.
-func (c *Client) GetChallenge(ctx context.Context) (Challenge, error) {
-	packet, _, err := c.Query(ctx, ChallengeRequest)
+func (c *Client) GetChallenge(ctx context.Context) (transport.Challenge, error) {
+	packet, _, err := c.Query(ctx, transport.ChallengeRequest)
 	if err != nil {
-		return Challenge{}, err
+		return transport.Challenge{}, err
 	}
 
-	return parseChallenge(packet.Payload)
-}
-
-// parseChallenge parses the first four challenge bytes without reordering them.
-// Additional payload bytes are ignored for compatibility with responses
-// that append data after the challenge value.
-func parseChallenge(data []byte) (Challenge, error) {
-	decoder := wire.NewDecoder(data)
-	value, err := decoder.Bytes(len(Challenge{}))
-	if err != nil {
-		return Challenge{}, errors.Join(ErrChallengeValue, err)
-	}
-
-	var challenge Challenge
-	copy(challenge[:], value)
-
-	return challenge, nil
+	return transport.ParseChallengePayload(packet.Payload)
 }

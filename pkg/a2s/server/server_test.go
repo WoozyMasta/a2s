@@ -16,14 +16,15 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestServerServesTypedQueriesThroughA2SClient(t *testing.T) {
 	server, err := New(HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
 		switch request.Query.Type {
-		case a2s.InfoRequest:
+		case transport.InfoRequest:
 			return InfoResponse{Info: a2s.Info{
-				Format:   a2s.InfoFormat(a2s.ResponseInfo),
+				Format:   a2s.InfoFormat(transport.ResponseInfo),
 				Protocol: 17,
 				Name:     "test server",
 				Map:      "test_map",
@@ -31,10 +32,13 @@ func TestServerServesTypedQueriesThroughA2SClient(t *testing.T) {
 				Game:     "Test Game",
 				Version:  "1.0",
 			}}, nil
-		case a2s.PlayerRequest:
+
+		case transport.PlayerRequest:
 			return PlayersResponse{Players: []a2s.Player{{Name: "player", Score: 3, Duration: time.Second}}}, nil
-		case a2s.RulesRequest:
+
+		case transport.RulesRequest:
 			return RulesResponse{Rules: a2s.Rules{{Name: "hostname", Value: "test server"}}}, nil
+
 		default:
 			return nil, ErrDrop
 		}
@@ -96,19 +100,19 @@ func TestServerServesQueriesWithLegacyChallengePolicy(t *testing.T) {
 	server, err := New(
 		HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
 			switch request.Query.Type {
-			case a2s.InfoRequest:
+			case transport.InfoRequest:
 				return InfoResponse{Info: a2s.Info{
-					Format:  a2s.InfoFormat(a2s.ResponseInfo),
+					Format:  a2s.InfoFormat(transport.ResponseInfo),
 					Name:    "legacy server",
 					Map:     "legacy_map",
 					Folder:  "test",
 					Version: "1.0",
 				}}, nil
 
-			case a2s.PlayerRequest:
+			case transport.PlayerRequest:
 				return PlayersResponse{Players: []a2s.Player{{Name: "player"}}}, nil
 
-			case a2s.RulesRequest:
+			case transport.RulesRequest:
 				return RulesResponse{Rules: a2s.Rules{{Name: "mode", Value: "legacy"}}}, nil
 
 			default:
@@ -174,7 +178,7 @@ func TestServerServesLargeRulesThroughSourceSplit(t *testing.T) {
 
 	server, err := New(
 		HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
-			if request.Query.Type != a2s.RulesRequest {
+			if request.Query.Type != transport.RulesRequest {
 				return nil, ErrDrop
 			}
 			return RulesResponse{Rules: rules}, nil
@@ -223,7 +227,7 @@ func TestServerDropsOversizedDatagrams(t *testing.T) {
 	server, err := New(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
 			calls.Add(1)
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithMaxRequestSize(8),
@@ -251,9 +255,9 @@ func TestServerDropsOversizedDatagrams(t *testing.T) {
 	if _, err := client.Write(bytes.Repeat([]byte{0xFF}, 9)); err != nil {
 		t.Fatalf("Write(oversized) error = %v", err)
 	}
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		t.Fatalf("Write(valid) error = %v", err)
@@ -279,7 +283,7 @@ func TestServerIgnoresMalformedDatagrams(t *testing.T) {
 	server, err := New(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
 			calls.Add(1)
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithWorkers(1),
@@ -314,9 +318,9 @@ func TestServerIgnoresMalformedDatagrams(t *testing.T) {
 		}
 	}
 
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		t.Fatalf("Write(valid) error = %v", err)
@@ -354,7 +358,7 @@ func TestServerInvokesHandlerConcurrently(t *testing.T) {
 			entered <- struct{}{}
 			<-release
 			active.Add(-1)
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithWorkers(2),
@@ -371,9 +375,9 @@ func TestServerInvokesHandlerConcurrently(t *testing.T) {
 	go func() { serveErr <- server.Serve(conn) }()
 
 	clients := make([]*net.UDPConn, 2)
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	for index := range clients {
 		clients[index], err = net.DialUDP("udp", nil, conn.LocalAddr().(*net.UDPAddr))
@@ -459,9 +463,9 @@ func TestServerShutdownCancelsHandlersAndKeepsConnectionOpen(t *testing.T) {
 		t.Fatalf("DialUDP() error = %v", err)
 	}
 	defer client.Close()
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -489,7 +493,7 @@ func TestServerShutdownCancelsHandlersAndKeepsConnectionOpen(t *testing.T) {
 func TestServerContextCancellationStopsServe(t *testing.T) {
 	server, err := New(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithWorkers(1),
@@ -520,7 +524,7 @@ func TestServerRejectsConcurrentServe(t *testing.T) {
 	server, err := New(
 		HandlerFunc(func(context.Context, *Request) (Response, error) {
 			close(started)
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithWorkers(1),
@@ -542,11 +546,11 @@ func TestServerRejectsConcurrentServe(t *testing.T) {
 		t.Fatalf("DialUDP() error = %v", err)
 	}
 	defer client.Close()
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
 		_ = first.Close()
 		<-firstErr
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		_ = first.Close()
@@ -591,7 +595,7 @@ func TestServerRecoversHandlerPanicAndContinues(t *testing.T) {
 			if calls.Add(1) == 1 {
 				panic("handler failure")
 			}
-			return PacketResponse{Packet: a2s.Packet{Type: a2s.ResponsePing}}, nil
+			return PacketResponse{Packet: transport.Packet{Type: transport.ResponsePing}}, nil
 		}),
 		WithChallengePolicy(NoChallengePolicy()),
 		WithPanicReporter(func(_ context.Context, report PanicReport) {
@@ -617,9 +621,9 @@ func TestServerRecoversHandlerPanicAndContinues(t *testing.T) {
 		t.Fatalf("DialUDP() error = %v", err)
 	}
 	defer client.Close()
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		t.Fatalf("Write(first) error = %v", err)
@@ -685,9 +689,9 @@ func TestServerDefaultPanicReporterIsSafe(t *testing.T) {
 		t.Fatalf("DialUDP() error = %v", err)
 	}
 	defer client.Close()
-	request, err := a2s.AppendRequest(nil, a2s.Request{Type: a2s.PingRequest})
+	request, err := transport.AppendRequest(nil, transport.Request{Type: transport.PingRequest})
 	if err != nil {
-		t.Fatalf("AppendRequest() error = %v", err)
+		t.Fatalf("transport.AppendRequest() error = %v", err)
 	}
 	if _, err := client.Write(request); err != nil {
 		t.Fatalf("Write() error = %v", err)

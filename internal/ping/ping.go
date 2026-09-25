@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // Output configures destinations and localization for a ping run.
@@ -54,10 +55,11 @@ func writeLine(out io.Writer, values ...any) {
 // Start sends selected A2S requests until count is reached
 // or a termination signal is received,
 // then prints statistics for successful responses.
-func Start(client *a2s.Client, count int, period time.Duration, requestType a2s.QueryType, output Output) {
+func Start(client *a2s.Client, count int, period time.Duration, requestType transport.QueryType, output Output) {
 	var errorCount int
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
 	if output.Out == nil {
 		output.Out = os.Stdout
 	}
@@ -110,7 +112,11 @@ func Start(client *a2s.Client, count int, period time.Duration, requestType a2s.
 
 			logger.Printf(
 				"%s",
-				output.Localize("ping.error", "Failed to get ping: %s", formatLocalizedPingError(err, output.Localize)),
+				output.Localize(
+					"ping.error",
+					"Failed to get ping: %s",
+					formatLocalizedPingError(err, output.Localize),
+				),
 			)
 			errorCount++
 			continue
@@ -123,7 +129,7 @@ func Start(client *a2s.Client, count int, period time.Duration, requestType a2s.
 		if output.Compact {
 			writeLine(output.Out, formatMilliseconds(pingDuration))
 		} else {
-			if requestType == a2s.InfoRequest && !metadataPrinted {
+			if requestType == transport.InfoRequest && !metadataPrinted {
 				writeServerMetadata(output, client, info)
 				writeLine(output.Out)
 				metadataPrinted = true
@@ -192,27 +198,31 @@ func Start(client *a2s.Client, count int, period time.Duration, requestType a2s.
 }
 
 // query executes and validates one selected A2S response.
-func query(ctx context.Context, client *a2s.Client, requestType a2s.QueryType) (*a2s.Info, a2s.QueryMeta, error) {
+func query(
+	ctx context.Context,
+	client *a2s.Client,
+	requestType transport.QueryType,
+) (*a2s.Info, transport.QueryMeta, error) {
 	packet, meta, err := client.Query(ctx, requestType)
 	if err != nil {
-		return nil, a2s.QueryMeta{}, err
+		return nil, transport.QueryMeta{}, err
 	}
 
 	switch requestType {
-	case a2s.InfoRequest:
+	case transport.InfoRequest:
 		info, err := a2s.DecodeInfo(packet)
 		return info, meta, err
 
-	case a2s.PlayerRequest:
+	case transport.PlayerRequest:
 		_, err := a2s.DecodePlayers(packet)
 		return nil, meta, err
 
-	case a2s.RulesRequest:
+	case transport.RulesRequest:
 		_, err := a2s.DecodeRules(packet)
 		return nil, meta, err
 
 	default:
-		return nil, a2s.QueryMeta{}, fmt.Errorf("unsupported ping query type: 0x%02x", byte(requestType))
+		return nil, transport.QueryMeta{}, fmt.Errorf("unsupported ping query type: 0x%02x", byte(requestType))
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestTransparentLogicalPacketProxy(t *testing.T) {
@@ -29,9 +30,9 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 		})
 	}
 
-	upstreamProvider := &proxyChallengeProvider{token: a2s.Challenge{1, 2, 3, 4}}
+	upstreamProvider := &proxyChallengeProvider{token: transport.Challenge{1, 2, 3, 4}}
 	upstreamHandler := HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
-		if request.Query.Type != a2s.RulesRequest {
+		if request.Query.Type != transport.RulesRequest {
 			return nil, ErrDrop
 		}
 		return RulesResponse{Rules: rules}, nil
@@ -54,7 +55,7 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 	}
 	defer upstreamClient.Close()
 
-	expected, _, err := upstreamClient.Query(context.Background(), a2s.RulesRequest)
+	expected, _, err := upstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("upstream Query() error = %v", err)
 	}
@@ -63,9 +64,9 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 	}
 	upstreamSplitsBeforeProxy := upstreamConn.splitWrites()
 
-	downstreamProvider := &proxyChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+	downstreamProvider := &proxyChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 	downstreamHandler := HandlerFunc(func(ctx context.Context, _ *Request) (Response, error) {
-		packet, _, err := upstreamClient.Query(ctx, a2s.RulesRequest)
+		packet, _, err := upstreamClient.Query(ctx, transport.RulesRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +91,7 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 	}
 	defer downstreamClient.Close()
 
-	got, _, err := downstreamClient.Query(context.Background(), a2s.RulesRequest)
+	got, _, err := downstreamClient.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("downstream Query() error = %v", err)
 	}
@@ -135,16 +136,16 @@ func TestTransparentLogicalPacketProxy(t *testing.T) {
 }
 
 type proxyChallengeProvider struct {
-	token  a2s.Challenge
+	token  transport.Challenge
 	issued atomic.Int32
 }
 
-func (p *proxyChallengeProvider) Issue(netip.AddrPort) a2s.Challenge {
+func (p *proxyChallengeProvider) Issue(netip.AddrPort) transport.Challenge {
 	p.issued.Add(1)
 	return p.token
 }
 
-func (p *proxyChallengeProvider) Validate(_ netip.AddrPort, challenge a2s.Challenge) bool {
+func (p *proxyChallengeProvider) Validate(_ netip.AddrPort, challenge transport.Challenge) bool {
 	return challenge == p.token
 }
 

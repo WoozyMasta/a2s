@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestReadInfoBool(t *testing.T) {
@@ -38,7 +39,7 @@ func TestReadInfoBool(t *testing.T) {
 }
 
 func TestDecodeInfoRejectsUnsupportedPacketType(t *testing.T) {
-	_, err := DecodeInfo(Packet{Type: ResponseRules})
+	_, err := DecodeInfo(transport.Packet{Type: transport.ResponseRules})
 	if !errors.Is(err, ErrInfoUnsupportedFormat) {
 		t.Fatalf("DecodeInfo() error = %v, want ErrInfoUnsupportedFormat", err)
 	}
@@ -100,7 +101,7 @@ func TestParseInfoSourceOptionalTailFailures(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: test.data})
+			_, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfo, Payload: test.data})
 			if test.want == nil {
 				if err != nil {
 					t.Fatalf("DecodeInfo() error = %v, want nil", err)

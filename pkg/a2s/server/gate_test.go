@@ -11,25 +11,26 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 type gateTestProvider struct {
-	challenge a2s.Challenge
+	challenge transport.Challenge
 	valid     bool
 	issued    int
 }
 
-func (p *gateTestProvider) Issue(netip.AddrPort) a2s.Challenge {
+func (p *gateTestProvider) Issue(netip.AddrPort) transport.Challenge {
 	p.issued++
 	return p.challenge
 }
 
-func (p *gateTestProvider) Validate(netip.AddrPort, a2s.Challenge) bool {
+func (p *gateTestProvider) Validate(netip.AddrPort, transport.Challenge) bool {
 	return p.valid
 }
 
 func TestChallengeGateRequiresInfoChallenge(t *testing.T) {
-	provider := &gateTestProvider{challenge: a2s.Challenge{1, 2, 3, 4}}
+	provider := &gateTestProvider{challenge: transport.Challenge{1, 2, 3, 4}}
 	called := false
 	next := HandlerFunc(func(context.Context, *Request) (Response, error) {
 		called = true
@@ -42,7 +43,7 @@ func TestChallengeGateRequiresInfoChallenge(t *testing.T) {
 
 	response, err := gate.Handle(context.Background(), &Request{
 		Remote: netip.MustParseAddrPort("192.0.2.1:27015"),
-		Query:  a2s.Request{Type: a2s.InfoRequest},
+		Query:  transport.Request{Type: transport.InfoRequest},
 	})
 	if err != nil {
 		t.Fatalf("Handle() error = %v", err)
@@ -51,10 +52,10 @@ func TestChallengeGateRequiresInfoChallenge(t *testing.T) {
 	if !ok {
 		t.Fatalf("Handle() response = %T, want PacketResponse", response)
 	}
-	if packet.Packet.Type != a2s.ResponseChallenge {
-		t.Fatalf("challenge response type = 0x%X, want 0x%X", packet.Packet.Type, a2s.ResponseChallenge)
+	if packet.Packet.Type != transport.ResponseChallenge {
+		t.Fatalf("challenge response type = 0x%X, want 0x%X", packet.Packet.Type, transport.ResponseChallenge)
 	}
-	if len(packet.Packet.Payload) != len(a2s.Challenge{}) {
+	if len(packet.Packet.Payload) != len(transport.Challenge{}) {
 		t.Fatalf("challenge payload length = %d, want 4", len(packet.Packet.Payload))
 	}
 	if called {
@@ -80,9 +81,9 @@ func TestChallengeGateForwardsValidChallenge(t *testing.T) {
 
 	response, err := gate.Handle(context.Background(), &Request{
 		Remote: netip.MustParseAddrPort("192.0.2.1:27015"),
-		Query: a2s.Request{
-			Type:         a2s.RulesRequest,
-			Challenge:    a2s.Challenge{4, 3, 2, 1},
+		Query: transport.Request{
+			Type:         transport.RulesRequest,
+			Challenge:    transport.Challenge{4, 3, 2, 1},
 			HasChallenge: true,
 		},
 	})
@@ -102,7 +103,7 @@ func TestChallengeGateForwardsValidChallenge(t *testing.T) {
 }
 
 func TestChallengeGateRejectsInvalidChallengeWithoutHandler(t *testing.T) {
-	provider := &gateTestProvider{challenge: a2s.Challenge{9, 8, 7, 6}}
+	provider := &gateTestProvider{challenge: transport.Challenge{9, 8, 7, 6}}
 	called := false
 	next := HandlerFunc(func(context.Context, *Request) (Response, error) {
 		called = true
@@ -115,9 +116,9 @@ func TestChallengeGateRejectsInvalidChallengeWithoutHandler(t *testing.T) {
 
 	response, err := gate.Handle(context.Background(), &Request{
 		Remote: netip.MustParseAddrPort("192.0.2.1:27015"),
-		Query: a2s.Request{
-			Type:         a2s.PlayerRequest,
-			Challenge:    a2s.Challenge{1, 1, 1, 1},
+		Query: transport.Request{
+			Type:         transport.PlayerRequest,
+			Challenge:    transport.Challenge{1, 1, 1, 1},
 			HasChallenge: true,
 		},
 	})
@@ -145,7 +146,7 @@ func TestChallengeGateLegacyInfoBypassesChallenge(t *testing.T) {
 	}
 
 	if _, err := gate.Handle(context.Background(), &Request{
-		Query: a2s.Request{Type: a2s.InfoRequest},
+		Query: transport.Request{Type: transport.InfoRequest},
 	}); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}

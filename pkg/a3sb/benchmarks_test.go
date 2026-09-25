@@ -18,7 +18,7 @@ func BenchmarkParseA3SBArma3Fixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := parseA3SBEnvelope(envelope, LayoutArma3, appid.Arma3); err != nil {
 			b.Fatal(err)
 		}
@@ -43,7 +43,7 @@ func BenchmarkParseA3SBDayZFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := parseA3SBEnvelope(envelope, LayoutDayZ, appid.DayZ); err != nil {
 			b.Fatal(err)
 		}
@@ -60,7 +60,7 @@ func BenchmarkParseAutomaticA3SBFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := parseAutomatic(result); err != nil {
 			b.Fatal(err)
 		}
@@ -77,7 +77,7 @@ func BenchmarkAssembleA3SBPagesFixture(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := assemblePages(pages, 4); err != nil {
 			b.Fatal(err)
 		}

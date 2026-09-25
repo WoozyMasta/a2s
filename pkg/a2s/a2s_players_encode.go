@@ -10,6 +10,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // AppendPlayers appends one complete logical A2S_PLAYER response to dst.
@@ -21,7 +23,7 @@ func AppendPlayers(dst []byte, players []Player) ([]byte, error) {
 		return dst, err
 	}
 
-	dst = appendPacketHeader(dst, ResponsePlayers)
+	dst = transport.AppendPacketHeader(dst, transport.ResponsePlayers)
 	dst = append(dst, byte(len(players))) // #nosec G115 -- count is validated to fit uint8.
 	for _, player := range players {
 		dst = append(dst, player.Index)

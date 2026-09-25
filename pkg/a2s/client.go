@@ -5,23 +5,14 @@
 package a2s
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
-)
 
-const (
-	// maxUnsupportedResponses bounds retries after an unexpected response type.
-	maxUnsupportedResponses = 3
-
-	// maxChallengeResponses bounds challenge responses in one query transaction.
-	maxChallengeResponses = 4
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // Client handles UDP connection and A2S protocol queries.
@@ -68,8 +59,8 @@ func NewWithAddr(addr *net.UDPAddr, opts ...Option) (*Client, error) {
 	client := &Client{
 		address:    cloneAddress(addr),
 		timeout:    DefaultDeadlineTimeout,
-		bufferSize: DefaultBufferSize,
-		readBuf:    make([]byte, DefaultBufferSize),
+		bufferSize: transport.DefaultBufferSize,
+		readBuf:    make([]byte, transport.DefaultBufferSize),
 		querySem:   make(chan struct{}, 1),
 	}
 
@@ -152,6 +143,8 @@ func (c *Client) SetBufferSize(size uint16) error {
 	return c.setBufferSize(size)
 }
 
+// setBufferSize validates and applies a receive-buffer size while the client
+// lifecycle lock is held by the caller.
 func (c *Client) setBufferSize(size uint16) error {
 	if size == 0 {
 		return ErrInvalidBufferSize
@@ -203,6 +196,7 @@ func (c *Client) Close() error {
 	return err
 }
 
+// validateAddress rejects unusable wildcard and zero-port destinations.
 func validateAddress(addr *net.UDPAddr) error {
 	if addr == nil || addr.IP == nil || addr.IP.IsUnspecified() || addr.Port == 0 {
 		return ErrInvalidAddress
@@ -211,6 +205,7 @@ func validateAddress(addr *net.UDPAddr) error {
 	return nil
 }
 
+// cloneAddress returns an address copy that cannot be mutated through the caller's IP slice.
 func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 	if addr == nil {
 		return nil
@@ -227,18 +222,18 @@ func cloneAddress(addr *net.UDPAddr) *net.UDPAddr {
 // and compressed split responses are handled internally.
 // QueryMeta.Duration covers the complete logical transaction,
 // including retries and challenge exchange.
-func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, QueryMeta, error) {
+func (c *Client) Query(ctx context.Context, requestType transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
 	if c == nil {
-		return Packet{}, QueryMeta{}, ErrClientClosed
+		return transport.Packet{}, transport.QueryMeta{}, ErrClientClosed
 	}
 	if ctx == nil {
-		return Packet{}, QueryMeta{}, ErrNilContext
+		return transport.Packet{}, transport.QueryMeta{}, ErrNilContext
 	}
 
 	effectiveCtx, cancel := c.effectiveContext(ctx)
 	defer cancel()
 	if err := c.acquireQuery(effectiveCtx); err != nil {
-		return Packet{}, QueryMeta{}, err
+		return transport.Packet{}, transport.QueryMeta{}, err
 	}
 	defer c.releaseQuery()
 
@@ -246,14 +241,13 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 	defer c.queryMu.Unlock()
 
 	if c.conn == nil {
-		return Packet{}, QueryMeta{}, ErrClientClosed
+		return transport.Packet{}, transport.QueryMeta{}, ErrClientClosed
 	}
 
-	conn := c.conn
 	readDeadlineDone := make(chan struct{})
 	stopReadDeadline := context.AfterFunc(effectiveCtx, func() {
 		defer close(readDeadlineDone)
-		_ = conn.SetReadDeadline(time.Now())
+		_ = c.conn.SetReadDeadline(time.Now())
 	})
 	defer func() {
 		if !stopReadDeadline() {
@@ -261,75 +255,19 @@ func (c *Client) Query(ctx context.Context, requestType QueryType) (Packet, Quer
 		}
 	}()
 
-	started := time.Now()
-
-	var (
-		lastUnexpectedErr      error
-		lastUnexpectedResponse ResponseType
-		usedChallenge          bool
+	packet, meta, err := transport.Execute(
+		effectiveCtx,
+		clientDatagramIO{conn: c.conn},
+		requestType,
+		c.readBuf,
 	)
-
-	for range maxUnsupportedResponses {
-		resp, responseType, attemptUsedChallenge, err := c.requestWithChallenge(effectiveCtx, requestType)
-		usedChallenge = usedChallenge || attemptUsedChallenge
-		meta := QueryMeta{
-			Duration:      time.Since(started),
-			UsedChallenge: usedChallenge,
-		}
-		if err != nil {
-			if lastUnexpectedErr != nil {
-				return Packet{Type: lastUnexpectedResponse}, meta, errors.Join(lastUnexpectedErr, err)
-			}
-
-			return Packet{Type: responseType}, meta, err
-		}
-
-		packet, err := DecodePacket(resp)
-		if err != nil {
-			return Packet{}, meta, err
-		}
-
-		// If response type is not valid, classify error as ErrQueryUnsupported and continue.
-		if err := validateResponseType(requestType, packet.Type); err != nil {
-			classified := err
-			switch {
-			case packet.Type == ResponseChallenge:
-				classified = errors.Join(err, ErrChallengeLoop)
-
-			case requestType != InfoRequest &&
-				(packet.Type == ResponseInfo || packet.Type == ResponseInfoGoldSource):
-				classified = errors.Join(err, ErrQueryUnsupported)
-			}
-
-			if requestType != InfoRequest &&
-				(packet.Type == ResponseChallenge ||
-					packet.Type == ResponseInfo ||
-					packet.Type == ResponseInfoGoldSource) {
-				lastUnexpectedErr = classified
-				lastUnexpectedResponse = packet.Type
-				continue
-			}
-
-			return packet, meta, classified
-		}
-
-		return packet, meta, nil
-	}
-
-	if lastUnexpectedErr != nil {
-		return Packet{Type: lastUnexpectedResponse}, QueryMeta{
-			Duration:      time.Since(started),
-			UsedChallenge: usedChallenge,
-		}, lastUnexpectedErr
-	}
-
-	return Packet{}, QueryMeta{Duration: time.Since(started)}, validationErrForRequest(requestType)
+	return packet, meta, err
 }
 
 // Get sends one A2S request and returns its payload, response type, and query duration.
 //
 // Deprecated: use Query to retain the complete logical response as a Packet.
-func (c *Client) Get(ctx context.Context, requestType QueryType) ([]byte, ResponseType, time.Duration, error) {
+func (c *Client) Get(ctx context.Context, requestType transport.QueryType) ([]byte, transport.ResponseType, time.Duration, error) {
 	packet, meta, err := c.Query(ctx, requestType)
 	return packet.Payload, packet.Type, meta.Duration, err
 }
@@ -367,307 +305,32 @@ func (c *Client) releaseQuery() {
 	<-c.querySem
 }
 
-// requestWithChallenge executes one request transaction,
-// including its bounded challenge exchange.
-// ChallengeRequest returns its challenge
-// as the final response and must never enter this exchange.
-func (c *Client) requestWithChallenge(
-	ctx context.Context,
-	requestType QueryType,
-) ([]byte, ResponseType, bool, error) {
-	challenge := InitialChallenge
-
-	for attempt := range maxChallengeResponses {
-		resp, err := c.request(ctx, requestType, challenge)
-		if err != nil {
-			return nil, 0, attempt > 0, err
-		}
-
-		responseType := ResponseType(resp[4])
-		if responseType != ResponseChallenge || requestType == ChallengeRequest || requestType == PingRequest {
-			return resp, responseType, attempt > 0, nil
-		}
-
-		if attempt == maxChallengeResponses-1 {
-			return resp, ResponseChallenge, true, ErrChallengeLoop
-		}
-
-		challenge, err = parseChallengeResponse(resp)
-		if err != nil {
-			return resp, ResponseChallenge, true, err
-		}
-	}
-
-	return nil, ResponseChallenge, true, ErrChallengeLoop
+// clientDatagramIO adapts the connected client socket to the shared engine.
+type clientDatagramIO struct {
+	conn *net.UDPConn // Connected UDP socket used by the client.
 }
 
-// parseChallengeResponse reads a challenge from a complete A2S response.
-func parseChallengeResponse(data []byte) (Challenge, error) {
-	if len(data) < 9 {
-		return Challenge{}, fmt.Errorf(
-			"%w: %w (got %d bytes, want at least 9)",
-			ErrChallengeRead,
-			ErrInsufficientData,
-			len(data),
-		)
-	}
-
-	challenge, err := parseChallenge(data[5:])
-	if err != nil {
-		return Challenge{}, errors.Join(ErrChallengeRead, err)
-	}
-
-	return challenge, nil
-}
-
-// validationErrForRequest returns an error for an unsupported request type.
-func validationErrForRequest(requestType QueryType) error {
-	switch requestType {
-	case InfoRequest:
-		return ErrValidatorInfo
-
-	case PlayerRequest:
-		return ErrValidatorPlayer
-
-	case RulesRequest:
-		return ErrValidatorRules
-
-	case PingRequest:
-		return ErrValidatorPing
-
-	case ChallengeRequest:
-		return ErrValidatorChallenge
-
-	default:
-		return ErrValidatorRequest
-	}
-}
-
-// request creates header, sends request and returns a complete response.
-// Handles multi-packet responses by collecting and assembling packets.
-func (c *Client) request(ctx context.Context, requestType QueryType, challenge Challenge) ([]byte, error) {
+// Write sends one datagram through the connected client socket.
+func (io clientDatagramIO) Write(ctx context.Context, data []byte) error {
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 
-	req, err := createHeader(requestType, challenge)
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := c.conn.Write(req); err != nil {
-		return nil, contextError(ctx, err)
-	}
-
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(c.Timeout())
-	}
-	if err := c.conn.SetReadDeadline(deadline); err != nil {
-		return nil, err
-	}
-
-	var (
-		resp      []byte
-		n         int
-		packetErr error
-	)
-	readOK := false
-
-	for range 6 {
-		if cap(c.readBuf) < int(c.bufferSize) {
-			c.readBuf = make([]byte, c.bufferSize)
-		}
-		resp = c.readBuf[:c.bufferSize]
-		n, err = c.conn.Read(resp)
-		if err != nil {
-			return nil, contextError(ctx, err)
-		}
-
-		_, packetErr = isMultiPacket(resp[:n])
-		if packetErr != nil {
-			if errors.Is(packetErr, ErrMultiPacket) ||
-				errors.Is(packetErr, ErrSinglePacket) ||
-				errors.Is(packetErr, ErrValidatorHeader) {
-				continue // Ignore truncated or unrelated datagrams and keep reading.
-			}
-			break
-		}
-
-		readOK = true
-		break
-	}
-
-	if !readOK {
-		if packetErr != nil {
-			result := make([]byte, n)
-			copy(result, resp[:n])
-			return result, packetErr
-		}
-		return nil, ErrSinglePacket
-	}
-
-	multi, err := isMultiPacket(resp[:n])
-	if err != nil {
-		result := make([]byte, n)
-		copy(result, resp[:n])
-		return result, err
-	}
-
-	if !multi {
-		result := make([]byte, n)
-		copy(result, resp[:n])
-		return result, nil
-	}
-
-	// Multi-packet response: classify the first datagram, then collect raw/ fragments.
-	// Compression metadata is parsed from fragment zero
-	// after all fragments have been identified, because UDP may reorder their arrival.
-	info, err := parseSplitHeader(resp[:n])
-	if err != nil {
-		return nil, err
-	}
-
-	if info.count > splitPacketCountMax || info.index < 0 || info.index >= info.count {
-		return nil, ErrMultiPacket
-	}
-	if n > splitResponseSizeMax {
-		return nil, ErrMultiPacketSize
-	}
-
-	packets := make([][]byte, info.count)
-	received := 1
-	receivedSize := n
-	firstPacket := make([]byte, n)
-	copy(firstPacket, resp[:n])
-	packets[info.index] = firstPacket
-
-	// Collect remaining packets.
-	// Unrelated datagrams are ignored because UDP does not guarantee
-	// that the next datagram belongs to this request.
-	for received < info.count {
-		if cap(c.readBuf) < int(c.bufferSize) {
-			c.readBuf = make([]byte, c.bufferSize)
-		}
-
-		resp = c.readBuf[:c.bufferSize]
-		n, err := c.conn.Read(resp)
-		if err != nil {
-			return nil, contextError(ctx, err)
-		}
-
-		if n < splitMin {
-			continue
-		}
-
-		if binary.LittleEndian.Uint32(resp[4:8]) != info.id {
-			continue
-		}
-
-		packetInfo, err := parseSplitHeader(resp[:n])
-		if err != nil {
-			return nil, errors.Join(ErrMultiPacketInconsistent, err)
-		}
-		if err := validateSplitFragment(info, packetInfo); err != nil {
-			return nil, err
-		}
-
-		currentPacket := packetInfo.index
-		if currentPacket < 0 || currentPacket >= info.count {
-			continue
-		}
-
-		if packets[currentPacket] == nil {
-			if n > splitResponseSizeMax-receivedSize {
-				return nil, ErrMultiPacketSize
-			}
-
-			packet := make([]byte, n)
-			copy(packet, resp[:n])
-			packets[currentPacket] = packet
-			receivedSize += n
-			received++
-		} else if !bytes.Equal(packets[currentPacket], resp[:n]) {
-			return nil, ErrMultiPacketConflict
-		}
-	}
-
-	// Fragment zero owns compression metadata
-	// and determines the payload offset for the complete response.
-	// Parse it only after reassembly has all indexes.
-	firstInfo, err := parseSplitHeader(packets[0])
-	if err != nil || firstInfo.index != 0 {
-		return nil, ErrMultiPacket
-	}
-	info = firstInfo
-
-	// Calculate total size and assemble packets in protocol order.
-	totalSize := 0
-	for i := 0; i < info.count; i++ {
-		if packets[i] == nil {
-			return nil, ErrMultiPacketMismatch
-		}
-
-		packetInfo, err := parseSplitHeader(packets[i])
-		if err != nil {
-			return nil, errors.Join(ErrMultiPacketInconsistent, err)
-		}
-		if err := validateSplitFragment(info, packetInfo); err != nil || packetInfo.index != i {
-			return nil, ErrMultiPacketInconsistent
-		}
-
-		dataOff := info.headerSize
-		if i == 0 {
-			dataOff = info.dataOff
-		}
-		if len(packets[i]) < dataOff {
-			return nil, ErrMultiPacket
-		}
-
-		packetSize := len(packets[i]) - dataOff
-		if packetSize > splitResponseSizeMax-totalSize {
-			return nil, ErrMultiPacketSize
-		}
-
-		totalSize += packetSize
-	}
-
-	assembledResp := make([]byte, 0, totalSize)
-	for i, packet := range packets {
-		dataOff := info.headerSize
-		if i == 0 {
-			dataOff = info.dataOff
-		}
-		assembledResp = append(assembledResp, packet[dataOff:]...)
-	}
-
-	if info.compressed {
-		decompressed, err := decompressBzip2(assembledResp, info.unpackedSize, info.crc)
-		if err != nil {
-			return nil, err
-		}
-		return decompressed, nil
-	}
-
-	return assembledResp, nil
+	_, err := io.conn.Write(data)
+	return err
 }
 
-// contextError prefers cancellation or deadline errors over socket timeout errors
-// so callers can reliably use errors.Is with context errors.
-func contextError(ctx context.Context, err error) error {
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return ctxErr
+// Read receives one datagram and applies the context deadline to the socket.
+func (io clientDatagramIO) Read(ctx context.Context, data []byte) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
 	}
 
-	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
-		// The socket deadline is derived from ctx,
-		// but the network poller can report its timeout
-		// before the context timer publishes ctx.Err().
-		if _, ok := ctx.Deadline(); ok {
-			return context.DeadlineExceeded
+	if deadline, ok := ctx.Deadline(); ok {
+		if err := io.conn.SetReadDeadline(deadline); err != nil {
+			return 0, err
 		}
 	}
 
-	return err
+	return io.conn.Read(data)
 }

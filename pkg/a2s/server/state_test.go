@@ -11,12 +11,13 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 	gameID := uint64(123456789)
 	info := &a2s.Info{
-		Format:   a2s.InfoFormat(a2s.ResponseInfo),
+		Format:   a2s.InfoFormat(transport.ResponseInfo),
 		Protocol: 17,
 		Name:     "before",
 		Map:      "map_before",
@@ -41,7 +42,7 @@ func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 	players[0].Name = "player_after"
 	rules[0].Value = "value_after"
 
-	infoResponse := stateResponse(t, state, a2s.InfoRequest)
+	infoResponse := stateResponse(t, state, transport.InfoRequest)
 	decodedInfo, err := a2s.DecodeInfo(infoResponse.Packet)
 	if err != nil {
 		t.Fatalf("DecodeInfo() error = %v", err)
@@ -50,7 +51,7 @@ func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 		t.Fatalf("stored info changed after Store: %#v", decodedInfo)
 	}
 
-	playersResponse := stateResponse(t, state, a2s.PlayerRequest)
+	playersResponse := stateResponse(t, state, transport.PlayerRequest)
 	decodedPlayers, err := a2s.DecodePlayers(playersResponse.Packet)
 	if err != nil {
 		t.Fatalf("DecodePlayers() error = %v", err)
@@ -59,7 +60,7 @@ func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 		t.Fatalf("stored players changed after Store: %#v", decodedPlayers)
 	}
 
-	rulesResponse := stateResponse(t, state, a2s.RulesRequest)
+	rulesResponse := stateResponse(t, state, transport.RulesRequest)
 	decodedRules, err := a2s.DecodeRules(rulesResponse.Packet)
 	if err != nil {
 		t.Fatalf("DecodeRules() error = %v", err)
@@ -69,7 +70,7 @@ func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 	}
 
 	infoResponse.Packet.Payload[0] ^= 0xFF
-	decodedAgain := stateResponse(t, state, a2s.InfoRequest)
+	decodedAgain := stateResponse(t, state, transport.InfoRequest)
 	if _, err := a2s.DecodeInfo(decodedAgain.Packet); err != nil {
 		t.Fatalf("internal packet was modified through response: %v", err)
 	}
@@ -77,7 +78,7 @@ func TestStateStoresDeepCopiedPreEncodedSnapshot(t *testing.T) {
 
 func TestStateDefinesEmptyAndMissingResponses(t *testing.T) {
 	state := NewState()
-	request := &Request{Query: a2s.Request{Type: a2s.InfoRequest}}
+	request := &Request{Query: transport.Request{Type: transport.InfoRequest}}
 	if _, err := state.Handle(context.Background(), request); !errors.Is(err, ErrStateUnavailable) {
 		t.Fatalf("Handle(empty INFO) error = %v, want ErrStateUnavailable", err)
 	}
@@ -89,7 +90,7 @@ func TestStateDefinesEmptyAndMissingResponses(t *testing.T) {
 		t.Fatalf("Handle(missing INFO) error = %v, want ErrStateUnavailable", err)
 	}
 
-	players := stateResponse(t, state, a2s.PlayerRequest)
+	players := stateResponse(t, state, transport.PlayerRequest)
 	decodedPlayers, err := a2s.DecodePlayers(players.Packet)
 	if err != nil {
 		t.Fatalf("DecodePlayers(empty) error = %v", err)
@@ -98,7 +99,7 @@ func TestStateDefinesEmptyAndMissingResponses(t *testing.T) {
 		t.Fatalf("empty players = %#v, want empty", decodedPlayers)
 	}
 
-	rules := stateResponse(t, state, a2s.RulesRequest)
+	rules := stateResponse(t, state, transport.RulesRequest)
 	decodedRules, err := a2s.DecodeRules(rules.Packet)
 	if err != nil {
 		t.Fatalf("DecodeRules(empty) error = %v", err)
@@ -115,7 +116,7 @@ func TestStateStoreFailureKeepsPreviousSnapshot(t *testing.T) {
 	}
 
 	invalid := &a2s.Info{
-		Format:  a2s.InfoFormat(a2s.ResponseInfo),
+		Format:  a2s.InfoFormat(transport.ResponseInfo),
 		Name:    "invalid\x00name",
 		Version: "1.0",
 	}
@@ -123,7 +124,7 @@ func TestStateStoreFailureKeepsPreviousSnapshot(t *testing.T) {
 		t.Fatalf("Store(invalid) error = %v, want ErrState", err)
 	}
 
-	rules := stateResponse(t, state, a2s.RulesRequest)
+	rules := stateResponse(t, state, transport.RulesRequest)
 	decodedRules, err := a2s.DecodeRules(rules.Packet)
 	if err != nil {
 		t.Fatalf("DecodeRules() error = %v", err)
@@ -157,7 +158,7 @@ func TestStateConcurrentStoreAndHandle(t *testing.T) {
 	for range 2 {
 		go func() {
 			defer group.Done()
-			request := &Request{Query: a2s.Request{Type: a2s.RulesRequest}}
+			request := &Request{Query: transport.Request{Type: transport.RulesRequest}}
 			for i := 0; i < 100; i++ {
 				response, err := state.Handle(context.Background(), request)
 				if err != nil {
@@ -174,10 +175,10 @@ func TestStateConcurrentStoreAndHandle(t *testing.T) {
 	group.Wait()
 }
 
-func stateResponse(t *testing.T, state *State, query a2s.QueryType) PacketResponse {
+func stateResponse(t *testing.T, state *State, query transport.QueryType) PacketResponse {
 	t.Helper()
 
-	response, err := state.Handle(context.Background(), &Request{Query: a2s.Request{Type: query}})
+	response, err := state.Handle(context.Background(), &Request{Query: transport.Request{Type: query}})
 	if err != nil {
 		t.Fatalf("Handle(0x%X) error = %v", query, err)
 	}

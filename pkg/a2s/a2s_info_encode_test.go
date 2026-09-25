@@ -9,11 +9,13 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestAppendInfoMatchesSourceFixture(t *testing.T) {
 	payload := readProtocolFixture(t, "source_info_payload.hex")
-	info, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: payload})
+	info, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfo, Payload: payload})
 	if err != nil {
 		t.Fatalf("DecodeInfo() error = %v", err)
 	}
@@ -25,14 +27,14 @@ func TestAppendInfoMatchesSourceFixture(t *testing.T) {
 
 	// The fixture contains one ignored trailing zero after the EDF byte.
 	// Typed encoding emits the canonical fields represented by Info only.
-	want := singlePacketFixture(ResponseInfo, payload[:len(payload)-1])
+	want := singlePacketFixture(transport.ResponseInfo, payload[:len(payload)-1])
 	if !bytes.Equal(encoded, want) {
 		t.Fatalf("encoded Source response = %X, want %X", encoded, want)
 	}
 
-	decodedPacket, err := DecodePacket(encoded)
+	decodedPacket, err := transport.DecodePacket(encoded)
 	if err != nil {
-		t.Fatalf("DecodePacket() error = %v", err)
+		t.Fatalf("transport.DecodePacket() error = %v", err)
 	}
 	decodedInfo, err := DecodeInfo(decodedPacket)
 	if err != nil {
@@ -45,7 +47,7 @@ func TestAppendInfoMatchesSourceFixture(t *testing.T) {
 
 func TestAppendInfoMatchesGoldSourceFixture(t *testing.T) {
 	payload := readProtocolFixture(t, "goldsource_info_payload.hex")
-	info, err := DecodeInfo(Packet{Type: ResponseInfoGoldSource, Payload: payload})
+	info, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfoGoldSource, Payload: payload})
 	if err != nil {
 		t.Fatalf("DecodeInfo() error = %v", err)
 	}
@@ -55,7 +57,7 @@ func TestAppendInfoMatchesGoldSourceFixture(t *testing.T) {
 		t.Fatalf("AppendInfo() error = %v", err)
 	}
 
-	want := singlePacketFixture(ResponseInfoGoldSource, payload)
+	want := singlePacketFixture(transport.ResponseInfoGoldSource, payload)
 	if !bytes.Equal(encoded, want) {
 		t.Fatalf("encoded GoldSource response = %X, want %X", encoded, want)
 	}
@@ -63,7 +65,7 @@ func TestAppendInfoMatchesGoldSourceFixture(t *testing.T) {
 
 func TestAppendInfoRejectsUnrepresentableStrings(t *testing.T) {
 	info := Info{
-		Format: InfoFormat(ResponseInfo),
+		Format: InfoFormat(transport.ResponseInfo),
 		Name:   "invalid\x00name",
 	}
 
@@ -74,7 +76,7 @@ func TestAppendInfoRejectsUnrepresentableStrings(t *testing.T) {
 
 func TestAppendInfoRejectsUnknownEDF(t *testing.T) {
 	info := Info{
-		Format: InfoFormat(ResponseInfo),
+		Format: InfoFormat(transport.ResponseInfo),
 		EDF:    EDF(0x02),
 	}
 
@@ -86,7 +88,7 @@ func TestAppendInfoRejectsUnknownEDF(t *testing.T) {
 func TestAppendInfoDerivesEDFFromFields(t *testing.T) {
 	gameID := uint64(107410)
 	info := Info{
-		Format:      InfoFormat(ResponseInfo),
+		Format:      InfoFormat(transport.ResponseInfo),
 		Name:        "server",
 		Map:         "map",
 		Folder:      "folder",
@@ -123,7 +125,7 @@ func TestAppendInfoDerivesEDFFromFields(t *testing.T) {
 }
 
 func decodeInfoPacketForTest(data []byte) (*Info, error) {
-	packet, err := DecodePacket(data)
+	packet, err := transport.DecodePacket(data)
 	if err != nil {
 		return nil, err
 	}

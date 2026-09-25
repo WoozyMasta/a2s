@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/woozymasta/a2s/internal/a2srules"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // Rule is one ordered A2S_RULES key/value pair.
@@ -69,7 +70,7 @@ func (r Rules) Map() map[string]string {
 // GetRules queries server rules (A2S_RULES).
 // See https://developer.valvesoftware.com/wiki/Server_queries#Response_Format_3
 func (c *Client) GetRules(ctx context.Context) (Rules, error) {
-	packet, _, err := c.Query(ctx, RulesRequest)
+	packet, _, err := c.Query(ctx, transport.RulesRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +84,8 @@ func (c *Client) GetRules(ctx context.Context) (Rules, error) {
 // Rule order and duplicate names are preserved in the returned slice.
 // Trailing bytes after the declared entries are ignored for compatibility;
 // A3SB applies its own stricter envelope policy to the same bytes.
-func DecodeRules(packet Packet) (Rules, error) {
-	if packet.Type != ResponseRules {
+func DecodeRules(packet transport.Packet) (Rules, error) {
+	if packet.Type != transport.ResponseRules {
 		return nil, errors.Join(ErrRuleRead, fmt.Errorf("unexpected response type 0x%X", packet.Type))
 	}
 
@@ -95,7 +96,7 @@ func DecodeRules(packet Packet) (Rules, error) {
 			return nil, errors.Join(ErrRuleCount, err)
 
 		case errors.Is(err, a2srules.ErrInsufficientData):
-			return nil, errors.Join(ErrInsufficientData, err)
+			return nil, errors.Join(transport.ErrInsufficientData, err)
 
 		case errors.Is(err, a2srules.ErrKey):
 			return nil, errors.Join(ErrRuleKey, err)
@@ -163,6 +164,7 @@ func parseRuleValue(v string, base64Buf *[]byte) any {
 		if v[0] == 't' && v[1] == 'r' && v[2] == 'u' && v[3] == 'e' {
 			return true
 		}
+
 	case 5:
 		if v[0] == 'f' && v[1] == 'a' && v[2] == 'l' && v[3] == 's' && v[4] == 'e' {
 			return false

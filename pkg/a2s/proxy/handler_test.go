@@ -11,12 +11,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
 	"github.com/woozymasta/a2s/pkg/a2s/server"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestNewHandlerValidatesConfiguration(t *testing.T) {
-	cache := mustCache(t, a2s.InfoRequest)
+	cache := mustCache(t, transport.InfoRequest)
 	relay := &handlerUpstream{}
 	provider := &handlerChallengeProvider{}
 
@@ -43,19 +43,19 @@ func TestNewHandlerValidatesConfiguration(t *testing.T) {
 func TestHandlerServesCachedQueriesWithoutRelay(t *testing.T) {
 	tests := []struct {
 		name     string
-		query    a2s.QueryType
-		response a2s.ResponseType
+		query    transport.QueryType
+		response transport.ResponseType
 		payload  []byte
 	}{
-		{name: "info", query: a2s.InfoRequest, response: a2s.ResponseInfo, payload: []byte("info")},
-		{name: "players", query: a2s.PlayerRequest, response: a2s.ResponsePlayers, payload: []byte("players")},
-		{name: "rules", query: a2s.RulesRequest, response: a2s.ResponseRules, payload: []byte("opaque A3SB rules")},
+		{name: "info", query: transport.InfoRequest, response: transport.ResponseInfo, payload: []byte("info")},
+		{name: "players", query: transport.PlayerRequest, response: transport.ResponsePlayers, payload: []byte("players")},
+		{name: "rules", query: transport.RulesRequest, response: transport.ResponseRules, payload: []byte("opaque A3SB rules")},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			cache := mustCache(t, test.query)
-			if err := cache.Store(test.query, a2s.Packet{
+			if err := cache.Store(test.query, transport.Packet{
 				Type:    test.response,
 				Payload: test.payload,
 			}); err != nil {
@@ -80,27 +80,27 @@ func TestHandlerServesCachedQueriesWithoutRelay(t *testing.T) {
 }
 
 func TestHandlerDropsMissingCachedQuery(t *testing.T) {
-	cache := mustCache(t, a2s.RulesRequest)
+	cache := mustCache(t, transport.RulesRequest)
 	relay := &handlerUpstream{}
 	handler := mustHandler(t, cache, relay, false)
 
-	response, err := handler.Handle(context.Background(), requestFor(a2s.RulesRequest))
+	response, err := handler.Handle(context.Background(), requestFor(transport.RulesRequest))
 	if !errors.Is(err, server.ErrDrop) || response != nil {
 		t.Fatalf("Handle() = %#v, %v; want dropped response", response, err)
 	}
-	if got := relay.Count(a2s.RulesRequest); got != 0 {
+	if got := relay.Count(transport.RulesRequest); got != 0 {
 		t.Fatalf("relay calls = %d, want 0", got)
 	}
 }
 
 func TestHandlerRelaysUncachedQueries(t *testing.T) {
 	queries := []struct {
-		query    a2s.QueryType
-		response a2s.ResponseType
+		query    transport.QueryType
+		response transport.ResponseType
 	}{
-		{query: a2s.InfoRequest, response: a2s.ResponseInfo},
-		{query: a2s.PlayerRequest, response: a2s.ResponsePlayers},
-		{query: a2s.RulesRequest, response: a2s.ResponseRules},
+		{query: transport.InfoRequest, response: transport.ResponseInfo},
+		{query: transport.PlayerRequest, response: transport.ResponsePlayers},
+		{query: transport.RulesRequest, response: transport.ResponseRules},
 	}
 	relay := &handlerUpstream{}
 	handler := mustHandler(t, mustCache(t), relay, false)
@@ -123,33 +123,33 @@ func TestHandlerDropsRelayFailure(t *testing.T) {
 	relay := &handlerUpstream{err: errors.New("upstream unavailable")}
 	handler := mustHandler(t, mustCache(t), relay, false)
 
-	response, err := handler.Handle(context.Background(), requestFor(a2s.InfoRequest))
+	response, err := handler.Handle(context.Background(), requestFor(transport.InfoRequest))
 	if !errors.Is(err, server.ErrDrop) || response != nil {
 		t.Fatalf("Handle() = %#v, %v; want dropped response", response, err)
 	}
 }
 
 func TestHandlerAnswersGetChallengeLocally(t *testing.T) {
-	provider := &handlerChallengeProvider{challenge: a2s.Challenge{1, 2, 3, 4}}
+	provider := &handlerChallengeProvider{challenge: transport.Challenge{1, 2, 3, 4}}
 	relay := &handlerUpstream{}
 	handler, err := NewHandler(mustCache(t), relay, HandlerConfig{ChallengeProvider: provider})
 	if err != nil {
 		t.Fatalf("NewHandler() error = %v", err)
 	}
 
-	request := requestFor(a2s.ChallengeRequest)
+	request := requestFor(transport.ChallengeRequest)
 	response, err := handler.Handle(context.Background(), request)
 	if err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
 	packet := responsePacket(t, response)
-	if packet.Type != a2s.ResponseChallenge || string(packet.Payload) != string(provider.challenge[:]) {
+	if packet.Type != transport.ResponseChallenge || string(packet.Payload) != string(provider.challenge[:]) {
 		t.Fatalf("challenge packet = %#v, want %x", packet, provider.challenge)
 	}
 	if provider.remote != request.Remote {
 		t.Fatalf("provider remote = %s, want %s", provider.remote, request.Remote)
 	}
-	if got := relay.Count(a2s.ChallengeRequest); got != 0 {
+	if got := relay.Count(transport.ChallengeRequest); got != 0 {
 		t.Fatalf("relay calls = %d, want 0", got)
 	}
 }
@@ -158,14 +158,14 @@ func TestHandlerRelaysPingByDefault(t *testing.T) {
 	relay := &handlerUpstream{}
 	handler := mustHandler(t, mustCache(t), relay, false)
 
-	response, err := handler.Handle(context.Background(), requestFor(a2s.PingRequest))
+	response, err := handler.Handle(context.Background(), requestFor(transport.PingRequest))
 	if err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
-	if packet := responsePacket(t, response); packet.Type != a2s.ResponsePing {
-		t.Fatalf("PING response type = %x, want %x", packet.Type, a2s.ResponsePing)
+	if packet := responsePacket(t, response); packet.Type != transport.ResponsePing {
+		t.Fatalf("PING response type = %x, want %x", packet.Type, transport.ResponsePing)
 	}
-	if got := relay.Count(a2s.PingRequest); got != 1 {
+	if got := relay.Count(transport.PingRequest); got != 1 {
 		t.Fatalf("relay calls = %d, want 1", got)
 	}
 }
@@ -174,22 +174,22 @@ func TestHandlerAnswersLocalPingWithoutRelay(t *testing.T) {
 	relay := &handlerUpstream{}
 	handler := mustHandler(t, mustCache(t), relay, true)
 
-	response, err := handler.Handle(context.Background(), requestFor(a2s.PingRequest))
+	response, err := handler.Handle(context.Background(), requestFor(transport.PingRequest))
 	if err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
 	packet := responsePacket(t, response)
-	if packet.Type != a2s.ResponsePing || len(packet.Payload) != 0 {
+	if packet.Type != transport.ResponsePing || len(packet.Payload) != 0 {
 		t.Fatalf("local PING packet = %#v, want empty ACK", packet)
 	}
-	if got := relay.Count(a2s.PingRequest); got != 0 {
+	if got := relay.Count(transport.PingRequest); got != 0 {
 		t.Fatalf("relay calls = %d, want 0", got)
 	}
 }
 
 func TestHandlerDropsUnknownRequest(t *testing.T) {
 	handler := mustHandler(t, mustCache(t), &handlerUpstream{}, false)
-	request := requestFor(a2s.QueryType(0xFE))
+	request := requestFor(transport.QueryType(0xFE))
 
 	response, err := handler.Handle(context.Background(), request)
 	if !errors.Is(err, server.ErrDrop) || response != nil {
@@ -209,14 +209,14 @@ func mustHandler(t *testing.T, cache *Cache, relay Upstream, localPing bool) *Ha
 	return handler
 }
 
-func requestFor(query a2s.QueryType) *server.Request {
+func requestFor(query transport.QueryType) *server.Request {
 	return &server.Request{
 		Remote: netip.MustParseAddrPort("127.0.0.1:27015"),
-		Query:  a2s.Request{Type: query},
+		Query:  transport.Request{Type: query},
 	}
 }
 
-func responsePacket(t *testing.T, response server.Response) a2s.Packet {
+func responsePacket(t *testing.T, response server.Response) transport.Packet {
 	t.Helper()
 	packetResponse, ok := response.(server.PacketResponse)
 	if !ok {
@@ -227,57 +227,57 @@ func responsePacket(t *testing.T, response server.Response) a2s.Packet {
 
 type handlerUpstream struct {
 	mu    sync.Mutex
-	calls map[a2s.QueryType]int
+	calls map[transport.QueryType]int
 	err   error
 }
 
-func (u *handlerUpstream) Query(_ context.Context, query a2s.QueryType) (a2s.Packet, a2s.QueryMeta, error) {
+func (u *handlerUpstream) Query(_ context.Context, query transport.QueryType) (transport.Packet, transport.QueryMeta, error) {
 	u.mu.Lock()
 	if u.calls == nil {
-		u.calls = make(map[a2s.QueryType]int)
+		u.calls = make(map[transport.QueryType]int)
 	}
 	u.calls[query]++
 	u.mu.Unlock()
 
 	if u.err != nil {
-		return a2s.Packet{}, a2s.QueryMeta{}, u.err
+		return transport.Packet{}, transport.QueryMeta{}, u.err
 	}
 
-	return responsePacketFor(query), a2s.QueryMeta{}, nil
+	return responsePacketFor(query), transport.QueryMeta{}, nil
 }
 
-func (u *handlerUpstream) Count(query a2s.QueryType) int {
+func (u *handlerUpstream) Count(query transport.QueryType) int {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
 	return u.calls[query]
 }
 
-func responsePacketFor(query a2s.QueryType) a2s.Packet {
+func responsePacketFor(query transport.QueryType) transport.Packet {
 	switch query {
-	case a2s.InfoRequest:
-		return a2s.Packet{Type: a2s.ResponseInfo, Payload: []byte("info")}
-	case a2s.PlayerRequest:
-		return a2s.Packet{Type: a2s.ResponsePlayers, Payload: []byte("players")}
-	case a2s.RulesRequest:
-		return a2s.Packet{Type: a2s.ResponseRules, Payload: []byte("rules")}
-	case a2s.PingRequest:
-		return a2s.Packet{Type: a2s.ResponsePing, Payload: []byte("pong\x00")}
+	case transport.InfoRequest:
+		return transport.Packet{Type: transport.ResponseInfo, Payload: []byte("info")}
+	case transport.PlayerRequest:
+		return transport.Packet{Type: transport.ResponsePlayers, Payload: []byte("players")}
+	case transport.RulesRequest:
+		return transport.Packet{Type: transport.ResponseRules, Payload: []byte("rules")}
+	case transport.PingRequest:
+		return transport.Packet{Type: transport.ResponsePing, Payload: []byte("pong\x00")}
 	default:
-		return a2s.Packet{}
+		return transport.Packet{}
 	}
 }
 
 type handlerChallengeProvider struct {
-	challenge a2s.Challenge
+	challenge transport.Challenge
 	remote    netip.AddrPort
 }
 
-func (p *handlerChallengeProvider) Issue(remote netip.AddrPort) a2s.Challenge {
+func (p *handlerChallengeProvider) Issue(remote netip.AddrPort) transport.Challenge {
 	p.remote = remote
 	return p.challenge
 }
 
-func (*handlerChallengeProvider) Validate(netip.AddrPort, a2s.Challenge) bool {
+func (*handlerChallengeProvider) Validate(netip.AddrPort, transport.Challenge) bool {
 	return true
 }

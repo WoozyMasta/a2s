@@ -10,47 +10,48 @@ import (
 	"testing"
 
 	"github.com/woozymasta/a2s/internal/testfixtures"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestProtocolFixtureCorpusRequests(t *testing.T) {
 	tests := []struct {
 		name      string
 		fixture   string
-		request   QueryType
-		challenge Challenge
+		request   transport.QueryType
+		challenge transport.Challenge
 	}{
 		{
 			name:      "info",
 			fixture:   "request_info.hex",
-			request:   InfoRequest,
-			challenge: InitialChallenge,
+			request:   transport.InfoRequest,
+			challenge: transport.InitialChallenge(),
 		},
 		{
 			name:      "challenge",
 			fixture:   "request_challenge.hex",
-			request:   ChallengeRequest,
-			challenge: InitialChallenge,
+			request:   transport.ChallengeRequest,
+			challenge: transport.InitialChallenge(),
 		},
 		{
 			name:      "players",
 			fixture:   "request_players_challenge.hex",
-			request:   PlayerRequest,
-			challenge: Challenge{0x78, 0x56, 0x34, 0x12},
+			request:   transport.PlayerRequest,
+			challenge: transport.Challenge{0x78, 0x56, 0x34, 0x12},
 		},
 		{
 			name:      "rules",
 			fixture:   "request_rules_challenge.hex",
-			request:   RulesRequest,
-			challenge: Challenge{0x78, 0x56, 0x34, 0x12},
+			request:   transport.RulesRequest,
+			challenge: transport.Challenge{0x78, 0x56, 0x34, 0x12},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			want := readProtocolFixture(t, test.fixture)
-			got, err := createHeader(test.request, test.challenge)
+			got, err := transport.CreateHeader(test.request, test.challenge)
 			if err != nil {
-				t.Fatalf("createHeader() error = %v", err)
+				t.Fatalf("transport.CreateHeader() error = %v", err)
 			}
 			if !bytes.Equal(got, want) {
 				t.Fatalf("request = %X, want %X", got, want)
@@ -61,8 +62,8 @@ func TestProtocolFixtureCorpusRequests(t *testing.T) {
 
 func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	t.Run("source info", func(t *testing.T) {
-		info, err := DecodeInfo(Packet{
-			Type:    ResponseInfo,
+		info, err := DecodeInfo(transport.Packet{
+			Type:    transport.ResponseInfo,
 			Payload: readProtocolFixture(t, "source_info_payload.hex"),
 		})
 		if err != nil {
@@ -74,8 +75,8 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("goldsource info", func(t *testing.T) {
-		info, err := DecodeInfo(Packet{
-			Type:    ResponseInfoGoldSource,
+		info, err := DecodeInfo(transport.Packet{
+			Type:    transport.ResponseInfoGoldSource,
 			Payload: readProtocolFixture(t, "goldsource_info_payload.hex"),
 		})
 		if err != nil {
@@ -87,8 +88,8 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("players", func(t *testing.T) {
-		players, err := DecodePlayers(Packet{
-			Type:    ResponsePlayers,
+		players, err := DecodePlayers(transport.Packet{
+			Type:    transport.ResponsePlayers,
 			Payload: readProtocolFixture(t, "players_payload.hex"),
 		})
 		if err != nil {
@@ -100,8 +101,8 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 	})
 
 	t.Run("rules", func(t *testing.T) {
-		rules, err := DecodeRules(Packet{
-			Type:    ResponseRules,
+		rules, err := DecodeRules(transport.Packet{
+			Type:    transport.ResponseRules,
 			Payload: readProtocolFixture(t, "rules_payload.hex"),
 		})
 		if err != nil {
@@ -116,11 +117,11 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 
 	t.Run("challenge", func(t *testing.T) {
 		packet := readProtocolFixture(t, "response_challenge.hex")
-		challenge, err := parseChallenge(packet[5:])
+		challenge, err := transport.ParseChallengePayload(packet[5:])
 		if err != nil {
-			t.Fatalf("parseChallenge() error = %v", err)
+			t.Fatalf("ParseChallengePayload() error = %v", err)
 		}
-		want := Challenge{0x78, 0x56, 0x34, 0x12}
+		want := transport.Challenge{0x78, 0x56, 0x34, 0x12}
 		if challenge != want {
 			t.Fatalf("challenge = %X, want %X", challenge, want)
 		}
@@ -130,11 +131,11 @@ func TestProtocolFixtureCorpusA2SPayloads(t *testing.T) {
 func TestProtocolFixtureCorpusSourceSplitHeaders(t *testing.T) {
 	for index := 0; index < 5; index++ {
 		packet := readProtocolFixture(t, "source_split_packet_"+strconv.Itoa(index)+".hex")
-		header, err := parseSplitHeader(packet)
+		header, err := transport.ParseSplitHeader(packet)
 		if err != nil {
-			t.Fatalf("parseSplitHeader(packet %d) error = %v", index, err)
+			t.Fatalf("transport.ParseSplitHeader(packet %d) error = %v", index, err)
 		}
-		if header.id != 0x12345678 || header.count != 5 || header.index != index {
+		if header.ID != 0x12345678 || header.Count != 5 || header.Index != index {
 			t.Fatalf("header %d = %+v", index, header)
 		}
 	}
@@ -145,18 +146,18 @@ func TestProtocolFixtureCorpusGoldSourceSplitHeader(t *testing.T) {
 	// https://github.com/ValveSoftware/halflife/issues/2406.
 	// Its 0x12 control byte is documented there as fragment 2 of 2.
 	packet := readProtocolFixture(t, "goldsource_split_packet_1.hex")
-	header, err := parseSplitHeader(packet)
+	header, err := transport.ParseSplitHeader(packet)
 	if err != nil {
-		t.Fatalf("parseSplitHeader() error = %v", err)
+		t.Fatalf("transport.ParseSplitHeader() error = %v", err)
 	}
 
-	if !header.goldSrc {
+	if !header.GoldSource {
 		t.Fatal("GoldSource fixture classified as Source")
 	}
-	if header.compressed {
+	if header.Compressed {
 		t.Fatal("GoldSource fixture incorrectly classified as compressed")
 	}
-	if header.id != 0xD9D51BBC || header.count != 2 || header.index != 1 {
+	if header.ID != 0xD9D51BBC || header.Count != 2 || header.Index != 1 {
 		t.Fatalf("header = %+v, want ID 0xD9D51BBC, count 2, index 1", header)
 	}
 }

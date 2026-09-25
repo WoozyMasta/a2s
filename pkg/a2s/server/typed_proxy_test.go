@@ -13,12 +13,13 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 	gameID := uint64(123456789)
 	original := a2s.Info{
-		Format:       a2s.InfoFormat(a2s.ResponseInfo),
+		Format:       a2s.InfoFormat(transport.ResponseInfo),
 		Protocol:     17,
 		Name:         "upstream name",
 		Map:          "upstream_map",
@@ -41,9 +42,9 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 		VAC:          true,
 	}
 
-	upstreamProvider := &proxyChallengeProvider{token: a2s.Challenge{1, 2, 3, 4}}
+	upstreamProvider := &proxyChallengeProvider{token: transport.Challenge{1, 2, 3, 4}}
 	upstreamHandler := HandlerFunc(func(_ context.Context, request *Request) (Response, error) {
-		if request.Query.Type != a2s.InfoRequest {
+		if request.Query.Type != transport.InfoRequest {
 			return nil, ErrDrop
 		}
 		return InfoResponse{Info: original}, nil
@@ -71,9 +72,9 @@ func TestTypedModifyingProxyPreservesInfoFields(t *testing.T) {
 		t.Fatalf("upstream GetInfo() error = %v", err)
 	}
 
-	downstreamProvider := &proxyChallengeProvider{token: a2s.Challenge{5, 6, 7, 8}}
+	downstreamProvider := &proxyChallengeProvider{token: transport.Challenge{5, 6, 7, 8}}
 	downstreamHandler := HandlerFunc(func(ctx context.Context, request *Request) (Response, error) {
-		if request.Query.Type != a2s.InfoRequest {
+		if request.Query.Type != transport.InfoRequest {
 			return nil, ErrDrop
 		}
 		info, err := upstreamClient.GetInfo(ctx)

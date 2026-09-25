@@ -14,11 +14,12 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestSourcePacketizerReturnsSinglePacket(t *testing.T) {
 	packetizer := testSourcePacketizer(func() uint32 { return 1 })
-	data := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("rule"), 4))
+	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("rule"), 4))
 
 	packets, err := packetizer.Packetize(data)
 	if err != nil {
@@ -37,7 +38,7 @@ func TestSourcePacketizerReturnsSinglePacket(t *testing.T) {
 
 func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 	const splitSize = 18
-	data := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), 25))
+	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 25))
 	packetizer := testSourcePacketizer(func() uint32 { return 0x81234567 })
 	packetizer.SplitSize = splitSize
 
@@ -76,7 +77,7 @@ func TestSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 
 func TestGoldSourcePacketizerSplitsLogicalPacket(t *testing.T) {
 	const splitSize = 18
-	data := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), 25))
+	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 25))
 	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
 	packetizer.SplitSize = splitSize
 
@@ -128,7 +129,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.SplitSize = sourceSplitHeaderSize
 			},
-			data: logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), 32)),
+			data: logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), 32)),
 			want: ErrPacketizerSplitSize,
 		},
 		{
@@ -136,7 +137,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.MaxResponseSize = 5
 			},
-			data: logicalPacket(a2s.ResponseRules, []byte("too large")),
+			data: logicalPacket(transport.ResponseRules, []byte("too large")),
 			want: ErrPacketizerResponseSize,
 		},
 		{
@@ -144,7 +145,7 @@ func TestSourcePacketizerRejectsLimits(t *testing.T) {
 			configure: func(packetizer *SourcePacketizer) {
 				packetizer.SplitSize = sourceSplitHeaderSize + 1
 			},
-			data: logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), sourceSplitCountMax)),
+			data: logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), sourceSplitCountMax)),
 			want: ErrPacketizerFragmentCount,
 		},
 	}
@@ -169,7 +170,7 @@ func TestGoldSourcePacketizerRejectsFragmentCountOverflow(t *testing.T) {
 	packetizer.SplitSize = goldSourceSplitHeaderSize + 1
 
 	_, err := packetizer.Packetize(
-		logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), goldSourceSplitCountMax)),
+		logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), goldSourceSplitCountMax)),
 	)
 	if !errors.Is(err, ErrPacketizerFragmentCount) {
 		t.Fatalf("Packetize() error = %v, want %v", err, ErrPacketizerFragmentCount)
@@ -204,7 +205,7 @@ func TestNewGoldSourcePacketizer(t *testing.T) {
 
 func TestSourcePacketizerZeroValue(t *testing.T) {
 	var packetizer SourcePacketizer
-	data := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("x"), DefaultSourceSplitSize))
+	data := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("x"), DefaultSourceSplitSize))
 
 	packets, err := packetizer.Packetize(data)
 	if err != nil {
@@ -228,7 +229,7 @@ func TestSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	logical := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("payload"), 8))
+	logical := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("payload"), 8))
 	packetizer := testSourcePacketizer(func() uint32 { return 0x12345678 })
 	packetizer.SplitSize = 18
 
@@ -255,12 +256,12 @@ func TestSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 		serverErr <- nil
 	}()
 
-	got, _, err := client.Query(context.Background(), a2s.RulesRequest)
+	got, _, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Query() error = %v", err)
 	}
-	if got.Type != a2s.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
-		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, a2s.ResponseRules, logical[5:])
+	if got.Type != transport.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
+		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, transport.ResponseRules, logical[5:])
 	}
 	if err := <-serverErr; err != nil {
 		t.Fatalf("UDP server error = %v", err)
@@ -280,7 +281,7 @@ func TestGoldSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	logical := logicalPacket(a2s.ResponseRules, bytes.Repeat([]byte("payload"), 8))
+	logical := logicalPacket(transport.ResponseRules, bytes.Repeat([]byte("payload"), 8))
 	packetizer := testGoldSourcePacketizer(func() uint32 { return 0xD9D51BBC })
 	packetizer.SplitSize = 18
 
@@ -307,19 +308,19 @@ func TestGoldSourcePacketizerRoundTripsThroughA2SClient(t *testing.T) {
 		serverErr <- nil
 	}()
 
-	got, _, err := client.Query(context.Background(), a2s.RulesRequest)
+	got, _, err := client.Query(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Query() error = %v", err)
 	}
-	if got.Type != a2s.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
-		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, a2s.ResponseRules, logical[5:])
+	if got.Type != transport.ResponseRules || !bytes.Equal(got.Payload, logical[5:]) {
+		t.Fatalf("Query() packet = %#v, want type 0x%X and payload %X", got, transport.ResponseRules, logical[5:])
 	}
 	if err := <-serverErr; err != nil {
 		t.Fatalf("UDP server error = %v", err)
 	}
 }
 
-func logicalPacket(responseType a2s.ResponseType, payload []byte) []byte {
+func logicalPacket(responseType transport.ResponseType, payload []byte) []byte {
 	packet := make([]byte, 5+len(payload))
 	binary.LittleEndian.PutUint32(packet[:4], ^uint32(0))
 	packet[4] = byte(responseType)

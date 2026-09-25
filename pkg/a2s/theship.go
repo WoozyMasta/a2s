@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // TheShip contains additional game-specific data for The Ship game.
@@ -53,7 +54,7 @@ func readTheShipInfo(r *wire.Decoder) (*TheShip, error) {
 // GetTheShipPlayers queries the player list with The Ship game-specific fields.
 // It returns a non-nil empty slice when the server reports no players.
 func (c *Client) GetTheShipPlayers(ctx context.Context) ([]TheShipPlayer, error) {
-	packet, _, err := c.Query(ctx, PlayerRequest)
+	packet, _, err := c.Query(ctx, transport.PlayerRequest)
 	if err != nil {
 		return nil, err
 	}

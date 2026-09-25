@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 const defaultMaxRequestSize = 2048
@@ -426,7 +426,7 @@ func (s *Server) serveWorker(run *serverRun) {
 			continue
 		}
 
-		request, err := a2s.DecodeRequest(buffer[:n])
+		request, err := transport.DecodeRequest(buffer[:n])
 		if err != nil {
 			continue
 		}
@@ -445,10 +445,7 @@ func (s *Server) serveWorker(run *serverRun) {
 		if err != nil {
 			continue
 		}
-		logical, err := a2s.AppendPacket(nil, packet)
-		if err != nil {
-			continue
-		}
+		logical := transport.AppendPacket(nil, packet)
 		datagrams, err := s.packetizer.Packetize(logical)
 		if err != nil {
 			continue

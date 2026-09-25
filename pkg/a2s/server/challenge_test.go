@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 var _ ChallengeProvider = (*statelessChallengeProvider)(nil)
@@ -28,7 +28,7 @@ func TestStatelessChallengeProviderValidatesCurrentAndPreviousBucket(t *testing.
 
 	remote := netip.MustParseAddrPort("192.0.2.10:27015")
 	challenge := provider.Issue(remote)
-	if challenge == a2s.InitialChallenge {
+	if challenge == transport.InitialChallenge() {
 		t.Fatal("Issue() returned reserved initial challenge")
 	}
 	if !provider.Validate(remote, challenge) {
@@ -103,7 +103,7 @@ func TestStatelessChallengeProviderNeverIssuesInitialChallenge(t *testing.T) {
 
 	for port := 1; port <= 1000; port++ {
 		remote := netip.AddrPortFrom(netip.MustParseAddr("192.0.2.1"), uint16(port))
-		if got := provider.Issue(remote); got == a2s.InitialChallenge {
+		if got := provider.Issue(remote); got == transport.InitialChallenge() {
 			t.Fatalf("Issue(%s) returned reserved initial challenge", remote)
 		}
 	}

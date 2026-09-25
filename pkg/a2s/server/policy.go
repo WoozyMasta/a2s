@@ -4,7 +4,7 @@
 
 package server
 
-import "github.com/woozymasta/a2s/pkg/a2s"
+import "github.com/woozymasta/a2s/pkg/a2s/transport"
 
 // ChallengePolicy decides whether a query must include a valid challenge.
 //
@@ -12,14 +12,14 @@ import "github.com/woozymasta/a2s/pkg/a2s"
 // It does not issue or validate challenge tokens
 // and does not enable obsolete ping or challenge wire-request handling.
 type ChallengePolicy interface {
-	Required(a2s.QueryType) bool
+	Required(transport.QueryType) bool
 }
 
 // ChallengePolicyFunc adapts a function to ChallengePolicy.
-type ChallengePolicyFunc func(a2s.QueryType) bool
+type ChallengePolicyFunc func(transport.QueryType) bool
 
 // Required reports whether the adapted function requires a challenge.
-func (f ChallengePolicyFunc) Required(query a2s.QueryType) bool {
+func (f ChallengePolicyFunc) Required(query transport.QueryType) bool {
 	return f(query)
 }
 
@@ -28,9 +28,9 @@ func (f ChallengePolicyFunc) Required(query a2s.QueryType) bool {
 // INFO, PLAYER, and RULES requests require a challenge.
 // Obsolete PING and explicit challenge wire requests are not enabled by this policy.
 func SecureChallengePolicy() ChallengePolicy {
-	return ChallengePolicyFunc(func(query a2s.QueryType) bool {
+	return ChallengePolicyFunc(func(query transport.QueryType) bool {
 		switch query {
-		case a2s.InfoRequest, a2s.PlayerRequest, a2s.RulesRequest:
+		case transport.InfoRequest, transport.PlayerRequest, transport.RulesRequest:
 			return true
 		default:
 			return false
@@ -44,14 +44,14 @@ func SecureChallengePolicy() ChallengePolicy {
 // PLAYER and RULES requests require a challenge.
 // Obsolete PING and explicit challenge wire requests are not enabled by this policy.
 func LegacyChallengePolicy() ChallengePolicy {
-	return ChallengePolicyFunc(func(query a2s.QueryType) bool {
-		return query == a2s.PlayerRequest || query == a2s.RulesRequest
+	return ChallengePolicyFunc(func(query transport.QueryType) bool {
+		return query == transport.PlayerRequest || query == transport.RulesRequest
 	})
 }
 
 // NoChallengePolicy returns a policy for controlled local or test use.
 func NoChallengePolicy() ChallengePolicy {
-	return ChallengePolicyFunc(func(a2s.QueryType) bool {
+	return ChallengePolicyFunc(func(transport.QueryType) bool {
 		return false
 	})
 }

@@ -11,16 +11,18 @@ import (
 	"math"
 	"slices"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 func TestParseChallenge(t *testing.T) {
 	data := []byte{0x78, 0x56, 0x34, 0x12}
 
-	got, err := parseChallenge(data)
+	got, err := transport.ParseChallengePayload(data)
 	if err != nil {
-		t.Fatalf("parseChallenge returned error: %v", err)
+		t.Fatalf("ParseChallengePayload returned error: %v", err)
 	}
-	want := Challenge{0x78, 0x56, 0x34, 0x12}
+	want := transport.Challenge{0x78, 0x56, 0x34, 0x12}
 	if got != want {
 		t.Fatalf("challenge = %X, want %X", got, want)
 	}
@@ -28,8 +30,8 @@ func TestParseChallenge(t *testing.T) {
 		t.Fatalf("challenge bytes = %X, want %X", got, data)
 	}
 
-	if _, err := parseChallenge(data[:3]); !errors.Is(err, ErrChallengeValue) {
-		t.Fatalf("truncated challenge error = %v, want ErrChallengeValue", err)
+	if _, err := transport.ParseChallengePayload(data[:3]); !errors.Is(err, transport.ErrChallengeValue) {
+		t.Fatalf("truncated challenge error = %v, want transport.ErrChallengeValue", err)
 	}
 }
 
@@ -44,7 +46,7 @@ func TestParseInfo(t *testing.T) {
 	body = append(body, "1.0"...)
 	body = append(body, 0, 0)
 
-	info, err := DecodeInfo(Packet{Type: ResponseInfo, Payload: body})
+	info, err := DecodeInfo(transport.Packet{Type: transport.ResponseInfo, Payload: body})
 	if err != nil {
 		t.Fatalf("DecodeInfo returned error: %v", err)
 	}
@@ -76,7 +78,7 @@ func TestParsePlayers(t *testing.T) {
 		data = binary.LittleEndian.AppendUint32(data, math.Float32bits(1))
 	}
 
-	players, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data})
+	players, err := DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data})
 	if err != nil {
 		t.Fatalf("parsePlayers returned error: %v", err)
 	}
@@ -113,7 +115,7 @@ func TestParseRules(t *testing.T) {
 		data = append(data, 0)
 	}
 
-	rules, err := DecodeRules(Packet{Type: ResponseRules, Payload: data})
+	rules, err := DecodeRules(transport.Packet{Type: transport.ResponseRules, Payload: data})
 	if err != nil {
 		t.Fatalf("DecodeRules returned error: %v", err)
 	}
@@ -151,7 +153,7 @@ func BenchmarkParsePlayers(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := DecodePlayers(Packet{Type: ResponsePlayers, Payload: data}); err != nil {
+		if _, err := DecodePlayers(transport.Packet{Type: transport.ResponsePlayers, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -162,7 +164,7 @@ func BenchmarkParseRules(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := DecodeRules(Packet{Type: ResponseRules, Payload: data}); err != nil {
+		if _, err := DecodeRules(transport.Packet{Type: transport.ResponseRules, Payload: data}); err != nil {
 			b.Fatal(err)
 		}
 	}

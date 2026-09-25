@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/woozymasta/a2s/internal/wire"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // errInfoInvalidBoolean identifies a malformed A2S boolean field.
@@ -115,15 +116,15 @@ func (c *Client) GetInfo(ctx context.Context) (*Info, error) {
 // GetInfoWithMeta queries server information
 // and returns transport metadata separately
 // from the protocol response model.
-func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) {
-	packet, meta, err := c.Query(ctx, InfoRequest)
+func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, transport.QueryMeta, error) {
+	packet, meta, err := c.Query(ctx, transport.InfoRequest)
 	if err != nil {
-		return nil, QueryMeta{}, err
+		return nil, transport.QueryMeta{}, err
 	}
 
 	info, err := DecodeInfo(packet)
 	if err != nil {
-		return nil, QueryMeta{}, err
+		return nil, transport.QueryMeta{}, err
 	}
 
 	return info, meta, nil
@@ -134,17 +135,17 @@ func (c *Client) GetInfoWithMeta(ctx context.Context) (*Info, QueryMeta, error) 
 // The packet payload is decoded without modifying it.
 // The response type must be ResponseInfo or ResponseInfoGoldSource;
 // other packet types are rejected.
-func DecodeInfo(packet Packet) (*Info, error) {
+func DecodeInfo(packet transport.Packet) (*Info, error) {
 	decoder := wire.NewDecoder(packet.Payload)
 	info := &Info{Format: InfoFormat(packet.Type)}
 
 	switch packet.Type {
-	case ResponseInfo:
+	case transport.ResponseInfo:
 		if err := info.readSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoSourceResponse, err)
 		}
 
-	case ResponseInfoGoldSource:
+	case transport.ResponseInfoGoldSource:
 		if err := info.readGoldSourceInfo(&decoder); err != nil {
 			return nil, errors.Join(ErrInfoGoldSourceResponse, err)
 		}

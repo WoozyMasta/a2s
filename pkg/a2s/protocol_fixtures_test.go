@@ -14,6 +14,8 @@ import (
 	"net"
 	"strconv"
 	"testing"
+
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // udpPacketFixture feeds a fixed sequence of datagrams to one local UDP query.
@@ -68,9 +70,9 @@ func (f *udpPacketFixture) Addr() *net.UDPAddr {
 	}
 }
 
-func singlePacketFixture(response ResponseType, payload []byte) []byte {
+func singlePacketFixture(response transport.ResponseType, payload []byte) []byte {
 	packet := make([]byte, 5+len(payload))
-	binary.LittleEndian.PutUint32(packet[:4], singlePacket)
+	binary.LittleEndian.PutUint32(packet[:4], transport.SinglePacketMarker)
 	packet[4] = byte(response)
 	copy(packet[5:], payload)
 	return packet
@@ -91,7 +93,7 @@ func sourceSplitPacketSequence(id uint32, payload []byte, chunkSize int) [][]byt
 		}
 
 		packet := make([]byte, 12+end-start)
-		binary.LittleEndian.PutUint32(packet[:4], multiPacket)
+		binary.LittleEndian.PutUint32(packet[:4], transport.SplitPacketMarker)
 		binary.LittleEndian.PutUint32(packet[4:8], id)
 		packet[8] = byte(count)
 		packet[9] = byte(index)
@@ -104,44 +106,44 @@ func sourceSplitPacketSequence(id uint32, payload []byte, chunkSize int) [][]byt
 }
 
 func TestSinglePacketFixture(t *testing.T) {
-	packet := singlePacketFixture(ResponsePlayers, []byte{0x01, 0x02})
+	packet := singlePacketFixture(transport.ResponsePlayers, []byte{0x01, 0x02})
 
-	multi, err := isMultiPacket(packet)
+	multi, err := transport.IsMultiPacket(packet)
 	if err != nil {
 		t.Fatalf("isMultiPacket returned error: %v", err)
 	}
 	if multi {
 		t.Fatal("single packet fixture classified as split packet")
 	}
-	if got, want := packet[4], byte(ResponsePlayers); got != want {
+	if got, want := packet[4], byte(transport.ResponsePlayers); got != want {
 		t.Fatalf("response type = 0x%X, want 0x%X", got, want)
 	}
 }
 
 func TestSourceSplitPacketFixture(t *testing.T) {
-	assembled := singlePacketFixture(ResponseRules, []byte("split fixture"))
+	assembled := singlePacketFixture(transport.ResponseRules, []byte("split fixture"))
 	packets := sourceSplitPacketSequence(0x12345678, assembled, 4)
 	if len(packets) != 5 {
 		t.Fatalf("packet count = %d, want 5", len(packets))
 	}
 
-	info, err := parseSplitHeader(packets[0])
+	info, err := transport.ParseSplitHeader(packets[0])
 	if err != nil {
 		t.Fatalf("parseSplitHeader returned error: %v", err)
 	}
-	if info.goldSrc {
+	if info.GoldSource {
 		t.Fatal("Source fixture classified as GoldSource")
 	}
-	if info.count != len(packets) || info.index != 0 {
-		t.Fatalf("split metadata = count %d, index %d; want count %d, index 0", info.count, info.index, len(packets))
+	if info.Count != len(packets) || info.Index != 0 {
+		t.Fatalf("split metadata = count %d, index %d; want count %d, index 0", info.Count, info.Index, len(packets))
 	}
-	if info.id != 0x12345678 {
-		t.Fatalf("split ID = 0x%X, want 0x12345678", info.id)
+	if info.ID != 0x12345678 {
+		t.Fatalf("split ID = 0x%X, want 0x12345678", info.ID)
 	}
 }
 
 func TestPacketFixtureUDPFeed(t *testing.T) {
-	packet := singlePacketFixture(ResponseInfo, []byte("fixture"))
+	packet := singlePacketFixture(transport.ResponseInfo, []byte("fixture"))
 	fixture := newUDPPacketFixture(t, packet)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -150,12 +152,12 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), InfoRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.InfoRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseInfo {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseInfo)
+	if flag != transport.ResponseInfo {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseInfo)
 	}
 	if string(data) != "fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "fixture")
@@ -163,7 +165,7 @@ func TestPacketFixtureUDPFeed(t *testing.T) {
 }
 
 func TestSplitPacketFixtureUDPFeed(t *testing.T) {
-	assembled := singlePacketFixture(ResponseRules, []byte("split fixture"))
+	assembled := singlePacketFixture(transport.ResponseRules, []byte("split fixture"))
 	fixture := newUDPPacketFixture(t, sourceSplitPacketSequence(0x1AFEBABE, assembled, 3)...)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -172,12 +174,12 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
+	if flag != transport.ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseRules)
 	}
 	if string(data) != "split fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "split fixture")
@@ -185,7 +187,7 @@ func TestSplitPacketFixtureUDPFeed(t *testing.T) {
 }
 
 func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
-	assembled := singlePacketFixture(ResponseRules, []byte("reordered split fixture"))
+	assembled := singlePacketFixture(transport.ResponseRules, []byte("reordered split fixture"))
 	packets := sourceSplitPacketSequence(0x1AFEBABE, assembled, 3)
 	reordered := append(append([][]byte{}, packets[1:]...), packets[0])
 	fixture := newUDPPacketFixture(t, reordered...)
@@ -196,12 +198,12 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
+	if flag != transport.ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseRules)
 	}
 	if string(data) != "reordered split fixture" {
 		t.Fatalf("response payload = %q, want %q", data, "reordered split fixture")
@@ -209,7 +211,7 @@ func TestSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 }
 
 func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
-	assembled := append(singlePacketFixture(ResponseRules, []byte("compressed split fixture:")),
+	assembled := append(singlePacketFixture(transport.ResponseRules, []byte("compressed split fixture:")),
 		bytes.Repeat([]byte("0123456789abcdef"), 20)...)
 	compressed := []byte{
 		0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53, 0x59, 0xf3, 0x7d, 0x36, 0x5d,
@@ -221,7 +223,7 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 		0xb9, 0x0f, 0x1a, 0x3d, 0x5f, 0x18, 0xa5, 0x30, 0x2b, 0x48, 0x00, 0x90, 0xa0, 0x8f,
 		0x1f, 0xc5, 0xdc, 0x91, 0x4e, 0x14, 0x24, 0x3c, 0xdf, 0x4d, 0x97, 0x40,
 	}
-	if _, err := decompressBzip2(compressed, uint32(len(assembled)), crc32.ChecksumIEEE(assembled)); err != nil {
+	if _, err := transport.DecompressBzip2(compressed, uint32(len(assembled)), crc32.ChecksumIEEE(assembled)); err != nil {
 		t.Fatalf("invalid compressed fixture: %v", err)
 	}
 
@@ -241,12 +243,12 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
+	if flag != transport.ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseRules)
 	}
 	if !bytes.Equal(data, assembled[5:]) {
 		t.Fatalf("response payload = %q, want %q", data, assembled[5:])
@@ -256,7 +258,7 @@ func TestCompressedSplitPacketFixtureUDPFeedReordered(t *testing.T) {
 func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 	packets := sourceSplitPacketSequence(
 		0x12345678,
-		singlePacketFixture(ResponseRules, []byte("invalid index")),
+		singlePacketFixture(transport.ResponseRules, []byte("invalid index")),
 		3,
 	)
 	packets[0][9] = packets[0][8]
@@ -268,13 +270,13 @@ func TestGetRejectsImpossibleSplitIndex(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacket) {
-		t.Fatalf("Get error = %v, want ErrMultiPacket", err)
+	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacket) {
+		t.Fatalf("Get error = %v, want transport.ErrMultiPacket", err)
 	}
 }
 
 func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
-	assembled := singlePacketFixture(ResponseRules, []byte("inconsistent split fixture"))
+	assembled := singlePacketFixture(transport.ResponseRules, []byte("inconsistent split fixture"))
 	first := sourceSplitPacketSequence(0x12345678, assembled, 8)
 	second := sourceSplitPacketSequence(0x12345678, assembled, 3)
 	fixture := newUDPPacketFixture(t, first[0], second[1])
@@ -285,15 +287,15 @@ func TestGetRejectsInconsistentSplitFragment(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacketInconsistent) {
-		t.Fatalf("Get error = %v, want ErrMultiPacketInconsistent", err)
+	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacketInconsistent) {
+		t.Fatalf("Get error = %v, want transport.ErrMultiPacketInconsistent", err)
 	}
 }
 
 func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
 	packets := sourceSplitPacketSequence(
 		0x12345678,
-		singlePacketFixture(ResponseRules, []byte("duplicate split fixture")),
+		singlePacketFixture(transport.ResponseRules, []byte("duplicate split fixture")),
 		3,
 	)
 	duplicate := append([]byte(nil), packets[0]...)
@@ -306,8 +308,8 @@ func TestGetRejectsConflictingDuplicateSplitFragment(t *testing.T) {
 	}
 	defer client.Close()
 
-	if _, _, _, err := client.Get(context.Background(), RulesRequest); !errors.Is(err, ErrMultiPacketConflict) {
-		t.Fatalf("Get error = %v, want ErrMultiPacketConflict", err)
+	if _, _, _, err := client.Get(context.Background(), transport.RulesRequest); !errors.Is(err, transport.ErrMultiPacketConflict) {
+		t.Fatalf("Get error = %v, want transport.ErrMultiPacketConflict", err)
 	}
 }
 
@@ -325,13 +327,13 @@ func compressedSourceSplitPacketSequence(id uint32, compressed []byte, unpackedS
 			end = len(compressed)
 		}
 
-		headerSize := srcSplitHeader
+		headerSize := 12
 		metadataSize := 0
 		if index == 0 {
 			metadataSize = 8
 		}
 		packet := make([]byte, headerSize+metadataSize+end-start)
-		binary.LittleEndian.PutUint32(packet[:4], multiPacket)
+		binary.LittleEndian.PutUint32(packet[:4], transport.SplitPacketMarker)
 		binary.LittleEndian.PutUint32(packet[4:8], id)
 		packet[8] = byte(count)
 		packet[9] = byte(index)
@@ -361,7 +363,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 	}
 
 	t.Run("raw", func(t *testing.T) {
-		fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, payload))
+		fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponseRules, payload))
 		client, err := NewWithAddr(fixture.Addr())
 		if err != nil {
 			t.Fatalf("create client: %v", err)
@@ -387,7 +389,7 @@ func TestRulesPreserveRawAndParsedValues(t *testing.T) {
 	})
 
 	t.Run("parsed", func(t *testing.T) {
-		fixture := newUDPPacketFixture(t, singlePacketFixture(ResponseRules, payload))
+		fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponseRules, payload))
 		client, err := NewWithAddr(fixture.Addr())
 		if err != nil {
 			t.Fatalf("create client: %v", err)
@@ -417,14 +419,14 @@ func TestMalformedPacketFixtures(t *testing.T) {
 		data []byte
 		want error
 	}{
-		{name: "empty", data: nil, want: ErrMultiPacket},
-		{name: "truncated single header", data: []byte{0xFF, 0xFF, 0xFF, 0xFF}, want: ErrSinglePacket},
-		{name: "truncated split header", data: []byte{0xFE, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x00}, want: ErrMultiPacket},
+		{name: "empty", data: nil, want: transport.ErrMultiPacket},
+		{name: "truncated single header", data: []byte{0xFF, 0xFF, 0xFF, 0xFF}, want: transport.ErrSinglePacket},
+		{name: "truncated split header", data: []byte{0xFE, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x00}, want: transport.ErrMultiPacket},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := isMultiPacket(test.data)
+			_, err := transport.IsMultiPacket(test.data)
 			if err != test.want {
 				t.Fatalf("error = %v, want %v", err, test.want)
 			}
@@ -436,8 +438,8 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 	for length := 5; length <= 8; length++ {
 		t.Run(strconv.Itoa(length), func(t *testing.T) {
 			packet := make([]byte, length)
-			binary.LittleEndian.PutUint32(packet[:4], singlePacket)
-			packet[4] = byte(ResponseChallenge)
+			binary.LittleEndian.PutUint32(packet[:4], transport.SinglePacketMarker)
+			packet[4] = byte(transport.ResponseChallenge)
 			fixture := newUDPPacketFixture(t, packet)
 
 			client, err := NewWithAddr(fixture.Addr())
@@ -446,23 +448,23 @@ func TestGetRejectsTruncatedChallengeFixtures(t *testing.T) {
 			}
 			defer client.Close()
 
-			_, _, _, err = client.Get(context.Background(), RulesRequest)
+			_, _, _, err = client.Get(context.Background(), transport.RulesRequest)
 			if err == nil {
 				t.Fatal("Get returned nil error for truncated challenge")
 			}
-			if !errors.Is(err, ErrChallengeRead) {
-				t.Fatalf("error = %v, want ErrChallengeRead", err)
+			if !errors.Is(err, transport.ErrChallengeRead) {
+				t.Fatalf("error = %v, want transport.ErrChallengeRead", err)
 			}
-			if !errors.Is(err, ErrInsufficientData) {
-				t.Fatalf("error = %v, want ErrInsufficientData", err)
+			if !errors.Is(err, transport.ErrInsufficientData) {
+				t.Fatalf("error = %v, want transport.ErrInsufficientData", err)
 			}
 		})
 	}
 }
 
 func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
-	challenge := singlePacketFixture(ResponseChallenge, []byte{0x01, 0x02, 0x03, 0x04})
-	response := singlePacketFixture(ResponseRules, []byte("rules"))
+	challenge := singlePacketFixture(transport.ResponseChallenge, []byte{0x01, 0x02, 0x03, 0x04})
+	response := singlePacketFixture(transport.ResponseRules, []byte("rules"))
 	fixture := newUDPPacketFixture(t, challenge, response)
 
 	client, err := NewWithAddr(fixture.Addr())
@@ -471,12 +473,12 @@ func TestGetAcceptsCompleteChallengeFixture(t *testing.T) {
 	}
 	defer client.Close()
 
-	data, flag, _, err := client.Get(context.Background(), RulesRequest)
+	data, flag, _, err := client.Get(context.Background(), transport.RulesRequest)
 	if err != nil {
 		t.Fatalf("Get returned error: %v", err)
 	}
-	if flag != ResponseRules {
-		t.Fatalf("response flag = 0x%X, want 0x%X", flag, ResponseRules)
+	if flag != transport.ResponseRules {
+		t.Fatalf("response flag = 0x%X, want 0x%X", flag, transport.ResponseRules)
 	}
 	if string(data) != "rules" {
 		t.Fatalf("response payload = %q, want %q", data, "rules")
@@ -493,7 +495,7 @@ func TestGetPlayersParsesSignedScores(t *testing.T) {
 		payload = binary.LittleEndian.AppendUint32(payload, math.Float32bits(1))
 	}
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponsePlayers, payload))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponsePlayers, payload))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)
@@ -526,7 +528,7 @@ func TestGetTheShipPlayersParsesSignedScores(t *testing.T) {
 	payload = binary.LittleEndian.AppendUint32(payload, 2)
 	payload = binary.LittleEndian.AppendUint32(payload, 3)
 
-	fixture := newUDPPacketFixture(t, singlePacketFixture(ResponsePlayers, payload))
+	fixture := newUDPPacketFixture(t, singlePacketFixture(transport.ResponsePlayers, payload))
 	client, err := NewWithAddr(fixture.Addr())
 	if err != nil {
 		t.Fatalf("create client: %v", err)

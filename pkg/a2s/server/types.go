@@ -9,6 +9,7 @@ import (
 	"net/netip"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // PanicReport describes a panic recovered at the handler boundary.
@@ -26,7 +27,7 @@ type Request struct {
 	// Remote is the endpoint from which the query was received.
 	Remote netip.AddrPort
 	// Query is the decoded A2S request.
-	Query a2s.Request
+	Query transport.Request
 }
 
 // Response is a logical response returned by a server handler.
@@ -61,7 +62,7 @@ type RulesResponse struct {
 // without converting it through one of the typed response formats.
 type PacketResponse struct {
 	// Packet is the decoded logical packet to write to the client.
-	Packet a2s.Packet
+	Packet transport.Packet
 }
 
 // Handler processes one decoded A2S request and returns a logical response.

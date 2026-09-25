@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 )
 
 // Snapshot contains the typed responses served by State.
@@ -36,10 +37,10 @@ type State struct {
 }
 
 type stateSnapshot struct {
-	info    a2s.Packet // Pre-encoded INFO response.
-	players a2s.Packet // Pre-encoded PLAYER response.
-	rules   a2s.Packet // Pre-encoded RULES response.
-	hasInfo bool       // Whether an INFO response was stored.
+	info    transport.Packet // Pre-encoded INFO response.
+	players transport.Packet // Pre-encoded PLAYER response.
+	rules   transport.Packet // Pre-encoded RULES response.
+	hasInfo bool             // Whether an INFO response was stored.
 }
 
 // Ensure State remains a Handler implementation.
@@ -60,7 +61,7 @@ func (s *State) Store(snapshot Snapshot) error {
 	copySnapshot := cloneSnapshot(snapshot)
 	next := &stateSnapshot{}
 	if copySnapshot.Info != nil {
-		packet, err := normalizeInfoResponse(a2s.InfoRequest, *copySnapshot.Info)
+		packet, err := normalizeInfoResponse(transport.InfoRequest, *copySnapshot.Info)
 		if err != nil {
 			return fmt.Errorf("%w: info: %w", ErrState, err)
 		}
@@ -69,13 +70,13 @@ func (s *State) Store(snapshot Snapshot) error {
 		next.hasInfo = true
 	}
 
-	players, err := normalizePlayersResponse(a2s.PlayerRequest, copySnapshot.Players)
+	players, err := normalizePlayersResponse(transport.PlayerRequest, copySnapshot.Players)
 	if err != nil {
 		return fmt.Errorf("%w: players: %w", ErrState, err)
 	}
 	next.players = players
 
-	rules, err := normalizeRulesResponse(a2s.RulesRequest, copySnapshot.Rules)
+	rules, err := normalizeRulesResponse(transport.RulesRequest, copySnapshot.Rules)
 	if err != nil {
 		return fmt.Errorf("%w: rules: %w", ErrState, err)
 	}
@@ -100,16 +101,16 @@ func (s *State) Handle(_ context.Context, request *Request) (Response, error) {
 	}
 
 	switch request.Query.Type {
-	case a2s.InfoRequest:
+	case transport.InfoRequest:
 		if !snapshot.hasInfo {
 			return nil, fmt.Errorf("%w: info", ErrStateUnavailable)
 		}
 		return PacketResponse{Packet: clonePacket(snapshot.info)}, nil
 
-	case a2s.PlayerRequest:
+	case transport.PlayerRequest:
 		return PacketResponse{Packet: clonePacket(snapshot.players)}, nil
 
-	case a2s.RulesRequest:
+	case transport.RulesRequest:
 		return PacketResponse{Packet: clonePacket(snapshot.rules)}, nil
 
 	default:
@@ -178,7 +179,7 @@ func cloneRules(rules a2s.Rules) a2s.Rules {
 }
 
 // clonePacket protects the immutable snapshot from PacketResponse callers.
-func clonePacket(packet a2s.Packet) a2s.Packet {
+func clonePacket(packet transport.Packet) transport.Packet {
 	packet.Payload = bytes.Clone(packet.Payload)
 	return packet
 }

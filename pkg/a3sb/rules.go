@@ -13,12 +13,13 @@ import (
 	"github.com/woozymasta/a2s/internal/a2srules"
 	"github.com/woozymasta/a2s/internal/wire"
 	"github.com/woozymasta/a2s/pkg/a2s"
+	"github.com/woozymasta/a2s/pkg/a2s/transport"
 	"github.com/woozymasta/a2s/pkg/appid"
 	"github.com/woozymasta/a2s/pkg/keywords/types"
 )
 
 // DefaultRulesBufferSize is the A3SB-compatible A2S receive buffer size.
-const DefaultRulesBufferSize uint16 = a2s.DefaultBufferSize
+const DefaultRulesBufferSize uint16 = transport.DefaultBufferSize
 
 // Rules contains parsed A3SB rules response data.
 //
@@ -134,7 +135,7 @@ func (c *Client) GetRulesDayZ(ctx context.Context) (*Rules, error) {
 // native A2S rules are returned in ExtraRules,
 // while A3SB version 2 and version 3 select DayZ and Arma 3 respectively.
 func (c *Client) GetRules(ctx context.Context, game uint64) (*Rules, error) {
-	packet, _, err := c.Query(ctx, a2s.RulesRequest)
+	packet, _, err := c.Query(ctx, transport.RulesRequest)
 	if err != nil {
 		return nil, err
 	}
