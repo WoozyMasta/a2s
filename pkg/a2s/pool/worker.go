@@ -209,11 +209,11 @@ func (d *datagramIO) Read(ctx context.Context, data []byte) (int, error) {
 	}
 }
 
-// wakeOnCancel interrupts a blocked UDP read when ctx is canceled.
+// wakeOnCancel interrupts blocked UDP operations when ctx is canceled.
 func wakeOnCancel(ctx context.Context, conn *net.UDPConn) func() {
 	done := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
-		_ = conn.SetReadDeadline(time.Now())
+		_ = conn.SetDeadline(time.Now())
 		close(done)
 	})
 
@@ -221,6 +221,7 @@ func wakeOnCancel(ctx context.Context, conn *net.UDPConn) func() {
 		if !stop() {
 			<-done
 		}
+		_ = conn.SetDeadline(time.Time{})
 	}
 }
 

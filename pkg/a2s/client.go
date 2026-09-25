@@ -244,15 +244,16 @@ func (c *Client) Query(ctx context.Context, requestType transport.QueryType) (tr
 		return transport.Packet{}, transport.QueryMeta{}, ErrClientClosed
 	}
 
-	readDeadlineDone := make(chan struct{})
-	stopReadDeadline := context.AfterFunc(effectiveCtx, func() {
-		defer close(readDeadlineDone)
-		_ = c.conn.SetReadDeadline(time.Now())
+	deadlineDone := make(chan struct{})
+	stopDeadline := context.AfterFunc(effectiveCtx, func() {
+		defer close(deadlineDone)
+		_ = c.conn.SetDeadline(time.Now())
 	})
 	defer func() {
-		if !stopReadDeadline() {
-			<-readDeadlineDone
+		if !stopDeadline() {
+			<-deadlineDone
 		}
+		_ = c.conn.SetDeadline(time.Time{})
 	}()
 
 	packet, meta, err := transport.Execute(
