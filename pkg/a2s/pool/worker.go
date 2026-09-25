@@ -64,11 +64,8 @@ func (p *Pool) worker() {
 			return
 
 		case job := <-p.jobs:
+			p.releaseQueueSpace()
 			state.execute(job)
-			select {
-			case p.queueSpace <- struct{}{}:
-			default:
-			}
 		}
 	}
 }

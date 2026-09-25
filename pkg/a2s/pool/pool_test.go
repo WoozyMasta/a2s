@@ -85,6 +85,57 @@ func TestPoolQueueTimeoutDoesNotSendExpiredJob(t *testing.T) {
 	}
 }
 
+func TestPoolReleasesQueueSlotWhenWorkerDequeuesJob(t *testing.T) {
+	response := transport.AppendPacket(nil, transport.Packet{Type: transport.ResponseInfo})
+	first := newDelayedResponder(t, response, 100*time.Millisecond)
+	second := newSilentResponder(t)
+	third := newSilentResponder(t)
+
+	p, err := New(
+		WithWorkers(1),
+		WithQueueSize(1),
+		WithTimeout(time.Second),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Close() }()
+
+	firstDone := make(chan error, 1)
+	go func() {
+		_, _, err := p.Query(context.Background(), first.target, transport.InfoRequest)
+		firstDone <- err
+	}()
+	first.waitRequest(t)
+
+	secondDone := make(chan error, 1)
+	go func() {
+		_, _, err := p.Query(context.Background(), second.target, transport.InfoRequest)
+		secondDone <- err
+	}()
+	waitQueueLength(t, p, 1)
+
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first Query() error = %v", err)
+	}
+	second.waitRequest(t)
+
+	thirdDone := make(chan error, 1)
+	go func() {
+		_, _, err := p.Query(context.Background(), third.target, transport.InfoRequest)
+		thirdDone <- err
+	}()
+	waitQueueLength(t, p, 1)
+
+	_ = p.Close()
+	if err := <-secondDone; !errors.Is(err, ErrClosed) {
+		t.Fatalf("second Query() error = %v, want ErrClosed", err)
+	}
+	if err := <-thirdDone; !errors.Is(err, ErrClosed) {
+		t.Fatalf("third Query() error = %v, want ErrClosed", err)
+	}
+}
+
 type responder struct {
 	target        netip.AddrPort
 	conn          *net.UDPConn
@@ -218,4 +269,16 @@ func (r *responder) noiseSent() int {
 			return count
 		}
 	}
+}
+
+func waitQueueLength(t *testing.T, p *Pool, want int) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if len(p.jobs) == want {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("queue length = %d, want %d", len(p.jobs), want)
 }

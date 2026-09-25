@@ -78,12 +78,15 @@ func New(options ...Option) (*Pool, error) {
 		root:       root,
 		cancel:     cancel,
 		jobs:       make(chan workItem, config.queueSize),
-		queueSpace: make(chan struct{}, 1),
+		queueSpace: make(chan struct{}, config.queueSize),
 		done:       make(chan struct{}),
 		timeout:    config.timeout,
 		bufferSize: config.bufferSize,
 		resolver:   lookupHost,
 		window:     config.workers + config.queueSize,
+	}
+	for range config.queueSize {
+		p.queueSpace <- struct{}{}
 	}
 
 	p.workers.Add(config.workers)
@@ -177,6 +180,7 @@ func (p *Pool) cleanupQueuedJobs() {
 	for {
 		select {
 		case job := <-p.jobs:
+			p.releaseQueueSpace()
 			if job.cleanup != nil {
 				job.cleanup()
 			}
@@ -219,9 +223,20 @@ func (p *Pool) queryContext(ctx context.Context) (context.Context, context.Cance
 // enqueue adds an item while preserving bounded backpressure.
 func (p *Pool) enqueue(ctx context.Context, item workItem) error {
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-p.done:
+			return ErrClosed
+
+		case <-p.queueSpace:
+		}
+
 		p.stateMu.RLock()
 		if p.closed {
 			p.stateMu.RUnlock()
+			p.releaseQueueSpace()
 			return ErrClosed
 		}
 
@@ -232,18 +247,14 @@ func (p *Pool) enqueue(ctx context.Context, item workItem) error {
 
 		default:
 			p.stateMu.RUnlock()
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-
-		case <-p.done:
-			return ErrClosed
-
-		case <-p.queueSpace:
+			p.releaseQueueSpace()
 		}
 	}
+}
+
+// releaseQueueSpace returns one pending-job slot to the pool.
+func (p *Pool) releaseQueueSpace() {
+	p.queueSpace <- struct{}{}
 }
 
 // validateTarget rejects unresolved, unspecified, and zero-port targets.
