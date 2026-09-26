@@ -28,6 +28,7 @@ type Result struct {
 	// Packet is the logical A2S response, when one was received.
 	Packet transport.Packet
 	// Meta contains transaction timing and challenge metadata.
+	// Meta.Duration excludes time spent waiting in the pool queue.
 	Meta transport.QueryMeta
 	// Index is the zero-based submission order within one stream.
 	Index uint64

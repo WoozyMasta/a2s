@@ -20,6 +20,11 @@ network I/O, split assembly, and validation.
 The caller's context can impose an earlier deadline.
 Calling [WithTimeout] with zero disables the pool-specific budget.
 
+The [transport.QueryMeta] returned by [Pool.Query] and [Pool.Stream]
+measures only the transaction after a worker starts it;
+it excludes queue wait. If the budget expires before a worker starts,
+the query returns without transaction metadata.
+
 [Pool.Bind] resolves a hostname once using the supplied context
 and stores one usable resolved address in the returned [Endpoint].
 Literal IP addresses and [Pool.BindAddr] do not perform DNS lookups.

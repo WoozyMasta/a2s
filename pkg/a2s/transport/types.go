@@ -28,7 +28,9 @@ type Packet struct {
 
 // QueryMeta contains transport metadata for one completed logical query.
 type QueryMeta struct {
-	// Duration covers the complete logical transaction.
+	// Duration is the time spent executing the logical transaction.
+	// It includes retries, challenge exchange, and split assembly,
+	// but excludes time waiting for a client or pool worker.
 	Duration time.Duration
 	// UsedChallenge reports whether at least one challenge exchange occurred.
 	UsedChallenge bool

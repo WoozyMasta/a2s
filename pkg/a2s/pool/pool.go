@@ -102,6 +102,8 @@ func New(options ...Option) (*Pool, error) {
 // The pool timeout starts when Query begins submission,
 // so queue wait is part of the total budget.
 // A resolved target is queried directly without DNS.
+// The returned QueryMeta.Duration measures only worker transaction time
+// and does not include time spent waiting in the queue.
 func (p *Pool) Query(
 	ctx context.Context,
 	target netip.AddrPort,
