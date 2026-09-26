@@ -136,6 +136,40 @@ func TestPoolReleasesQueueSlotWhenWorkerDequeuesJob(t *testing.T) {
 	}
 }
 
+func TestPoolReusesSocketAfterUnsupportedQuery(t *testing.T) {
+	response := transport.AppendPacket(nil, transport.Packet{Type: transport.ResponseInfo})
+	responder := newResponder(t, response, false)
+
+	p, err := New(WithWorkers(1), WithTimeout(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if _, _, err := p.Query(ctx, responder.target, transport.PlayerRequest); !errors.Is(err, transport.ErrQueryUnsupported) {
+		t.Fatalf("unsupported Query() error = %v, want ErrQueryUnsupported", err)
+	}
+
+	const unsupportedAttempts = 3
+	ports := make([]int, unsupportedAttempts+1)
+	for index := range unsupportedAttempts {
+		ports[index] = responder.waitSourcePort(t)
+	}
+
+	if _, _, err := p.Query(ctx, responder.target, transport.InfoRequest); err != nil {
+		t.Fatalf("follow-up Query() error = %v", err)
+	}
+	ports[len(ports)-1] = responder.waitSourcePort(t)
+
+	for index := 1; index < len(ports); index++ {
+		if ports[index] != ports[0] {
+			t.Fatalf("worker socket port changed after unsupported query: %v", ports)
+		}
+	}
+}
+
 type responder struct {
 	target        netip.AddrPort
 	conn          *net.UDPConn

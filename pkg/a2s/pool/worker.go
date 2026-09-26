@@ -6,6 +6,7 @@ package pool
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/netip"
@@ -98,7 +99,7 @@ func (w *worker) execute(job workItem) {
 	packet, meta, queryErr := transport.Execute(job.ctx, io, job.query, w.readBuf)
 	stopDeadline()
 
-	if queryErr != nil && io.started {
+	if io.started && shouldResetSocket(queryErr) {
 		w.reset(family)
 	}
 
@@ -107,6 +108,25 @@ func (w *worker) execute(job workItem) {
 		meta:   meta,
 		err:    queryErr,
 	})
+}
+
+// shouldResetSocket reports whether a failed transaction
+// may have left unread or delayed datagrams on the worker socket.
+func shouldResetSocket(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// An unsupported query is a complete, valid response from the server.
+	// Keep the socket unless the error also contains cancellation
+	// or deadline state from a later retry.
+	if errors.Is(err, transport.ErrQueryUnsupported) &&
+		!errors.Is(err, context.Canceled) &&
+		!errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	return true
 }
 
 // publish sends one result to the buffered job channel.
