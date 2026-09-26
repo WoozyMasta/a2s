@@ -13,6 +13,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  compatibility:
+    name: Go 1.25 compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+
+      - name: Run short test suite
+        run: go test -short ./...
+
   test:
     runs-on: ubuntu-latest
     steps:

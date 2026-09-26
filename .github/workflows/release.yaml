@@ -39,6 +39,20 @@ jobs:
           echo "create_release=$create_release" >> "$GITHUB_OUTPUT"
           echo "prerelease=$([[ "$channel" == rc ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+  compatibility:
+    needs: classify_tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+
+      - name: Run short test suite
+        run: go test -short ./...
+
   test:
     needs: classify_tag
     runs-on: ubuntu-latest
@@ -62,7 +76,7 @@ jobs:
         run: make fuzz FUZZ_TIME=3s
 
   build-binaries:
-    needs: [classify_tag, test]
+    needs: [classify_tag, compatibility, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,7 +100,7 @@ jobs:
           if-no-files-found: error
 
   publish-containers:
-    needs: [classify_tag, test]
+    needs: [classify_tag, compatibility, test]
     runs-on: ubuntu-latest
     permissions:
       attestations: write
