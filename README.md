@@ -63,6 +63,12 @@ Arch/OS | macOS | Linux | Windows
 **AMD64** | [a2s-darwin-amd64][] | [a2s-linux-amd64][] | [a2s-windows-amd64][]
 **ARM64** | [a2s-darwin-arm64][] | [a2s-linux-arm64][] | [a2s-windows-arm64][]
 
+Or install with go toolchain:
+
+```shell
+go install github.com/woozymasta/a2s/cmd/a2s
+```
+
 Download the latest release with curl in Bash:
 
 ```shell
