@@ -11,12 +11,12 @@ import (
 
 // BatchOptions controls full retry passes for Pool.Batch.
 type BatchOptions struct {
-	// BonusPasses is the number of passes over requests that failed earlier.
-	// Zero performs only the initial pass.
-	BonusPasses int
 	// Retry decides whether a failed request enters the next pass.
 	// A nil function retries every failed request.
 	Retry func(error) bool
+	// BonusPasses is the number of passes over requests that failed earlier.
+	// Zero performs only the initial pass.
+	BonusPasses int
 }
 
 // BatchResult contains the final result for each request completed by Batch.
@@ -30,8 +30,8 @@ type BatchResult struct {
 
 // batchItem keeps the original request index across shrinking retry passes.
 type batchItem struct {
-	index   uint64
 	request Request
+	index   uint64
 }
 
 // batchPassResult associates one stream result with its original request.
