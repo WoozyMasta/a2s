@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning][].
   transaction engine, and sentinel errors
 * `a2s/pool`: bounded worker pool, reusable per-family UDP sockets,
   one-time-resolved endpoints, and bounded streaming queries
+* `a2s/pool`: finite batch queries with optional full retry passes
 
 ### Changed
 

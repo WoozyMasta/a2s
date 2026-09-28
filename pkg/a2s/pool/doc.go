@@ -50,6 +50,13 @@ so an unread output applies backpressure instead of growing memory without limit
 Canceling the context stops input acceptance, cancels accepted work,
 and closes output without waiting for the input channel to be closed.
 
+[Pool.Batch] runs a finite request slice in full passes.
+The first pass executes every request;
+optional bonus passes execute only failed requests.
+Set [BatchOptions.Retry] to filter retryable errors;
+a nil predicate retries every failed request.
+Batch results retain the original request order.
+
 An [Endpoint] implements the minimal upstream contract used by [pkg/a2s/proxy],
 so a bound pool endpoint can be passed directly to a proxy poller or handler.
 
