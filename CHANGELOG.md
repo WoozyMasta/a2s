@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning][].
 ### Removed
 -->
 
-## Unreleased
+## [0.5.0][] - 2026-09-25
 
 ### Added
 
@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning][].
 * `a2s`, `a2s/server`, and `a2s/proxy`
   now use the shared transport contract directly;
   low-level types and errors moved out of `a2s`
+
+[0.5.0]: https://github.com/WoozyMasta/a2s/compare/v0.4.0...v0.5.0
 
 ## [0.4.0][] - 2026-09-25
 
